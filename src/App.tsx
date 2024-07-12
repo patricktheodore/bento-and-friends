@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import './App.css';
+import { AppProvider } from './context/AppContext';
+import SignIn from './components/SignIn';
+import SignUp from './components/SignUp';
 
-import Register from './components/Register';
-import UserProfile from './components/UserProfile';
-
-function App() {
+const App: React.FC = () => {
   return (
-    <>
-      <span>bento and friends init</span>
-      <UserProfile />
-      <Register />
-    </>
+    <AppProvider>
+      <div className="App">
+        <SignIn />
+        <SignUp />
+      </div>
+    </AppProvider>
   );
 }
 
