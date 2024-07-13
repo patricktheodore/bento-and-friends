@@ -20,6 +20,14 @@ const SignIn: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit}>
+<div className="bg-brand-dark-green text-brand-cream">
+  <h1 className="text-brand-gold">Welcome to Bento&Friends</h1>
+  <p className="text-brand-taupe">Delicious and healthy meals for students</p>
+</div>
+
+<h1 className="font-bold">Bold Heading</h1>
+<p className="font-normal">Normal text</p>
+<span className="font-light">Light text</span>
       <input
         type="email"
         value={email}
