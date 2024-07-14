@@ -44,7 +44,7 @@ const Header: React.FC = () => {
 
     return (
         <nav
-            className="bg-brand-dark-green shadow-md sticky top-0 z-10"
+            className="bg-brand-dark-green shadow-md sticky top-0 z-50"
             role="navigation"
             aria-label="Main"
         >

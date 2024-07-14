@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import FeaturedMenuItemsCarousel from '../components/FeaturedMenuItemsCarousel';
 
 const HomePage: React.FC = () => {
 	return (
@@ -19,15 +20,16 @@ const HomePage: React.FC = () => {
 
 				{/* Content */}
 				<div className="z-10 text-center px-4">
-					<h1 className="text-4xl md:text-6xl font-bold text-brand-cream mb-8">Welcome to Bento & Friends!</h1>
+					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-8">Welcome to Bento & Friends!</h1>
 					<Link
 						to="/order"
-						className="bg-brand-gold hover:brightness-75 text-brand-cream font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-cream"
+						className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
 					>
 						Order Now
 					</Link>
 				</div>
 			</div>
+            <FeaturedMenuItemsCarousel />
 		</>
 	);
 };

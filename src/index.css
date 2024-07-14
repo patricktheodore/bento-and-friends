@@ -1,13 +1,12 @@
 :root {
   --color-bg-primary: #F7F4F0;
   --color-bg-secondary: #8E786B;
-  --color-text-primary: #052D2A;
-  --color-text-secondary: #673521;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
 }
 
 [data-theme='dark'] {
   --color-bg-primary: #052D2A;
-  --color-bg-secondary: #673521;
   --color-text-primary: #F7F4F0;
-  --color-text-secondary: #C7893B;
+  --color-text-secondary: #e2e8f0;
 }

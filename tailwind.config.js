@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Poppins', 'sans-serif'],
+        sans: ['DM Sans', 'sans-serif'],
       },
       colors: {
         'brand': {
@@ -16,6 +16,7 @@ export default {
           'gold': '#C7893B',
           'taupe': '#8E786B',
           'cream': '#F7F4F0',
+          
         },
       },
       backgroundColor: {

@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface MenuItemProps {
+export interface MenuItemProps {
   image: string;
   title: string;
   description: string;
