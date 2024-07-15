@@ -6,3 +6,32 @@
   font-family: 'DM Sans', sans-serif;
   box-sizing: border-box;
 }
+
+.slick-dots {
+  bottom: -30px !important;
+}
+
+.custom-dot-class {
+    display: flex !important;
+    justify-content: center;
+}
+
+.custom-dot-class li {
+  display: flex !important;
+  justify-content: center;
+  list-style-type: none;
+  margin: 0 5px;
+  padding: 0;
+}
+
+.custom-dot-class li.slick-active div div {
+  width: 20px;
+  border-radius: 8px;
+  background-color: #052D2A;
+}
+
+.slick-arrow .slick-prev,
+.slick-arrow .slick-next {
+  display: none;
+
+}

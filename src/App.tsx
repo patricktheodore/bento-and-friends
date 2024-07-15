@@ -4,6 +4,7 @@ import { AppProvider } from './context/AppContext';
 import SignIn from './components/SignIn';
 import SignUp from './components/SignUp';
 import Header from './layout/Header';
+import Footer from './layout/Footer';
 import HomePage from './pages/Home';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
@@ -23,6 +24,7 @@ const App: React.FC = () => {
                   {/* <Route path="/signout" element={<SignOut />} /> */}
                 </Routes>
               </main>
+              <Footer />
             </div>
           </Router>
         </AppProvider>

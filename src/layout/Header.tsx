@@ -34,7 +34,7 @@ const Header: React.FC = () => {
             <Link
                 key={index}
                 to={item.to}
-                className={`text-brand-cream hover:text-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold ${isMobile ? 'w-full text-center py-2' : ''}`}
+                className={`text-brand-dark-green hover:text-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold ${isMobile ? 'w-full text-center py-2' : ''}`}
                 onClick={() => isMobile && setIsOpen(false)}
             >
                 {item.label}
@@ -44,7 +44,7 @@ const Header: React.FC = () => {
 
     return (
         <nav
-            className="bg-brand-dark-green shadow-md sticky top-0 z-50"
+            className="bg-brand-cream shadow-md sticky top-0 z-50"
             role="navigation"
             aria-label="Main"
         >
@@ -58,7 +58,7 @@ const Header: React.FC = () => {
                         className="flex items-center hover:scale-105 transition-transform duration-300 ease-in-out hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-gold"
                     >
                         <img
-                            src="src/assets/logo-white.png"
+                            src="src/assets/logo-green.png"
                             alt="Bento&Friends Logo"
                             className="h-12 w-auto"
                         />
@@ -67,7 +67,7 @@ const Header: React.FC = () => {
                         {renderMenuItems()}
                     </div>
                     <button 
-                        className={`md:hidden scale-75 text-brand-cream hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
+                        className={`md:hidden scale-75 text-primary hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
                         type="button"
                         onClick={() => setIsOpen(!isOpen)}
                         aria-expanded={isOpen}
@@ -82,7 +82,7 @@ const Header: React.FC = () => {
                 <div 
                     id="mobile-menu"
                     ref={mobileMenuRef}
-                    className={`md:hidden bg-brand-dark-green absolute top-full left-0 w-full overflow-hidden transition-all duration-500 ease-in-out ${
+                    className={`md:hidden bg-brand-cream absolute top-full left-0 w-full overflow-hidden transition-all duration-500 ease-in-out ${
                         isOpen ? 'max-h-96 opacity-100 rounded-b-md shadow-lg' : 'max-h-0 opacity-0'
                     }`}
                 >
