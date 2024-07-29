@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Navigate } from 'react-router-dom';
-import { signUp } from '../services/auth';
+import { signUp, signIn } from '../services/auth';
+import { FirebaseError } from 'firebase/app';
 
 const UserloginPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
@@ -9,6 +10,8 @@ const UserloginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
+    const [working, setWorking] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     if (state.user) {
         return <Navigate to="/profile" replace />;
@@ -16,15 +19,45 @@ const UserloginPage: React.FC = () => {
 
     const handleToggleSignup = () => {
         setIsNewUserSignup(!isNewUserSignup);
+        setError(null);
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null); // Clear any existing errors
         try {
-            const user = await signUp(email, password, displayName);
+            setWorking(true);
+            const user = isNewUserSignup ? await signUp(email, password, displayName) : await signIn(email, password);
             dispatch({ type: 'SET_USER', payload: user });
-        } catch (error) {
-            console.error('Error signing up:', error);
+        } catch (error: unknown) {
+            if (error instanceof FirebaseError) {
+                setError(getErrorMessage(error));
+            } else {
+                setError('An unexpected error occurred. Please try again.');
+            }
+            console.error('Authentication error:', error);
+        } finally {
+            setWorking(false);
+        }
+    };
+
+    const getErrorMessage = (error: FirebaseError): string => {
+        switch (error.message) {
+            case "Firebase: Error (auth/invalid-credential).":
+                return 'Invalid credentials. Please try again.';
+            case 'Firebase: Error (auth/email-already-in-use).':
+                return 'This email is already in use. Please try signing in instead.';
+            case 'Firebase: Error (auth/invalid-email).':
+                return 'The email address is not valid.';
+            case 'Firebase: Error (auth/weak-password).':
+                return 'The password is too weak. Please use a stronger password.';
+            case 'Firebase: Error (auth/user-not-found).':
+            case 'Firebase: Error (auth/wrong-password).':
+                return 'Invalid email or password. Please try again.';
+            case 'Firebase: Error (auth/too-many-requests).':
+                return 'Too many unsuccessful login attempts. Please try again later.';
+            default:
+                return 'An unexpected error occurred. Please try again.';
         }
     };
 
@@ -83,16 +116,22 @@ const UserloginPage: React.FC = () => {
                             />
                         </div>
                     </div>
-
                     <div>
                         <button
                             type="submit"
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-dark-green hover:brightness-75 focus:outline-none transform transition-all duration-150 hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark-green"
+                            disabled={working}
+                            className={`group relative w-full flex justify-center items-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-dark-green hover:brightness-75 focus:outline-none transform transition-all duration-150 hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark-green ${working ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {isNewUserSignup ? 'Sign Up' : 'Sign In'}
+                            {working && <div className='loader absolute right-2'></div>}
                         </button>
                     </div>
                 </form>
+
+                <div className='text-center text-red-700 text-base'>
+                    {error ? error : ''}
+                </div>
+
                 <div className="text-sm text-center">
                     <button onClick={handleToggleSignup} className="font-medium text-brand-dark-green hover:underline hover:brightness-75">
                         {isNewUserSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
