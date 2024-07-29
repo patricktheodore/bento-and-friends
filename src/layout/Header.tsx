@@ -13,7 +13,11 @@ const Header: React.FC = () => {
         { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
         ...(state.user
-            ? [{ to: '/profile', label: 'Profile' }]
+            ? [
+                { to: '/order-history', label: 'Order History' },
+                { to: '/account', label: 'Account' },
+                { to: '/signout', label: 'Sign Out' }
+            ]
             : [{ to: '/signin', label: 'Sign In' }]
         )
     ];
@@ -44,7 +48,7 @@ const Header: React.FC = () => {
 
     return (
         <nav
-            className="bg-brand-cream shadow-md sticky top-0 z-50"
+            className="bg-brand-cream sticky top-0 z-50"
             role="navigation"
             aria-label="Main"
         >
@@ -52,7 +56,7 @@ const Header: React.FC = () => {
                 Skip to main content
             </a>
             <div className='w-full relative'>
-                <div className="container mx-auto flex justify-between items-center py-4 px-8">
+                <div className="container mx-auto flex justify-between items-center p-4">
                     <Link
                         to="/"
                         className="flex items-center hover:scale-105 transition-transform duration-300 ease-in-out hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-gold"
