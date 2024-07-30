@@ -1,5 +1,6 @@
 import './App.css';
 import { AppProvider } from './context/AppContext';
+import AccountPage from './pages/Account';
 import UserloginPage from './pages/SignInRegister';
 import SignOut from './pages/SignOut';
 import Header from './layout/Header';
@@ -18,9 +19,9 @@ const App: React.FC = () => {
                   <Route path="/" element={<HomePage />} />
 
                   {/* <Route path="/menu" element={<Menu />} /> */}
+                  <Route path="/account" element={<AccountPage />} />
                   <Route path="/signin" element={<UserloginPage />} />
                   <Route path="/signout" element={<SignOut />} />
-                  {/* <Route path="/profile" element={<Profile />} /> */}
                   {/* <Route path="/signout" element={<SignOut />} /> */}
                 </Routes>
               </main>

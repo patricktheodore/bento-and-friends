@@ -14,7 +14,7 @@ const UserloginPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     if (state.user) {
-        return <Navigate to="/profile" replace />;
+        return <Navigate to="/account" replace />;
     }
 
     const handleToggleSignup = () => {

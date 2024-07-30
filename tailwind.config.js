@@ -12,6 +12,7 @@ export default {
       colors: {
         'brand': {
           'dark-green': '#052D2A',
+          'alternate-green': '#C5D1D0',
           'brown': '#673521',
           'gold': '#C7893B',
           'taupe': '#8E786B',
