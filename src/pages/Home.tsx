@@ -1,24 +1,24 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import FeaturedMenuItemsCarousel from '../components/FeaturedMenuItemsCarousel';
+import HowItWorksSummaryComponent from '../components/HowItWorksSummary';
+import TestimonialsComponent from '../components/Testimonials';
+import NutritionComponent from '../components/Nutrition';
+import SustainabilityComponent from '../components/Sustainability';
 
 const HomePage: React.FC = () => {
 	return (
 		<>
 			<div className="relative max-h-screen h-[75vh] flex items-center justify-center">
-				{/* Background Image */}
 				<div
 					className="absolute inset-0 bg-cover bg-center z-0"
 					style={{
 						backgroundImage: "url('src/assets/image-01.webp')",
-						// Ensure this path is correct for your project structure
 					}}
 				>
-					{/* Overlay for better text visibility */}
 					<div className="absolute inset-0 bg-black opacity-50"></div>
 				</div>
 
-				{/* Content */}
 				<div className="z-10 text-center px-4">
 					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-8">Welcome to Bento & Friends!</h1>
 					<Link
@@ -29,7 +29,11 @@ const HomePage: React.FC = () => {
 					</Link>
 				</div>
 			</div>
+			<HowItWorksSummaryComponent />
             <FeaturedMenuItemsCarousel />
+			<TestimonialsComponent />
+			<NutritionComponent />
+			<SustainabilityComponent />
 		</>
 	);
 };
