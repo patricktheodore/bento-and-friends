@@ -1,53 +1,89 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFacebook, faInstagram } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTwitter, faInstagram, faFacebook } from '@fortawesome/free-brands-svg-icons';
 
+const FooterSection: React.FC<{ title: string; links: { to: string; label: string }[] }> = ({ title, links }) => (
+	<div className="mb-8">
+		<h3 className="text-xl font-semibold mb-4">{title}</h3>
+		<ul className="space-y-2 text-sm">
+			{links.map((link, index) => (
+				<li key={index} className='hover:text-brand-taupe'>
+					<Link to={link.to}>{link.label}</Link>
+				</li>
+			))}
+		</ul>
+	</div>
+);
 
 const Footer: React.FC = () => {
-  return (
-    <footer className="bg-brand-dark-green text-brand-cream py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-wrap justify-between">
-          {/* Brand and Logo */}
-          <div className="w-full md:w-1/3 mb-6 md:mb-0">
-            <Link to="/" className="flex items-center">
-              <img src="/path/to/your/logo.png" alt="Bento&Friends Logo" className="h-10 w-auto mr-3" />
-              <span className="text-2xl font-bold">Bento&Friends</span>
+	const sections = [
+		{
+			title: 'About Us',
+			links: [
+				{ to: '/our-story', label: 'Our Story' },
+				{ to: '/how-it-works', label: 'How It Works' },
+				{ to: '/contact-us', label: 'Contact Us' },
+			],
+		},
+		{
+			title: 'Our Menu',
+			links: [
+				{ to: '/menu', label: 'Full Menu' },
+				{ to: '/nutritional-info', label: 'Nutritional Information' },
+				{ to: '/dietary-options', label: 'Dietary Options' },
+				{ to: '/alergy-information', label: 'Alergy Information' },
+			],
+		},
+		{
+			title: 'Customer Service',
+			links: [
+				{ to: '/faq', label: 'FAQ' },
+				{ to: '/ordering-help', label: 'Ordering Help' },
+				{ to: '/account', label: 'My Account' },
+				{ to: '/feedback', label: 'Give Feedback' },
+			],
+		},
+	];
+
+	return (
+		<footer className="bg-brand-dark-green text-brand-cream py-12 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="col-span-1 lg:col-span-1">
+            <Link to="/" className="flex items-center mb-4">
+              <img src="src/assets/logo-white.png" alt="Bento&Friends Logo" className="h-16 w-auto" />
             </Link>
-            <p className="mt-2">Delicious and healthy meals for students</p>
           </div>
 
-          {/* Contact Information */}
-          <div className="w-full md:w-1/3 mb-6 md:mb-0">
-            <h3 className="text-lg font-semibold mb-2">Contact Us</h3>
-            <p>Email: info@bentoandfriends.com</p>
-            <p>Phone: (123) 456-7890</p>
-            <p>Address: 123 Bento St, Foodville, FL 12345</p>
-          </div>
-
-          {/* Social Media Links */}
-          <div className="w-full md:w-1/3">
-            <h3 className="text-lg font-semibold mb-2">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-brand-gold transition-colors duration-300">
-                <FontAwesomeIcon icon={faFacebook} />
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-brand-gold transition-colors duration-300">
-                <FontAwesomeIcon icon={faInstagram} />
-              </a>  
-            </div>
-          </div>
+          {sections.map((section, index) => (
+            <FooterSection key={index} title={section.title} links={section.links} />
+          ))}
         </div>
 
-        {/* Copyright */}
-        <div className="mt-8 pt-8 border-t border-brand-cream/30 text-center">
-          <p className='text-sm'>&copy; {new Date().getFullYear()} Bento&Friends. All rights reserved.</p>
-          <span className='text-xs'>Designed by <a href="https://www.patricktheodore.dev" target="_blank" rel="noopener noreferrer" className="text-brand-gold">patricktheodore</a></span>
+        <div className="mt-12 pt-8 border-t border-brand-cream/30 flex justify-center items-center space-x-8">
+          <span>Fresh Ingredients</span>
+          <span>Healthy Options</span>
+          <span>Delivered to your School</span>
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-brand-cream/30 flex flex-col items-center">
+          <div className="flex flex-wrap justify-center space-x-4 mb-6">
+            <span>&copy; Bento&Friends {new Date().getFullYear()}</span>
+            <Link to="/terms">Terms of Service</Link>
+            <Link to="/privacy">Privacy Policy</Link>
+          </div>
+          <div className="flex space-x-6 mb-6">
+            {[faTwitter, faInstagram, faFacebook].map((icon, index) => (
+              <a key={index} href="#" className="text-2xl hover:text-brand-gold transition-colors duration-300">
+                <FontAwesomeIcon icon={icon} />
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </footer>
-  );
+	);
 };
 
 export default Footer;

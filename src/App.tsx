@@ -14,7 +14,7 @@ const App: React.FC = () => {
           <Router>
             <div className="flex flex-col min-h-screen">
               <Header />
-              <main className="w-full flex-grow bg-primary">
+              <main className="w-full min-h-[75vh] flex-grow bg-primary">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
 
