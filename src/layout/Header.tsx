@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 
 const Header: React.FC = () => {
     const { state } = useAppContext();
     const [isOpen, setIsOpen] = useState(false);
     const mobileMenuRef = useRef<HTMLDivElement>(null);
-
+    const location = useLocation();
+    
     const menuItems = [
         { to: '/menu', label: 'Menu' },
         { to: '/order', label: 'Order' },
@@ -38,13 +39,24 @@ const Header: React.FC = () => {
             <Link
                 key={index}
                 to={item.to}
-                className={`text-brand-dark-green hover:text-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold ${isMobile ? 'w-full text-center py-2' : ''}`}
+                className={`text-brand-dark-green hover:text-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold ${
+                    isMobile ? 'w-full text-center py-2' : ''
+                } ${
+                    isActive(item.to) ? 'text-brand-dark-green underline underline-offset-2 font-bold' : ''
+                }`}
                 onClick={() => isMobile && setIsOpen(false)}
             >
                 {item.label}
             </Link>
         ))
     );
+
+    const isActive = (path: string) => {
+        if (path === '/') {
+            return location.pathname === '/';
+        }
+        return location.pathname.startsWith(path);
+    };
 
     return (
         <>
@@ -68,9 +80,11 @@ const Header: React.FC = () => {
                                 className="h-12 w-auto"
                             />
                         </Link>
-                        <div className="hidden md:flex items-center space-x-4">
-                            {renderMenuItems()}
-                        </div>
+                        {!state.isLoading && (
+                            <div className="hidden md:flex items-center space-x-4">
+                                {renderMenuItems()}
+                            </div>
+                        )}
                         <button 
                             className={`md:hidden scale-75 text-primary hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
                             type="button"

@@ -25,4 +25,5 @@ export interface AppState {
   user: User | null;
   menuItems: MenuItem[];
   currentOrder: Order | null;
+  isLoading: boolean;
 }

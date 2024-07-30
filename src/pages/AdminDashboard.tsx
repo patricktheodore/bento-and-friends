@@ -1,13 +1,13 @@
 import React from 'react';
 
-const AboutPage: React.FC = () => {
+const AdminDashboardPage: React.FC = () => {
 	return (
 		<>
 			<div className="relative max-h-screen h-[75vh] flex items-center justify-center">
-				About
+				Admin Dashboard
 			</div>
 		</>
 	);
 };
 
-export default AboutPage;
+export default AdminDashboardPage;

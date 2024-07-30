@@ -1,29 +1,20 @@
 import './App.css';
 import { AppProvider } from './context/AppContext';
-import AccountPage from './pages/Account';
-import UserloginPage from './pages/SignInRegister';
-import SignOut from './pages/SignOut';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
-import HomePage from './pages/Home';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
+import AnimatedRoutes from './utils/AnimatedRoutes';
+import ScrollToTop from './utils/ScrollToTop';
 
 const App: React.FC = () => {
     return (
         <AppProvider>
           <Router>
+            <ScrollToTop /> 
             <div className="flex flex-col min-h-screen">
               <Header />
               <main className="w-full min-h-[75vh] flex-grow bg-primary">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-
-                  {/* <Route path="/menu" element={<Menu />} /> */}
-                  <Route path="/account" element={<AccountPage />} />
-                  <Route path="/signin" element={<UserloginPage />} />
-                  <Route path="/signout" element={<SignOut />} />
-                  {/* <Route path="/signout" element={<SignOut />} /> */}
-                </Routes>
+                <AnimatedRoutes />
               </main>
               <Footer />
             </div>

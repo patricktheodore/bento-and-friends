@@ -21,9 +21,9 @@ const Footer: React.FC = () => {
 		{
 			title: 'About Us',
 			links: [
-				{ to: '/our-story', label: 'Our Story' },
+				{ to: '/about', label: 'Our Story' },
 				{ to: '/how-it-works', label: 'How It Works' },
-				{ to: '/contact-us', label: 'Contact Us' },
+				{ to: '/contact', label: 'Contact Us' },
 			],
 		},
 		{
@@ -59,12 +59,6 @@ const Footer: React.FC = () => {
           {sections.map((section, index) => (
             <FooterSection key={index} title={section.title} links={section.links} />
           ))}
-        </div>
-
-        <div className="mt-12 pt-8 border-t border-brand-cream/30 flex justify-center items-center space-x-8">
-          <span>Fresh Ingredients</span>
-          <span>Healthy Options</span>
-          <span>Delivered to your School</span>
         </div>
 
         <div className="mt-8 pt-8 border-t border-brand-cream/30 flex flex-col items-center">

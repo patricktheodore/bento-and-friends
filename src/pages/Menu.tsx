@@ -1,13 +1,13 @@
 import React from 'react';
 
-const AboutPage: React.FC = () => {
+const MenuPage: React.FC = () => {
 	return (
 		<>
 			<div className="relative max-h-screen h-[75vh] flex items-center justify-center">
-				About
+				Menu
 			</div>
 		</>
 	);
 };
 
-export default AboutPage;
+export default MenuPage;
