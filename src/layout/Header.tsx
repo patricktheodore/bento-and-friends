@@ -13,7 +13,7 @@ const Header: React.FC = () => {
         { to: '/order', label: 'Order' },
         { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
-        ...(state.user
+        ...(state.user 
             ? [
                 { to: '/order-history', label: 'Order History' },
                 { to: '/account', label: 'Account' },

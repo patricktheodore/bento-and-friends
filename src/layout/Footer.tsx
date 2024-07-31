@@ -8,7 +8,7 @@ const FooterSection: React.FC<{ title: string; links: { to: string; label: strin
 		<h3 className="text-xl font-semibold mb-4">{title}</h3>
 		<ul className="space-y-2 text-sm">
 			{links.map((link, index) => (
-				<li key={index} className='hover:text-brand-taupe'>
+				<li key={index} className='hover:text-brand-gold'>
 					<Link to={link.to}>{link.label}</Link>
 				</li>
 			))}
@@ -64,8 +64,8 @@ const Footer: React.FC = () => {
         <div className="mt-8 pt-8 border-t border-brand-cream/30 flex flex-col items-center">
           <div className="flex flex-wrap justify-center space-x-4 mb-6">
             <span>&copy; Bento&Friends {new Date().getFullYear()}</span>
-            <Link to="/terms">Terms of Service</Link>
-            <Link to="/privacy">Privacy Policy</Link>
+            <Link to="/terms" className='hover:text-brand-gold'>Terms of Service</Link>
+            <Link to="/privacy" className='hover:text-brand-gold'>Privacy Policy</Link>
           </div>
           <div className="flex space-x-6 mb-6">
             {[faTwitter, faInstagram, faFacebook].map((icon, index) => (
