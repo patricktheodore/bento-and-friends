@@ -4,6 +4,7 @@ import MenuItem, { MenuItemProps } from '../components/MenuItem';
 
 const MenuPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
+	const [isAdding, setIsAdding] = useState(false);
 	const [newItem, setNewItem] = useState<Omit<MenuItemProps, 'id'>>({
 		name: '',
 		ingredients: [],
@@ -14,6 +15,10 @@ const MenuPage: React.FC = () => {
 		isEnabled: true,
 		isFeatured: false,
 	});
+
+	const enableAdding = () => () => {
+		setIsAdding(true);
+	}
 
 	const menuItems: MenuItemProps[] = [
 		{
@@ -83,36 +88,35 @@ const MenuPage: React.FC = () => {
 			<div className="w-full max-w-screen-xl mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-4">
 				<div className="w-full flex flex-col justify-start items-center">
 					<h2 className="w-full text-left text-2xl font-bold text-brand-dark-green mb-4">Menu</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{menuItems.map(
-							(item) =>
-								item.isEnabled && (
-									<MenuItem
-										key={item.id}
-										{...item}
-									/>
-								)
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+						{menuItems.map((item) =>
+							item.isEnabled && (
+								<MenuItem
+									key={item.id}
+									{...item}
+								/>
+							)
 						)}
 					</div>
 				</div>
 
 				{state?.user?.isAdmin && (
-					<div className="w-full max-w-md">
-						<h2 className="text-2xl font-bold text-brand-dark-green mb-4">Add New Menu Item</h2>
-						<form
-							className="bg-white rounded-lg shadow-md overflow-hidden"
-						>
-							
+					<div className="w-full flex flex-col justify-start items-center">
 
-							<div className="px-6 py-3 bg-gray-50 text-right">
-								<button
-									type="submit"
-									className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-gold hover:bg-brand-gold-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-gold"
-								>
-									Add Menu Item
+						{!isAdding ? (
+							<div className="w-full flex justify-center items-center my-4">
+								<button onClick={enableAdding()} className="bg-brand-cream text-brand-dark-green text-sm font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green">
+									Add New Item
 								</button>
 							</div>
-						</form>
+						) : (
+							<div className='text-sm'>
+								<span>Hi</span>
+							</div>
+						)}
+
+						
+						
 					</div>
 				)}
 			</div>

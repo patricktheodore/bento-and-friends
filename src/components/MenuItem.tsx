@@ -16,7 +16,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ name, ingredients, calories, allerg
 	return (
 		<div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
 			{image && (
-				<div className="h-48 overflow-hidden">
+				<div className="h-36 overflow-hidden">
 					<img
 						src={image}
 						alt={name}
