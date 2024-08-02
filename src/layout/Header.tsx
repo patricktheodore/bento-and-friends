@@ -14,11 +14,17 @@ const Header: React.FC = () => {
         { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
         ...(state.user 
-            ? [
-                { to: '/order-history', label: 'Order History' },
-                { to: '/account', label: 'Account' },
-                { to: '/signout', label: 'Sign Out' }
-            ]
+            ? (state.user.isAdmin
+                ? [
+                    { to: '/run-sheet', label: 'Run Sheet' },
+                    { to: '/admin', label: 'Admin Console' },
+                    { to: '/signout', label: 'Sign Out' }
+                ]
+                : [
+                    { to: '/order-history', label: 'Order History' },
+                    { to: '/account', label: 'Account' },
+                    { to: '/signout', label: 'Sign Out' }
+                ])
             : [{ to: '/signin', label: 'Sign In' }]
         )
     ];
@@ -61,7 +67,7 @@ const Header: React.FC = () => {
     return (
         <>
             <nav
-                className={`bg-brand-cream sticky top-0 z-50 ${isOpen ? 'menu-open' : ''}`}
+                className={`bg-brand-cream border-b border-stone-300 sticky top-0 z-50 ${isOpen ? 'menu-open' : ''}`}
                 role="navigation"
                 aria-label="Main"
             >

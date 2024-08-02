@@ -1,34 +1,7 @@
 import React, { useState } from 'react';
-import { useAppContext } from '../context/AppContext';
 import MenuItem, { MenuItemProps } from '../components/MenuItem';
-import { Button } from '../components/ui/Button';
-
-const Dialog: React.FC<{
-	isOpen: boolean;
-	onClose: () => void;
-	children: React.ReactNode;
-}> = ({ isOpen, onClose, children }) => {
-	if (!isOpen) return null;
-
-	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-			<div className="bg-white p-6 rounded-lg shadow-lg">
-				{children}
-				<button
-					className="mt-4 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
-					onClick={onClose}
-				>
-					Close
-				</button>
-			</div>
-		</div>
-	);
-};
 
 const MenuPage: React.FC = () => {
-	const { state, dispatch } = useAppContext();
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-
 	const [newItem, setNewItem] = useState<Omit<MenuItemProps, 'id'>>({
 		name: '',
 		ingredients: [],
@@ -103,23 +76,6 @@ const MenuPage: React.FC = () => {
 		},
 	];
 
-	const handleAddNewItem = () => {
-		// Logic to add new item goes here
-		console.log('Adding new item:', newItem);
-		// Reset the form after adding
-		setNewItem({
-			name: '',
-			ingredients: [],
-			calories: 0,
-			allergens: [],
-			image: '',
-			isNew: true,
-			isEnabled: true,
-			isFeatured: false,
-		});
-		setIsDialogOpen(false);
-	};
-
 	return (
 		<>
 			<div className="w-full max-w-screen-xl mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-4">
@@ -137,14 +93,6 @@ const MenuPage: React.FC = () => {
 						)}
 					</div>
 				</div>
-
-				{state?.user?.isAdmin && (
-					<div className="w-full flex flex-col justify-start items-center">
-						<Button variant={'default'}>
-							Add New Item
-						</Button>
-					</div>
-				)}
 			</div>
 		</>
 	);

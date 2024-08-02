@@ -14,6 +14,11 @@ const UserloginPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     if (state.user) {
+
+        if (state.user.isAdmin) {
+            return <Navigate to="/admin" replace />;
+        }
+
         return <Navigate to="/account" replace />;
     }
 
