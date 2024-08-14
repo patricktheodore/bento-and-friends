@@ -11,6 +11,7 @@ import OrderPage from '../pages/Order';
 import AboutPage from '../pages/About';
 import ContactPage from '../pages/Enquire';
 import AdminDashboardPage from '../pages/AdminDashboard';
+import SchoolsPage from '../pages/Schools';
 import { AdminRoute } from './RouteGuard';
 
 const AnimatedRoutes: React.FC = () => {
@@ -27,6 +28,7 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/account" element={<PageTransition><AccountPage /></PageTransition>} />
         <Route path="/signin" element={<PageTransition><UserloginPage /></PageTransition>} />
         <Route path="/signout" element={<PageTransition><SignOut /></PageTransition>} />
+        <Route path="/schools" element={<PageTransition><SchoolsPage /></PageTransition>} />
 
         {/* admin routes */}
         <Route path='/admin' element={
