@@ -1,56 +1,59 @@
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut as firebaseSignOut,
-    onAuthStateChanged,
-    User as FirebaseUser
-  } from 'firebase/auth';
-  import { doc, setDoc, getDoc } from 'firebase/firestore';
-  import { auth, db } from '../firebase';
-  import { User } from '../types';
-  
-  export const signUp = async (email: string, password: string, displayName: string): Promise<User> => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-  
-    const newUser: User = {
-      id: user.uid,
-      email: user.email!,
-      displayName,
-      isAdmin: false
-    };
-  
-    await setDoc(doc(db, 'users', user.uid), newUser);
-    
-    return newUser;
-  };
-  
-  export const signIn = async (email: string, password: string): Promise<User> => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const userData = userDoc.data() as User;
-    
-    return userData;
-  };
-  
-  export const signOut = () => firebaseSignOut(auth);
-  
-  export const getCurrentUser = (): Promise<User | null> => {
-    return new Promise((resolve, reject) => {
-      const unsubscribe = onAuthStateChanged(auth, 
-        async (user) => {
-          unsubscribe();
-          if (user) {
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            const userData = userDoc.data() as User;
-            resolve(userData);
-          } else {
-            resolve(null);
-          }
-        },
-        reject
-      );
-    });
-  };
+import {
+	createUserWithEmailAndPassword,
+	signInWithEmailAndPassword,
+	signOut as firebaseSignOut,
+	onAuthStateChanged,
+	User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { User } from '../models/user.model';
+
+export const signUp = async (email: string, password: string, displayName: string): Promise<User> => {
+	const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+	const user = userCredential.user;
+
+	const newUser: User = {
+		id: user.uid,
+		email: user.email!,
+		displayName,
+		isAdmin: false,
+		children: [],
+		orderHistory: [],
+	};
+
+	await setDoc(doc(db, 'users', user.uid), newUser);
+
+	return newUser;
+};
+
+export const signIn = async (email: string, password: string): Promise<User> => {
+	const userCredential = await signInWithEmailAndPassword(auth, email, password);
+	const user = userCredential.user;
+
+	const userDoc = await getDoc(doc(db, 'users', user.uid));
+	const userData = userDoc.data() as User;
+
+	return userData;
+};
+
+export const signOut = () => firebaseSignOut(auth);
+
+export const getCurrentUser = (): Promise<User | null> => {
+	return new Promise((resolve, reject) => {
+		const unsubscribe = onAuthStateChanged(
+			auth,
+			async (user) => {
+				unsubscribe();
+				if (user) {
+					const userDoc = await getDoc(doc(db, 'users', user.uid));
+					const userData = userDoc.data() as User;
+					resolve(userData);
+				} else {
+					resolve(null);
+				}
+			},
+			reject
+		);
+	});
+};

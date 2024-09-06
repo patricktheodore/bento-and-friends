@@ -5,6 +5,8 @@ import HowItWorksSummaryComponent from '../components/HowItWorksSummary';
 import TestimonialsComponent from '../components/Testimonials';
 import NutritionComponent from '../components/Nutrition';
 import SustainabilityComponent from '../components/Sustainability';
+import AboutUsComponent from '../components/AboutUs';
+import OurStoryComponent from '../components/OurStory';
 
 const HomePage: React.FC = () => {
 	return (
@@ -30,10 +32,12 @@ const HomePage: React.FC = () => {
 				</div>
 			</div>
 			<HowItWorksSummaryComponent />
-            <FeaturedMenuItemsCarousel />
-			<TestimonialsComponent />
 			<NutritionComponent />
-			<SustainabilityComponent />
+			<AboutUsComponent />
+			<OurStoryComponent />
+            <FeaturedMenuItemsCarousel />
+			{/* <TestimonialsComponent /> */}
+			{/* <SustainabilityComponent /> */}
 		</>
 	);
 };
