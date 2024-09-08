@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import Profile from '../components/UserProfile';
 import ChildrenManagement from '../components/ChildrenManagement';
 import { Child } from '../models/user.model';
 import { updateUserInFirebase } from '../services/user-service';
 
 const tabs = [
-	{ name: 'Profile', component: null },
+	{ name: 'Profile', component: Profile },
 	{ name: 'Children', component: ChildrenManagement },
 	{ name: 'Order History', component: null },
 ];
@@ -56,8 +57,6 @@ const AccountPage: React.FC = () => {
 		}
 	};
 
-	const ActiveComponent = tabs[activeTab].component;
-
 	return (
 		<div className="min-h-[75vh] w-full mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-2">
 			{state.user ? (
@@ -80,13 +79,12 @@ const AccountPage: React.FC = () => {
 
 					<div className="w-full bg-white rounded-lg border border-stone-200 p-4">
 						{activeTab === 0 && (
-							<div className="w-full flex flex-col justify-center items-center p-4">
-								<h1 className="text-2xl font-semibold mb-4">Welcome {state.user.displayName}!</h1>
-								<p className="text-lg">Email: {state.user.email}</p>
-							</div>
+							<Profile
+                                user={state.user}
+                            />
 						)}
-						{activeTab === 1 && ActiveComponent && (
-							<ActiveComponent
+						{activeTab === 1 && (
+							<ChildrenManagement
 								children={state.user.children}
 								onAddChild={handleAddChild}
 								onRemoveChild={handleRemoveChild}

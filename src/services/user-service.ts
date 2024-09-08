@@ -14,8 +14,8 @@ const serializeChild = (child: Child): Record<string, any> => {
     id: child.id,
     name: child.name,
     year: child.year,
-    schoolId: child.school,
-    classId: child.className
+    school: child.school,
+    className: child.className
   };
 };
 

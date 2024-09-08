@@ -74,3 +74,11 @@
       display: none;
   }
 }
+
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #C7893B;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #C7893B;
+}

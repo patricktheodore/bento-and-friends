@@ -21,7 +21,6 @@ const Header: React.FC = () => {
                     { to: '/signout', label: 'Sign Out' }
                 ]
                 : [
-                    { to: '/order-history', label: 'Order History' },
                     { to: '/account', label: 'Account' },
                     { to: '/signout', label: 'Sign Out' }
                 ])

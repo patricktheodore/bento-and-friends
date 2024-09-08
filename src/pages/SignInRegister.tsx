@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Navigate } from 'react-router-dom';
 import { signUp, signIn } from '../services/auth';
 import { FirebaseError } from 'firebase/app';
+import { Navigate, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const UserloginPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
@@ -12,7 +13,8 @@ const UserloginPage: React.FC = () => {
     const [displayName, setDisplayName] = useState('');
     const [working, setWorking] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
+    const navigate = useNavigate();
+    
     if (state.user) {
 
         if (state.user.isAdmin) {
@@ -29,22 +31,31 @@ const UserloginPage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null); // Clear any existing errors
         try {
             setWorking(true);
-            const user = isNewUserSignup ? await signUp(email, password, displayName) : await signIn(email, password);
-            dispatch({ type: 'SET_USER', payload: user });
+            if (isNewUserSignup) {
+                const user = await signUp(email, password, displayName);
+                dispatch({ type: 'SET_USER', payload: user });
+                toast.success('Account created successfully! Welcome!');
+                navigate('/account');
+            } else {
+                const user = await signIn(email, password);
+                dispatch({ type: 'SET_USER', payload: user });
+                toast.success('Signed in successfully!');
+            }
         } catch (error: unknown) {
             if (error instanceof FirebaseError) {
-                setError(getErrorMessage(error));
+                const errorMessage = getErrorMessage(error);
+                toast.error(errorMessage);
             } else {
-                setError('An unexpected error occurred. Please try again.');
+                toast.error('An unexpected error occurred. Please try again.');
             }
             console.error('Authentication error:', error);
         } finally {
             setWorking(false);
         }
     };
+
 
     const getErrorMessage = (error: FirebaseError): string => {
         switch (error.message) {
