@@ -9,7 +9,7 @@ interface ProfileProps {
 const Profile: React.FC<ProfileProps> = ({ user }) => {
   return (
     <div className="w-full">
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-stone-50 shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Account Profile</h3>
         </div>
@@ -29,7 +29,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-stone-50 overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -47,7 +47,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-stone-50 overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">

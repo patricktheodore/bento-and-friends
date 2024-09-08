@@ -24,12 +24,14 @@ export class Child {
     year: string;
     school: string;
     className: string;
+    allergens: string;
 
-    constructor(name: string = '', year: string = '', school: string = '', className: string = '') {
+    constructor(name: string = '', year: string = '', school: string = '', className: string = '', allergens: string = '') {
         this.id = uuidv4(); // Generate a unique ID
         this.name = name;
         this.year = year;
         this.school = school;
         this.className = className;
+        this.allergens = allergens;
     }
 }
