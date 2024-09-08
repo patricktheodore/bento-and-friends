@@ -1,15 +1,25 @@
-export interface School {
-    id: string;
-    name: string;
-    address: string;
-    classes: Class[];
-    deliveryDays: string[];
-    isActive: boolean;
-    scheduledDates: string[]; // Assuming dates are stored as strings, adjust if necessary
-  }
-  
-  export interface Class {
-    id: string;
-    name: string;
-    // Add other class properties as needed
-  }
+import { v4 as uuidv4 } from 'uuid';
+
+export class School {
+	id: string;
+	name: string;
+	address: string;
+	isActive: boolean;
+	deliveryDays: string[];
+	scheduledDates?: string[]; // Assuming dates are stored as strings, adjust if necessary
+
+	constructor(
+		name: string = '',
+		address: string = '',
+		isActive: boolean = true,
+		deliveryDays: string[] = [],
+		scheduledDates: string[] = []
+	) {
+		this.id = uuidv4();
+		this.name = name;
+		this.address = address;
+		this.isActive = isActive;
+		this.deliveryDays = deliveryDays;
+		this.scheduledDates = scheduledDates;
+	}
+}

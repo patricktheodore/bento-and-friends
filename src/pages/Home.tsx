@@ -7,8 +7,11 @@ import NutritionComponent from '../components/Nutrition';
 import SustainabilityComponent from '../components/Sustainability';
 import AboutUsComponent from '../components/AboutUs';
 import OurStoryComponent from '../components/OurStory';
+import { useAppContext } from '../context/AppContext';
 
 const HomePage: React.FC = () => {
+	const { state } = useAppContext();
+
 	return (
 		<>
 			<div className="relative max-h-screen h-[75vh] flex items-center justify-center">
@@ -23,12 +26,29 @@ const HomePage: React.FC = () => {
 
 				<div className="z-10 text-center px-4">
 					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-8">Welcome to Bento & Friends!</h1>
-					<Link
-						to="/order"
-						className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
-					>
-						Order Now
-					</Link>
+					{state.user ? (
+						<Link
+							to="/order"
+							className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+						>
+							Order Now
+						</Link>
+					) : (
+						<div className="flex justify-center gap-4">
+							<Link
+								to="/signin"
+								className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+							>
+								Get Started
+							</Link>
+							<Link
+								to="/signin"
+								className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+							>
+								Sign In
+							</Link>
+						</div>
+					)}
 				</div>
 			</div>
 			<HowItWorksSummaryComponent />

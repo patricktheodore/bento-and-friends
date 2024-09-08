@@ -1,18 +1,10 @@
 import { getFunctions, httpsCallable, HttpsCallableResult, Functions } from 'firebase/functions';
 import { FirebaseError } from 'firebase/app';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { School } from '../models/school.model';
 
 const functions: Functions = getFunctions();
-
-// Define types for school data
-export interface School {
-	id: string;
-	name: string;
-	logo: string;
-	address: string;
-	contact: string;
-	deliveryDays: string;
-	isActive: boolean;
-}
 
 interface ApiResponse<T> {
 	success: boolean;
@@ -55,16 +47,6 @@ export const addSchool = async (schoolData: Omit<School, 'id'>): Promise<ApiResp
 	}
 };
 
-export const getSchools = async (): Promise<ApiResponse<School[]>> => {
-	try {
-		const getSchoolsFunction = httpsCallable<void, { schools: School[] }>(functions, 'getSchools');
-		const result: HttpsCallableResult<{ schools: School[] }> = await getSchoolsFunction();
-		return { success: true, data: result.data.schools };
-	} catch (error) {
-		return { success: false, error: handleApiError(error) };
-	}
-};
-
 export const updateSchool = async (
 	schoolId: string,
 	updateData: Partial<Omit<School, 'id'>>
@@ -88,5 +70,26 @@ export const deleteSchool = async (schoolId: string): Promise<ApiResponse<{ id: 
 		return { success: true, data: result.data };
 	} catch (error) {
 		return { success: false, error: handleApiError(error) };
+	}
+};
+
+
+
+// Function to get all schools
+export const getSchools = async (): Promise<{ success: boolean; data?: School[]; error?: string }> => {
+	try {
+		const schoolsCollection = collection(db, 'schools');
+		const schoolSnapshot = await getDocs(schoolsCollection);
+		const schoolList = schoolSnapshot.docs.map(
+			(doc) =>
+				({
+					id: doc.id,
+					...doc.data(),
+				} as School)
+		); // Cast to School type
+		return { success: true, data: schoolList };
+	} catch (error) {
+		console.error('Error getting schools: ', error);
+		return { success: false, error: (error as Error).message };
 	}
 };

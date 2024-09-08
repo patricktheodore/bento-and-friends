@@ -1,4 +1,5 @@
 import { Order } from "../models/order.model";
+import { v4 as uuidv4 } from 'uuid';
 
 export class User {
     id: string;
@@ -7,26 +8,28 @@ export class User {
     isAdmin: boolean;
     children: Child[];
     orderHistory: Order[];
-    constructor(id: string, displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: Order[]) {
-        this.id = id;
+    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: Order[]) {
+        this.id = uuidv4();
         this.displayName = displayName;
         this.email = email;
         this.isAdmin = isAdmin ?? false;
         this.orderHistory = orderHistory;
-        this.children = [];
+        this.children = children ?? [];
     }
 }
 
 export class Child {
+    id: string;
     name: string;
-    age: string;
-    schoolId: string;
-    classId: string;
+    year: string;
+    school: string;
+    className: string;
 
-    constructor(name: string, age: string, schoolId: string, classId: string) {
+    constructor(name: string = '', year: string = '', school: string = '', className: string = '') {
+        this.id = uuidv4(); // Generate a unique ID
         this.name = name;
-        this.age = age;
-        this.schoolId = schoolId;
-        this.classId = classId;
+        this.year = year;
+        this.school = school;
+        this.className = className;
     }
 }
