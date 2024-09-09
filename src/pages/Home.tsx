@@ -36,8 +36,8 @@ const HomePage: React.FC = () => {
 					) : (
 						<div className="flex justify-center gap-4">
 							<Link
-								to="/signin"
-								className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+								to="/signin?mode=register"
+								className="bg-transparent text-brand-cream border-2 border-cream hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
 							>
 								Get Started
 							</Link>

@@ -7,7 +7,7 @@ import { getCurrentUser } from '../services/auth';
 import { getSchools } from '../services/school-operations';
 import { useAppContext } from '../context/AppContext';
 import Select from 'react-select';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 interface DayOption {
 	value: string;

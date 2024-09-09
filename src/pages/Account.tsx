@@ -6,8 +6,7 @@ import { Child } from '../models/user.model';
 import { updateUserInFirebase } from '../services/user-service';
 
 const tabs = [
-	{ name: 'Profile', component: Profile },
-	{ name: 'Children', component: ChildrenManagement },
+	{ name: 'Profile', component: ChildrenManagement },
 	{ name: 'Order History', component: null },
 ];
 
@@ -79,19 +78,14 @@ const AccountPage: React.FC = () => {
 
 					<div className="w-full bg-white rounded-lg border border-stone-200 p-4">
 						{activeTab === 0 && (
-							<Profile
-                                user={state.user}
-                            />
-						)}
-						{activeTab === 1 && (
 							<ChildrenManagement
-								children={state.user.children}
+								user={state.user}
 								onAddChild={handleAddChild}
 								onRemoveChild={handleRemoveChild}
 								onEditChild={handleEditChild}
 							/>
 						)}
-						{activeTab === 2 && <div>Order History component not implemented yet</div>}
+						{activeTab === 1 && <div>Order History component not implemented yet</div>}
 					</div>
 				</>
 			) : (

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Child } from '../models/user.model';
-import { PlusIcon, PencilIcon, UserGroupIcon } from '@heroicons/react/16/solid';
+import { Child, User } from '../models/user.model';
+import { PlusIcon, PencilIcon, UserGroupIcon, CreditCardIcon } from '@heroicons/react/16/solid';
 import { useAppContext } from '../context/AppContext';
 import Select from 'react-select';
 import toast from 'react-hot-toast';
 
 interface ChildrenManagementProps {
-	children: Child[];
+	user: User;
 	onAddChild: (child: Omit<Child, 'id'>) => void;
 	onRemoveChild: (childId: string) => void;
 	onEditChild: (childId: string, child: Omit<Child, 'id'>) => void;
@@ -18,7 +18,7 @@ interface SchoolOption {
 }
 
 const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
-	children,
+	user,
 	onAddChild,
 	onRemoveChild,
 	onEditChild,
@@ -97,7 +97,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
             </div>
     
             <div className="border-t border-gray-200">
-              {children.map((child) => (
+              {user.children.map((child) => (
                 <div
                   key={child.id}
                   className="px-4 py-5 sm:p-6 border-b border-gray-200 last:border-b-0"
@@ -115,10 +115,11 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
                     </div>
                     <button
                       onClick={() => handleEditClick(child)}
-                      className="text-brand-gold hover:text-brand-dark-green"
+                      className="text-brand-gold hover:text-brand-dark-green flex flex-nowrap items-center gap-2"
                       aria-label="Edit child"
                     >
                       <PencilIcon className="h-5 w-5" />
+                      Edit
                     </button>
                   </div>
                 </div>
@@ -126,25 +127,53 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
             </div>
           </div>
     
-          <div className="mt-6">
-            <div className="bg-stone-50 overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <UserGroupIcon className="h-6 w-6 text-gray-400" aria-hidden="true" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Children</dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">{children.length}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+				<div className="bg-stone-50 overflow-hidden shadow rounded-lg">
+					<div className="p-5">
+						<div className="flex items-center">
+							<div className="flex-shrink-0">
+								<CreditCardIcon
+									className="h-6 w-6 text-gray-400"
+									aria-hidden="true"
+								/>
+							</div>
+							<div className="ml-5 w-0 flex-1">
+								<dl>
+									<dt className="text-sm font-medium text-gray-500 truncate">Total orders</dt>
+									<dd>
+										<div className="text-lg font-medium text-gray-900">
+											{user.orderHistory?.length || 0}
+										</div>
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div className="bg-stone-50 overflow-hidden shadow rounded-lg">
+					<div className="p-5">
+						<div className="flex items-center">
+							<div className="flex-shrink-0">
+								<UserGroupIcon
+									className="h-6 w-6 text-gray-400"
+									aria-hidden="true"
+								/>
+							</div>
+							<div className="ml-5 w-0 flex-1">
+								<dl>
+									<dt className="text-sm font-medium text-gray-500 truncate">Registered children</dt>
+									<dd>
+										<div className="text-lg font-medium text-gray-900">
+											{user.children?.length || 0}
+										</div>
+									</dd>
+								</dl>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
     
           {isChildModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">

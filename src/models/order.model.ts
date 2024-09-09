@@ -1,73 +1,46 @@
+import { v4 as uuidv4 } from 'uuid';
+import { AddOn, Fruit, Main, Probiotic } from './item.model';
+
 export class Order {
     id: string;
     userId: string;
     orderDate: string;
     deliveryDate: string;
-    items: OrderItem[] = [];
+    meals: Meal[];
     total: number;
     status: string;
     note: string;
-    constructor(id: string, userId: string, orderDate:string, deliveryDate:string, items: OrderItem[], total: number, status: string, note: string) {
-        this.id = id;
+    constructor(userId: string, orderDate:string, deliveryDate:string, meals: Meal[], total: number, status: string, note: string) {
+        this.id = uuidv4();
         this.userId = userId;
         this.orderDate = orderDate;
         this.deliveryDate = deliveryDate;
-        this.items = items;
+        this.meals = meals;
         this.total = total;
         this.status = status;
         this.note = note;
     }
 }
 
-export class OrderItem {
+export class Meal {
     id: string;
     studentName: string;
-    mealItems: Item[];
+    main: Main;
+    addOns: AddOn[];
+    probiotic: Probiotic;
+    fruit: Fruit;
+    allergens: string[];
     note: string;
-    totalPrice: number;
-    constructor(id: string, studentName: string, mealItems: Item[], note: string, totalPrice: number) {
-        this.id = id;
+    price: number;
+    constructor(studentName: string, main: Main, addOns: AddOn[], probiotic: Probiotic, fruit: Fruit, allergens: string[], note: string, price: number) {
+        this.id = uuidv4();
         this.studentName = studentName;
-        this.mealItems = mealItems;
+        this.main = main;
+        this.addOns = addOns;
+        this.probiotic = probiotic;
+        this.fruit = fruit;
+        this.allergens = allergens;
         this.note = note;
-        this.totalPrice = totalPrice;
-    }
-}
-
-export class Item {
-    id: string;
-    name: string;
-    image?: string;
-    type: string;
-    allergens?: string[];
-    isNew?: boolean;
-    isActive?: boolean;
-    isFeatured?: boolean;
-    isVegetarian?: boolean;
-    price: number;
-    addOns?: AddOn[];
-    constructor(id: string, name: string, image: string, type: string, allergens: string[], price: number, isNew: boolean, isActive: boolean, isFeatured: boolean, isVegetarian: boolean, addOns: AddOn[]) {
-        this.id = id;
-        this.name = name;
-        this.image = image || '';
-        this.type = type;
-        this.allergens = allergens || [];
-        this.isNew = isNew || false;
-        this.isActive = isActive || true;
-        this.isFeatured = isFeatured || false;
-        this.isVegetarian = isVegetarian || false;
-        this.price = price;
-        this.addOns = addOns || [];
-    }
-}
-
-export class AddOn {
-    id: string;
-    name: string;
-    price: number;
-    constructor(id: string, name: string, price: number) {
-        this.id = id;
-        this.name = name;
         this.price = price;
     }
 }

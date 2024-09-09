@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/16/solid';
 import Schools from '../components/Schools';
+import ItemController from '../components/ItemController';
 // Import other components as needed
 
 const tabs = [
   { name: 'Schools', component: Schools },
-  { name: 'Products', component: null },  // TODO: Create Products component
+  { name: 'Menu Items', component: ItemController },
   { name: 'Orders', component: null },    // TODO: Create Orders component
 ];
 
@@ -44,31 +45,6 @@ const AdminDashboardPage: React.FC = () => {
               {tab.name}
             </div>
           ))}
-        </div>
-
-        <div className="relative flex justify-end max-w-[150px] w-full gap-2">
-          <div
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center justify-between bg-white border rounded-md px-3 py-2 cursor-pointer w-full"
-          >
-            <span>{activeFilters[activeTab]}</span>
-            <ChevronDownIcon
-              className={`ml-2 h-5 w-5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-            />
-          </div>
-          {isDropdownOpen && (
-            <div className="absolute top-full right-0 w-full max-w-[150px] mt-1 bg-white border rounded-md shadow-lg z-10">
-              {['All', 'Active', 'Inactive'].map((filter) => (
-                <div
-                  key={filter}
-                  onClick={() => handleFilterClick(filter)}
-                  className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                >
-                  <span className="whitespace-nowrap">{filter}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

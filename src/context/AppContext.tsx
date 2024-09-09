@@ -2,12 +2,11 @@ import React, { createContext, useContext, useReducer, ReactNode, useEffect } fr
 import { User, Child } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
-import { Order, OrderItem } from '../models/order.model';
+import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
 
 type AppState = {
 	user: User | null;
-	menuItems: OrderItem[];
 	currentOrder: Order | null;
 	isLoading: boolean;
 	schools: School[];
@@ -17,9 +16,11 @@ type AppState = {
 type Action =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'UPDATE_USER'; payload: Partial<User> }
-  | { type: 'SET_MENU_ITEMS'; payload: OrderItem[] }
+  | { type: 'ADD_ITEM'; payload: Meal }
+  | { type: 'UPDATE_ITEM'; payload: Partial<Meal> }
+  | { type: 'SET_MENU_ITEMS'; payload: Meal[] }
   | { type: 'SET_CURRENT_ORDER'; payload: Order | null }
-  | { type: 'ADD_TO_ORDER'; payload: OrderItem }
+  | { type: 'ADD_TO_ORDER'; payload: Meal }
   | { type: 'REMOVE_FROM_ORDER'; payload: string }
   | { type: 'CLEAR_ORDER' }
   | { type: 'SIGN_OUT' }
@@ -32,7 +33,6 @@ type Action =
 // Initial state
 const initialState: AppState = {
 	user: null,
-	menuItems: [],
 	currentOrder: null,
 	isLoading: true,
 	schools: [],
@@ -54,8 +54,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			return { ...state, user: action.payload };
 		case 'SIGN_OUT':
 			return { ...state, user: null, currentOrder: null };
-		case 'SET_MENU_ITEMS':
-			return { ...state, menuItems: action.payload };
 		case 'SET_CURRENT_ORDER':
 			return { ...state, currentOrder: action.payload };
 		case 'UPDATE_USER':
@@ -70,6 +68,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 				...state,
 				schools: state.schools.map((school) => (school.id === action.payload.id ? action.payload : school)),
 			};
+
 
 		// case 'ADD_TO_ORDER':
 		// 	if (!state.currentOrder) {

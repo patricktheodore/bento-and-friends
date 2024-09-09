@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { signUp, signIn } from '../services/auth';
 import { FirebaseError } from 'firebase/app';
@@ -15,6 +15,14 @@ const UserloginPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const mode = searchParams.get('mode');
+        if (mode === 'register') {
+            setIsNewUserSignup(true);
+        }
+    }, [location]);
+
     if (state.user) {
 
         if (state.user.isAdmin) {

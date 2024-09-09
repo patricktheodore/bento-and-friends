@@ -9,6 +9,9 @@ const Header: React.FC = () => {
     const location = useLocation();
     
     const menuItems = [
+        { to: '/menu', label: 'Menu' },
+        { to: '/about', label: 'About' },
+        { to: '/contact', label: 'Contact' },
         ...(state.user 
             ? (state.user.isAdmin
                 ? [
@@ -17,10 +20,7 @@ const Header: React.FC = () => {
                     { to: '/signout', label: 'Sign Out' }
                 ]
                 : [
-                    { to: '/menu', label: 'Menu' },
                     { to: '/order', label: 'Order' },
-                    { to: '/about', label: 'About' },
-                    { to: '/contact', label: 'Contact' },
                     { to: '/account', label: 'Account' },
                     { to: '/signout', label: 'Sign Out' }
                 ])
