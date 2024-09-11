@@ -160,14 +160,14 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
                 if (!open && !isLoading) onClose();
             }}
         >
-            <DialogContent className="max-w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-scroll">
+            <DialogContent className={`max-w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-scroll ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}>
                 <DialogHeader className='rounded-md'>
                     <DialogTitle>{mode === 'add' ? 'Add New Item' : 'Edit Item'}{selectedType ? ` - ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}` : ''}</DialogTitle>
                     <DialogDescription>
                         {mode === 'add' ? 'Add a new item to the menu.' : 'Edit an existing menu item.'}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className={`space-y-4`}>
                     {mode === 'add' && !selectedType && (
                         <div className="space-y-2">
                             <Label htmlFor="itemType">Select Item Type</Label>

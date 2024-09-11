@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon } from '@heroicons/react/16/solid';
 import { getCurrentUser } from '../services/auth';
 import { getMains, getProbiotics, getFruits, getDrinks, getAddOns } from '../services/item-service';
-import Select from 'react-select';
 import toast from 'react-hot-toast';
 import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -11,6 +10,10 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import ItemModal from './ItemModal';
 import { useAppContext } from '../context/AppContext';
+
+import { Button } from "./ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 const itemTypeOptions = [
     { value: 'all', label: 'All Items' },
@@ -86,8 +89,8 @@ const ItemController: React.FC = () => {
         }
     }, [selectedType, state.items]);
 
-    const handleTypeChange = (selectedOption: any) => {
-        setSelectedType(selectedOption);
+    const handleTypeChange = (value: string) => {
+        setSelectedType({ value, label: itemTypeOptions.find(option => option.value === value)?.label || 'All Items' });
     };
 
     const uploadImage = async (file: File): Promise<string> => {
@@ -180,35 +183,14 @@ const ItemController: React.FC = () => {
         setIsItemModalOpen(true);
     };
 
-    const renderColumnHeader = (column: string) => {
-        const headerText = column.charAt(0).toUpperCase() + column.slice(1);
-        let className = "px-4 py-2 text-left font-normal";
-        switch (column) {
-            case 'image':
-                className += " w-32";
-                break;
-            case 'name':
-                className += " w-full";
-                break;
-            case 'type':
-            case 'price':
-                className += " w-32";
-                break;
-            case 'allergens':
-                className += " w-42";
-                break;
-        }
-        return <th key={column} className={className}>{headerText === 'Image' ? '' : headerText}</th>;
-    };
-
     const renderCell = (item: MenuItem, column: string) => {
-        const baseClassName = "px-4 py-2 h-20 max-h-20 overflow-hidden";
+        const baseClassName = "overflow-hidden";
         switch (column) {
             case 'image':
                 return (
                     <td key={`${item.id}-${column}`} className={`${baseClassName} flex w-20 h-20`}>
                         {(item instanceof Main || item instanceof Drink) && item.image && (
-                            <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-full h-full p-2 flex items-center justify-center">
                                 <img 
                                     src={item.image} 
                                     alt={item.display} 
@@ -264,47 +246,56 @@ const ItemController: React.FC = () => {
     const columns = columnConfigs[selectedType.value as keyof typeof columnConfigs];
 
     return (
-        <div className="w-full px-4">
-            <div className="w-full flex flex-col justify-start items-center md:flex-row md:justify-between gap-4 pb-4">
-                <h2 className='text-3xl'>
-                    Menu Items
-                </h2>
-                <div className='w-fit flex flex-col justify-center items-center md:flex-row md:justify-end md:items-center gap-2'>
-                    <Select
-                        options={itemTypeOptions}
-                        value={selectedType}
-                        onChange={handleTypeChange}
-                        className="w-48"
-                    />
-                    <button
-                        onClick={() => handleOpenModal('add')}
-                        className="flex justify-center items-center gap-2 text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto"
-                    >
-                        <PlusIcon className="h-5 w-5" />
-                        <span className='whitespace-nowrap'>Add New Item</span>
-                    </button>
-                </div>         
+        <div className="w-full px-4 space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <h2 className="text-3xl font-bold">Menu Items</h2>
+                <div className="flex flex-col md:flex-row items-center gap-2">
+                    <Select onValueChange={handleTypeChange} value={selectedType.value}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select item type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {itemTypeOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={() => handleOpenModal('add')} className="bg-brand-dark-green text-brand-cream">
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Add New Item
+                    </Button>
+                </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            {columns.map(renderColumnHeader)}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredItems.map(item => (
-                            <tr 
+            <div className="rounded-md border">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            {columns.map((column) => (
+                                <TableHead key={column} className={column === 'image' ? 'w-32' : ''}>
+                                    {column === 'image' ? '' : column.charAt(0).toUpperCase() + column.slice(1)}
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredItems.map((item) => (
+                            <TableRow 
                                 key={item.id} 
-                                className="border-b hover:bg-gray-50 cursor-pointer"
+                                className="cursor-pointer"
                                 onClick={() => handleOpenModal('edit', item)}
                             >
-                                {columns.map(column => renderCell(item, column))}
-                            </tr>
+                                {columns.map((column) => (
+                                    <TableCell key={`${item.id}-${column}`}>
+                                        {renderCell(item, column)}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
 
             <ItemModal
