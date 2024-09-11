@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import Select from 'react-select';
 import { Main, Probiotic, Fruit, Drink, AddOn } from '../models/item.model';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { DialogFooter, DialogHeader } from './ui/dialog';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import MultiSelect from 'react-select';
+import { Loader2 } from 'lucide-react';
 
 interface ItemModalProps {
     isOpen: boolean;
@@ -29,6 +38,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
     const [formData, setFormData] = useState<FormData>({});
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -67,11 +77,6 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
         setImagePreviewUrl(null);
         onClose();
     };
-    
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }));
-    };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -88,180 +93,147 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
         setFormData(prev => ({ ...prev, image: '' }));
     };
 
-    const handleSelectChange = (
-        selectedOptions: readonly { value: string; label: string }[],
-        actionMeta: { name?: string }
-    ) => {
-        if (actionMeta.name && actionMeta.name in formData) {
-            const selectedValues = selectedOptions.map(option => option.value);
-            setFormData(prev => ({
-                ...prev,
-                [actionMeta.name as string]: selectedValues
-            }));
-        }
+    const handleInputChange = (name: string, value: string | number | boolean) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleAllergenChange = (selectedOptions: readonly { value: string; label: string }[]) => {
+        const selectedAllergens = selectedOptions.map(option => option.value);
+        setFormData(prev => ({ ...prev, allergens: selectedAllergens }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedType) return;
     
-        let submittedItem: Main | Probiotic | Fruit | Drink | AddOn;
-        const existingId = mode === 'edit' && item ? item.id : undefined;
-    
-        switch (selectedType) {
-            case 'main':
-                submittedItem = new Main(
-                    formData.display,
-                    formData.image,
-                    formData.description,
-                    formData.allergens,
-                    formData.isNew,
-                    formData.isActive,
-                    formData.isFeatured,
-                    formData.isVegetarian,
-                    formData.addOns,
-                    formData.price,
-                    existingId
-                );
-                break;
-            case 'probiotic':
-                submittedItem = new Probiotic(formData.display, existingId);
-                break;
-            case 'fruit':
-                submittedItem = new Fruit(formData.display, existingId);
-                break;
-            case 'drink':
-                submittedItem = new Drink(formData.display, formData.image, formData.price, existingId);
-                break;
-            case 'addon':
-                submittedItem = new AddOn(formData.display, formData.price, existingId);
-                break;
-            default:
-                throw new Error(`Invalid itemType: ${selectedType}`);
-        }
-        await onSubmit(submittedItem, selectedImage);
-    };
+        setIsLoading(true);
 
-    const ToggleSwitch: React.FC<{
-        id: string;
-        checked: boolean;
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-        label: string;
-    }> = ({ id, checked, onChange, label }) => {
-        return (
-            <div className="flex items-center">
-                <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input
-                        type="checkbox"
-                        name={id}
-                        id={id}
-                        checked={checked}
-                        onChange={onChange}
-                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
-                    />
-                    <label
-                        htmlFor={id}
-                        className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
-                    ></label>
-                </div>
-                <label
-                    htmlFor={id}
-                    className="text-sm text-gray-700"
-                >
-                    {label}
-                </label>
-            </div>
-        );
+        try {
+            let submittedItem: Main | Probiotic | Fruit | Drink | AddOn;
+            const existingId = mode === 'edit' && item ? item.id : undefined;
+            switch (selectedType) {
+                case 'main':
+                    submittedItem = new Main(
+                        formData.display,
+                        formData.image,
+                        formData.description,
+                        formData.allergens,
+                        formData.isNew,
+                        formData.isActive,
+                        formData.isFeatured,
+                        formData.isVegetarian,
+                        formData.addOns,
+                        formData.price,
+                        existingId
+                    );
+                    break;
+                case 'probiotic':
+                    submittedItem = new Probiotic(formData.display, existingId);
+                    break;
+                case 'fruit':
+                    submittedItem = new Fruit(formData.display, existingId);
+                    break;
+                case 'drink':
+                    submittedItem = new Drink(formData.display, formData.image, formData.price, existingId);
+                    break;
+                case 'addon':
+                    submittedItem = new AddOn(formData.display, formData.price, existingId);
+                    break;
+                default:
+                    throw new Error(`Invalid itemType: ${selectedType}`);
+            }
+            await onSubmit(submittedItem, selectedImage);
+        } catch (error) {
+            console.error('Error submitting item:', error);
+            // Handle error (e.g., show error message to user)
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                <h2 className="text-xl mb-4">{mode === 'add' ? 'Add New Item' : 'Edit Item'}{selectedType ? ` - ${selectedType}` : ''}</h2>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Dialog 
+            open={isOpen} 
+            onOpenChange={(open) => { 
+                if (!open && !isLoading) onClose();
+            }}
+        >
+            <DialogContent className="max-w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-scroll">
+                <DialogHeader className='rounded-md'>
+                    <DialogTitle>{mode === 'add' ? 'Add New Item' : 'Edit Item'}{selectedType ? ` - ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}` : ''}</DialogTitle>
+                    <DialogDescription>
+                        {mode === 'add' ? 'Add a new item to the menu.' : 'Edit an existing menu item.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                     {mode === 'add' && !selectedType && (
-                        <div>
-                            <label htmlFor="itemType" className="block text-sm font-medium text-gray-700 mb-1">
-                                Select Item Type
-                            </label>
-                            <Select
-                                id="itemType"
-                                options={[
-                                    { value: 'main', label: 'Main' },
-                                    { value: 'probiotic', label: 'Probiotic' },
-                                    { value: 'fruit', label: 'Fruit' },
-                                    { value: 'drink', label: 'Drink' },
-                                    { value: 'addon', label: 'Add-On' },
-                                ]}
-                                onChange={(selected) => {
-                                    if (selected) {
-                                        setSelectedType(selected.value as ItemType);
-                                        setFormData({});
-                                    }
-                                }}
-                            />
+                        <div className="space-y-2">
+                            <Label htmlFor="itemType">Select Item Type</Label>
+                            <Select onValueChange={(value) => setSelectedType(value as ItemType)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select item type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="main">Main</SelectItem>
+                                    <SelectItem value="probiotic">Probiotic</SelectItem>
+                                    <SelectItem value="fruit">Fruit</SelectItem>
+                                    <SelectItem value="drink">Drink</SelectItem>
+                                    <SelectItem value="addon">Add-On</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     )}
 
                     {(mode === 'edit' || selectedType) && (
                         <>
-                            <div>
-                                <label htmlFor="display" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Item Name
-                                </label>
-                                <input
-                                    type="text"
+                            <div className="space-y-2">
+                                <Label htmlFor="display">Item Name</Label>
+                                <Input
                                     id="display"
-                                    name="display"
                                     value={formData.display || ''}
-                                    onChange={handleInputChange}
-                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
+                                    onChange={(e) => handleInputChange('display', e.target.value)}
                                     required
                                 />
                             </div>
 
                             {(selectedType === 'main' || selectedType === 'drink') && (
-                                <div>
-                                    <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Image
-                                    </label>
-                                    <input
-                                        type="file"
-                                        id="image"
-                                        name="image"
-                                        onChange={handleImageChange}
-                                        accept="image/*"
-                                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-                                    />
+                                <div className="space-y-2">
+                                    <Label htmlFor="image">Image</Label>
+                                    {!imagePreviewUrl && (
+                                        <Input
+                                            id="image"
+                                            type="file"
+                                            onChange={handleImageChange}
+                                            accept="image/*"
+                                        />
+                                    )}
                                     {imagePreviewUrl && (
                                         <div className="mt-2">
                                             <img src={imagePreviewUrl} alt="Preview" className="max-w-full h-auto max-h-40 object-contain" />
-                                            <button
+                                            <Button 
                                                 type="button"
                                                 onClick={handleClearImage}
-                                                className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm"
+                                                variant="destructive"
+                                                size="sm"
+                                                className="mt-2"
                                             >
                                                 Clear Image
-                                            </button>
+                                            </Button>
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             {(selectedType === 'main' || selectedType === 'drink' || selectedType === 'addon') && (
-                                <div>
-                                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Price
-                                    </label>
-                                    <input
-                                        type="number"
+                                <div className="space-y-2">
+                                    <Label htmlFor="price">Price</Label>
+                                    <Input
                                         id="price"
-                                        name="price"
+                                        type="number"
                                         value={formData.price || ''}
-                                        onChange={handleInputChange}
-                                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
+                                        onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
                                         step="0.01"
                                         min="0"
                                     />
@@ -270,81 +242,107 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 
                             {selectedType === 'main' && (
                                 <>
-                                    <div>
-                                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Description
-                                        </label>
-                                        <textarea
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description">Description</Label>
+                                        <Textarea
                                             id="description"
-                                            name="description"
                                             value={formData.description || ''}
-                                            onChange={handleInputChange}
-                                            className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
+                                            onChange={(e) => handleInputChange('description', e.target.value)}
                                         />
                                     </div>
-                                    <div>
-                                        <label htmlFor="allergens" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Allergens
-                                        </label>
-                                        <Select
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="allergens">Allergens</Label>
+                                        <MultiSelect
                                             isMulti
-                                            id="allergens"
                                             name="allergens"
                                             options={allergenOptions}
-                                            value={allergenOptions.filter(option => formData.allergens?.includes(option.value))}
-                                            onChange={handleSelectChange}
                                             className="basic-multi-select"
                                             classNamePrefix="select"
+                                            value={allergenOptions.filter(option => formData.allergens?.includes(option.value))}
+                                            onChange={handleAllergenChange}
+                                            styles={{
+                                                control: (base) => ({
+                                                    ...base,
+                                                    borderColor: 'hsl(var(--input))',
+                                                    '&:hover': {
+                                                        borderColor: 'hsl(var(--input))',
+                                                    },
+                                                }),
+                                                menu: (base) => ({
+                                                    ...base,
+                                                    backgroundColor: 'hsl(var(--background))',
+                                                    border: '1px solid hsl(var(--input))',
+                                                }),
+                                                option: (base, state) => ({
+                                                    ...base,
+                                                    backgroundColor: state.isFocused ? 'hsl(var(--accent))' : 'transparent',
+                                                    color: 'hsl(var(--foreground))',
+                                                }),
+                                            }}
                                         />
                                     </div>
-                                    <ToggleSwitch
-                                        id="isNew"
-                                        checked={formData.isNew || false}
-                                        onChange={handleInputChange}
-                                        label="New Item"
-                                    />
-                                    <ToggleSwitch
-                                        id="isActive"
-                                        checked={formData.isActive || false}
-                                        onChange={handleInputChange}
-                                        label="Active"
-                                    />
-                                    <ToggleSwitch
-                                        id="isFeatured"
-                                        checked={formData.isFeatured || false}
-                                        onChange={handleInputChange}
-                                        label="Featured"
-                                    />
-                                    <ToggleSwitch
-                                        id="isVegetarian"
-                                        checked={formData.isVegetarian || false}
-                                        onChange={handleInputChange}
-                                        label="Vegetarian"
-                                    />
+
+                                    <div className='grid grid-cols-2 gap-4 pt-2'>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="isNew"
+                                                checked={formData.isNew || true}
+                                                onCheckedChange={(checked) => handleInputChange('isNew', checked)}
+                                            />
+                                            <Label htmlFor="isNew">New Item</Label>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="isActive"
+                                                checked={formData.isActive || true}
+                                                onCheckedChange={(checked) => handleInputChange('isActive', checked)}
+                                            />
+                                            <Label htmlFor="isActive">Available</Label>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="isFeatured"
+                                                checked={formData.isFeatured || false}
+                                                onCheckedChange={(checked) => handleInputChange('isFeatured', checked)}
+                                            />
+                                            <Label htmlFor="isFeatured">Featured</Label>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="isVegetarian"
+                                                checked={formData.isVegetarian || false}
+                                                onCheckedChange={(checked) => handleInputChange('isVegetarian', checked)}
+                                            />
+                                            <Label htmlFor="isVegetarian">Vegetarian</Label>
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </>
                     )}
 
-                    <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            className="px-4 py-2 bg-gray-200 rounded w-full sm:w-auto"
-                        >
+                    <DialogFooter className='pt-8'>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                             Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-brand-dark-green text-white rounded w-full sm:w-auto"
-                            disabled={mode === 'add' && !selectedType}
-                        >
-                            {mode === 'add' ? 'Add' : 'Update'} Item
-                        </button>
-                    </div>
+                        </Button>
+                        <Button type="submit" variant="default" disabled={isLoading || (mode === 'add' && !selectedType)}>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    {mode === 'add' ? 'Adding...' : 'Updating...'}
+                                </>
+                            ) : (
+                                <>{mode === 'add' ? 'Add' : 'Update'} Item</>
+                            )}
+                        </Button>
+                    </DialogFooter>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

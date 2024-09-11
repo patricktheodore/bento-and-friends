@@ -117,11 +117,6 @@ const Schools: React.FC = () => {
 		}
 	};
 
-	const handleEditClick = (school: School) => {
-		setEditingSchool(school);
-		setIsSchoolModalOpen(true);
-	};
-
 	const ToggleSwitch: React.FC<{
 		id: string;
 		checked: boolean;
@@ -154,154 +149,178 @@ const Schools: React.FC = () => {
 		);
 	};
 
+	const handleEditClick = (school: School) => {
+        setEditingSchool(school);
+        setIsSchoolModalOpen(true);
+    };
+
+    const renderColumnHeader = (column: string) => {
+        const headerText = column.charAt(0).toUpperCase() + column.slice(1);
+        let className = "px-4 py-2 text-left font-normal";
+        if (column === 'name') {
+            className += " w-1/4";
+        } else if (column === 'address') {
+            className += " w-1/3";
+        }
+        return <th key={column} className={className}>{headerText}</th>;
+    };
+
+    const renderCell = (school: School, column: string) => {
+        const baseClassName = "px-4 py-2";
+        switch (column) {
+            case 'name':
+                return (
+                    <td key={`${school.id}-${column}`} className={`${baseClassName} w-1/4`}>
+                        <span className={`w-3 h-3 ${school.isActive ? 'bg-lime-500' : 'bg-red-500'} rounded-full mr-2 inline-block`}></span>
+                        {school.name}
+                    </td>
+                );
+            case 'address':
+                return <td key={`${school.id}-${column}`} className={`${baseClassName} w-1/3`}>{school.address}</td>;
+            case 'deliveryDays':
+                return <td key={`${school.id}-${column}`} className={baseClassName}>{school.deliveryDays.join(', ')}</td>;
+            case 'status':
+                return <td key={`${school.id}-${column}`} className={baseClassName}>{school.isActive ? 'Active' : 'Inactive'}</td>;
+            default:
+                return <td key={`${school.id}-${column}`} className={baseClassName}>N/A</td>;
+        }
+    };
+
+	if (!isAdmin) {
+        return <div>You do not have permission to access this page.</div>;
+    }
+
+	const columns = ['name', 'address', 'deliveryDays', 'status'];
+
 	return (
-		<div className="w-full px-4">
-			<div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-				<h2 className="w-full text-left text-2xl font-bold mb-2 sm:mb-0">Schools</h2>
-				<button
-					onClick={() => {
-						setEditingSchool(null);
-						setNewSchool(new School());
-						setIsSchoolModalOpen(true);
-					}}
-					className="flex  justify-center items-center gap-2 text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto"
-				>
-					<PlusIcon className="h-5 w-5" />
-					<span className='whitespace-nowrap'>Add New School</span>
-				</button>
-			</div>
+        <div className="w-full px-4">
+            <div className="w-full flex flex-col justify-start items-center md:flex-row md:justify-between gap-4 pb-4">
+                <h2 className='text-3xl'>Schools</h2>
+                <button
+                    onClick={() => {
+                        setEditingSchool(null);
+                        setNewSchool(new School());
+                        setIsSchoolModalOpen(true);
+                    }}
+                    className="flex justify-center items-center gap-2 text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto"
+                >
+                    <PlusIcon className="h-5 w-5" />
+                    <span className='whitespace-nowrap'>Add New School</span>
+                </button>
+            </div>
 
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-				{state.schools.map((school) => (
-					<div
-						key={school.id}
-						className="bg-stone-100 shadow-lg rounded-lg p-4 relative"
-					>
-						<button
-							onClick={() => handleEditClick(school)}
-							className="absolute gap-2 top-4 right-4 text-brand-gold hover:brightness-75 flex items-center"
-							aria-label="Edit school"
-						>
-							<PencilIcon className="h-5 w-5" />
-							Edit
-						</button>
-						<h3 className="font-bold text-lg mb-2 pr-8">
-							<span>
-								{school.isActive ? (
-									<span className="w-3 h-3 bg-lime-500 rounded-full mr-2 inline-block"></span>
-								) : (
-									<span className="w-3 h-3 bg-red-500 rounded-full mr-2 inline-block"></span>
-								)}
-							</span>
-							{school.name}
-						</h3>
-						<p className="text-gray-600 mb-2">{school.address}</p>
-						<p className="text-sm text-gray-500 mb-2">Delivery Days: {school.deliveryDays.join(', ')}</p>
-						<p className="text-sm text-gray-500 mb-2">Status: {school.isActive ? 'Active' : 'Inactive'}</p>
-					</div>
-				))}
-			</div>
+            <div className="overflow-x-auto">
+                <table className="min-w-full bg-white">
+                    <thead className="bg-gray-100">
+                        <tr>
+                            {columns.map(renderColumnHeader)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {state.schools.map(school => (
+                            <tr 
+								key={school.id}
+								onClick={() => handleEditClick(school)}
+								className="border-b hover:bg-gray-50 hover:cursor-pointer"
+							>
+                                {columns.map(column => renderCell(school, column))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-			{isSchoolModalOpen && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-					<div className="bg-white p-6 rounded-lg w-full max-w-md">
-						<h2 className="text-xl mb-4">{editingSchool ? 'Edit School' : 'Add New School'}</h2>
-						<form
-							onSubmit={handleSubmitSchool}
-							className="flex flex-col gap-4"
-						>
-							<div>
-								<label
-									htmlFor="name"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
-									School Name
-								</label>
-								<input
-									type="text"
-									id="name"
-									name="name"
-									placeholder="Example Primary School"
-									value={editingSchool ? editingSchool.name : newSchool.name}
-									onChange={handleInputChange}
-									className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-									required
-								/>
-							</div>
-							<div>
-								<label
-									htmlFor="address"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
-									Address
-								</label>
-								<input
-									type="text"
-									id="address"
-									name="address"
-									placeholder="123 Main Street, Suburb, PostCode"
-									value={editingSchool ? editingSchool.address : newSchool.address}
-									onChange={handleInputChange}
-									className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-									required
-								/>
-							</div>
-							<div>
-								<label
-									htmlFor="deliveryDays"
-									className="block text-sm font-medium text-gray-700 mb-1"
-								>
-									Delivery Days
-								</label>
-								<Select
-									isMulti
-									id="deliveryDays"
-									name="deliveryDays"
-									options={dayOptions}
-									classNamePrefix="select"
-									value={dayOptions.filter((option) =>
-										(editingSchool ? editingSchool.deliveryDays : newSchool.deliveryDays).includes(
-											option.value
-										)
-									)}
-									onChange={handleDeliveryDaysChange}
-									placeholder="Select Delivery Days"
-								/>
-							</div>
-							{editingSchool ? (
-								<ToggleSwitch
-									id="isActive"
-									checked={editingSchool ? editingSchool.isActive : newSchool.isActive}
-									onChange={handleInputChange}
-									label="Active"
-								/>
-							) : (
-								''
-							)}
-							<div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
-								<button
-									type="button"
-									onClick={() => {
-										setIsSchoolModalOpen(false);
-										setEditingSchool(null);
-									}}
-									className="px-4 py-2 bg-gray-200 rounded w-full sm:w-auto"
-								>
-									Cancel
-								</button>
-								<button
-									type="submit"
-									className="px-4 py-2 bg-brand-dark-green text-white rounded w-full sm:w-auto"
-								>
-									{editingSchool ? 'Update School' : 'Add School'}
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
-		</div>
-	);
+            {isSchoolModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                        <h2 className="text-xl mb-4">{editingSchool ? 'Edit School' : 'Add New School'}</h2>
+                        <form onSubmit={handleSubmitSchool} className="flex flex-col gap-4">
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                                    School Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="name"
+                                    name="name"
+                                    placeholder="Example Primary School"
+                                    value={editingSchool ? editingSchool.name : newSchool.name}
+                                    onChange={handleInputChange}
+                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Address
+                                </label>
+                                <input
+                                    type="text"
+                                    id="address"
+                                    name="address"
+                                    placeholder="123 Main Street, Suburb, PostCode"
+                                    value={editingSchool ? editingSchool.address : newSchool.address}
+                                    onChange={handleInputChange}
+                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="deliveryDays" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Delivery Days
+                                </label>
+                                <Select
+                                    isMulti
+                                    id="deliveryDays"
+                                    name="deliveryDays"
+                                    options={dayOptions}
+                                    classNamePrefix="select"
+                                    value={dayOptions.filter((option) =>
+                                        (editingSchool ? editingSchool.deliveryDays : newSchool.deliveryDays).includes(
+                                            option.value
+                                        )
+                                    )}
+                                    onChange={handleDeliveryDaysChange}
+                                    placeholder="Select Delivery Days"
+                                />
+                            </div>
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="isActive"
+                                    name="isActive"
+                                    checked={editingSchool ? editingSchool.isActive : newSchool.isActive}
+                                    onChange={handleInputChange}
+                                    className="h-4 w-4 text-brand-dark-green focus:ring-brand-dark-green border-gray-300 rounded"
+                                />
+                                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                                    Active
+                                </label>
+                            </div>
+                            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSchoolModalOpen(false);
+                                        setEditingSchool(null);
+                                    }}
+                                    className="w-full sm:w-auto bg-brand-cream text-brand-dark-green text-sm rounded-md py-2 px-4 ring-2 ring-transparent hover:ring-brand-dark-green transition-all duration-300 ease-in-out"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto transition-all duration-300 ease-in-out"
+                                >
+                                    {editingSchool ? 'Update School' : 'Add School'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default Schools;
