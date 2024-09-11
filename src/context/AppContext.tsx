@@ -4,11 +4,12 @@ import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
+import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
 
 type AppState = {
 	user: User | null;
 	currentOrder: Order | null;
-	isLoading: boolean;
+	items: Array<Main | Probiotic | Fruit | Drink | AddOn>;
 	schools: School[];
 };
 
@@ -16,9 +17,9 @@ type AppState = {
 type Action =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'UPDATE_USER'; payload: Partial<User> }
-  | { type: 'ADD_ITEM'; payload: Meal }
-  | { type: 'UPDATE_ITEM'; payload: Partial<Meal> }
-  | { type: 'SET_MENU_ITEMS'; payload: Meal[] }
+  | { type: 'ADD_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
+  | { type: 'UPDATE_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
+  | { type: 'SET_MENU_ITEMS'; payload: Array<Main | Probiotic | Fruit | Drink | AddOn> }
   | { type: 'SET_CURRENT_ORDER'; payload: Order | null }
   | { type: 'ADD_TO_ORDER'; payload: Meal }
   | { type: 'REMOVE_FROM_ORDER'; payload: string }
@@ -34,8 +35,8 @@ type Action =
 const initialState: AppState = {
 	user: null,
 	currentOrder: null,
-	isLoading: true,
 	schools: [],
+	items: [],
 };
 
 // Create the context
@@ -67,6 +68,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			return {
 				...state,
 				schools: state.schools.map((school) => (school.id === action.payload.id ? action.payload : school)),
+			};
+		case 'SET_MENU_ITEMS':
+			return { ...state, items: action.payload };
+		case 'ADD_MENU_ITEM':
+			return { ...state, items: [...state.items, action.payload] };
+		case 'UPDATE_MENU_ITEM':
+			return {
+				...state,
+				items: state.items.map((item) => (item.id === action.payload.id ? action.payload : item)),
 			};
 
 
@@ -104,8 +114,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		// 	};
 		// case 'CLEAR_ORDER':
 		// 	return { ...state, currentOrder: null };
-		case 'SET_LOADING':
-			return { ...state, isLoading: action.payload };
 		default:
 			return state;
 	}

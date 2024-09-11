@@ -31,8 +31,11 @@ const AdminDashboardPage: React.FC = () => {
   const ActiveComponent = tabs[activeTab].component;
 
   return (
-    <div className="w-full mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-2">
-      <div className="w-full flex justify-between items-center gap-4">
+    <div className="w-full mx-auto p-4 pb-8 md:p-8 lg:p-12 flex flex-col justify-start items-center gap-2">
+      <div className="w-full flex flex-col justify-start items-center md:flex-row md:justify-between gap-4 px-4">
+        <h1 className='text-4xl font-bold'>
+          Admin Dashboard
+        </h1>
         <div className="flex justify-start items-center gap-2 rounded-md p-1 bg-stone-200">
           {tabs.map((tab, index) => (
             <div
