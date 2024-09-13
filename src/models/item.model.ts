@@ -11,7 +11,7 @@ export class Main {
     isFeatured?: boolean;
     isVegetarian?: boolean;
     addOns?: AddOn[];
-    price?: number;
+    price: number;
 
     constructor(
         display: string = '',

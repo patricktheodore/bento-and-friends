@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import { Child, User } from '../models/user.model';
-import { PlusIcon, PencilIcon, UserGroupIcon, CreditCardIcon } from '@heroicons/react/16/solid';
-import { useAppContext } from '../context/AppContext';
+import { PlusIcon } from '@heroicons/react/16/solid';
 import Select from 'react-select';
 import toast from 'react-hot-toast';
+import { useAppContext } from '../context/AppContext';
+import { Loader2 } from 'lucide-react';
+
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface ChildrenManagementProps {
 	user: User;
@@ -17,16 +24,12 @@ interface SchoolOption {
 	label: string;
 }
 
-const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
-	user,
-	onAddChild,
-	onRemoveChild,
-	onEditChild,
-}) => {
-	const { state, dispatch } = useAppContext();
+const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChild, onRemoveChild, onEditChild }) => {
+	const { state } = useAppContext();
 	const [newChild, setNewChild] = useState<Omit<Child, 'id'>>(new Child());
 	const [editingChild, setEditingChild] = useState<Child | null>(null);
 	const [isChildModalOpen, setIsChildModalOpen] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 
 	const schoolOptions: SchoolOption[] = state.schools.map((school) => ({
 		value: school.name,
@@ -50,18 +53,25 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
 		}
 	};
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (editingChild) {
-			onEditChild(editingChild.id, editingChild);
-			setEditingChild(null);
-			toast.success('Child updated successfully');
-		} else {
-			onAddChild(newChild);
-			setNewChild(new Child());
-			toast.success('Child added successfully');
+		setIsLoading(true);
+		try {
+			if (editingChild) {
+				await onEditChild(editingChild.id, editingChild);
+				setEditingChild(null);
+				toast.success('Child updated successfully');
+			} else {
+				await onAddChild(newChild);
+				setNewChild(new Child());
+				toast.success('Child added successfully');
+			}
+			setIsChildModalOpen(false);
+		} catch (error) {
+			toast.error('An error occurred while managing the child');
+		} finally {
+			setIsLoading(false);
 		}
-		setIsChildModalOpen(false);
 	};
 
 	const handleEditClick = (child: Child) => {
@@ -69,224 +79,183 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({
 		setIsChildModalOpen(true);
 	};
 
-	const handleRemoveClick = () => {
+	const handleRemoveClick = async () => {
 		if (editingChild) {
-			onRemoveChild(editingChild.id);
-			setEditingChild(null);
-			setIsChildModalOpen(false);
-			toast.success('Child removed successfully');
+			setIsLoading(true);
+			try {
+				await onRemoveChild(editingChild.id);
+				setEditingChild(null);
+				setIsChildModalOpen(false);
+				toast.success('Child removed successfully');
+			} catch (error) {
+				toast.error('An error occurred while removing the child');
+			} finally {
+				setIsLoading(false);
+			}
 		}
 	};
 
 	return (
-        <div className="w-full">
-          <div className="bg-stone-50 shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Children / Students</h3>
-              <button
-                onClick={() => {
-                  setEditingChild(null);
-                  setNewChild(new Child());
-                  setIsChildModalOpen(true);
-                }}
-                className="flex items-center gap-2 text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2"
-              >
-                <PlusIcon className="h-5 w-5" />
-                <span className="whitespace-nowrap">Add Child</span>
-              </button>
-            </div>
-    
-            <div className="border-t border-gray-200">
-              {user.children.map((child) => (
-                <div
-                  key={child.id}
-                  className="px-4 py-5 sm:p-6 border-b border-gray-200 last:border-b-0"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900">{child.name}</h4>
-                      <p className="mt-1 text-sm text-gray-500">{child.school}</p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Year: {child.year}, Class: {child.className}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Allergens: {child.allergens || 'None'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleEditClick(child)}
-                      className="text-brand-gold hover:text-brand-dark-green flex flex-nowrap items-center gap-2"
-                      aria-label="Edit child"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-    
-          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-				<div className="bg-stone-50 overflow-hidden shadow rounded-lg">
-					<div className="p-5">
-						<div className="flex items-center">
-							<div className="flex-shrink-0">
-								<CreditCardIcon
-									className="h-6 w-6 text-gray-400"
-									aria-hidden="true"
-								/>
-							</div>
-							<div className="ml-5 w-0 flex-1">
-								<dl>
-									<dt className="text-sm font-medium text-gray-500 truncate">Total orders</dt>
-									<dd>
-										<div className="text-lg font-medium text-gray-900">
-											{user.orderHistory?.length || 0}
-										</div>
-									</dd>
-								</dl>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<div className="bg-stone-50 overflow-hidden shadow rounded-lg">
-					<div className="p-5">
-						<div className="flex items-center">
-							<div className="flex-shrink-0">
-								<UserGroupIcon
-									className="h-6 w-6 text-gray-400"
-									aria-hidden="true"
-								/>
-							</div>
-							<div className="ml-5 w-0 flex-1">
-								<dl>
-									<dt className="text-sm font-medium text-gray-500 truncate">Registered children</dt>
-									<dd>
-										<div className="text-lg font-medium text-gray-900">
-											{user.children?.length || 0}
-										</div>
-									</dd>
-								</dl>
-							</div>
-						</div>
-					</div>
-				</div>
+		<div className="w-full px-4 space-y-4">
+			<div className="flex justify-between items-center">
+				<h2 className="text-3xl font-bold">Children</h2>
+				<Button
+					onClick={() => {
+						setEditingChild(null);
+						setNewChild(new Child());
+						setIsChildModalOpen(true);
+					}}
+					className="bg-brand-dark-green text-brand-cream"
+				>
+					<PlusIcon className="mr-2 h-4 w-4 text-sm" />
+					  Add New Child
+				</Button>
 			</div>
-    
-          {isChildModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-              <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                <h2 className="text-xl mb-4">{editingChild ? 'Edit Child' : 'Add New Child'}</h2>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Name*
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={editingChild ? editingChild.name : newChild.name}
-                      onChange={handleInputChange}
-                      className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-1">
-                      School*
-                    </label>
-                    <Select
-                      id="school"
-                      name="school"
-                      options={schoolOptions}
-                      value={schoolOptions.find(
-                        (option) => option.value === (editingChild ? editingChild.school : newChild.school)
-                      )}
-                      onChange={handleSchoolChange}
-                      placeholder="Select School"
-                      className="mb-2"
-                      required
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
-                        Year*
-                      </label>
-                      <input
-                        type="text"
-                        id="year"
-                        name="year"
-                        value={editingChild ? editingChild.year : newChild.year}
-                        onChange={handleInputChange}
-                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-                        required
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label htmlFor="className" className="block text-sm font-medium text-gray-700 mb-1">
-                        Class*
-                      </label>
-                      <input
-                        type="text"
-                        id="className"
-                        name="className"
-                        value={editingChild ? editingChild.className : newChild.className}
-                        onChange={handleInputChange}
-                        className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="allergens" className="block text-sm font-medium text-gray-700 mb-1">
-                      Allergens
-                    </label>
-                    <input
-                      id="allergens"
-                      name="allergens"
-                      value={editingChild ? editingChild.allergens : newChild.allergens}
-                      onChange={handleInputChange}
-                      className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green"
-                      placeholder="List any allergies or 'None' if no allergies"
-                    />
-                  </div>
-                  <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
-                    {editingChild && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveClick}
-                        className="px-4 py-2 bg-red-500 text-white rounded-md w-full sm:w-auto hover:brightness-75 hover:ring-2 ring-offset-2"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsChildModalOpen(false);
-                        setEditingChild(null);
-                      }}
-                      className="px-4 py-2 bg-gray-200 rounded-md hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:brightness-75 hover:ring-2 ring-offset-2 w-full sm:w-auto"
-                    >
-                      {editingChild ? 'Update' : 'Add'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead className="w-[250px]">Name</TableHead>
+							<TableHead>School</TableHead>
+							<TableHead>Year</TableHead>
+							<TableHead>Class</TableHead>
+							<TableHead>Allergens</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{user.children && user.children.map((child) => (
+							<TableRow
+								key={child.id}
+								className="cursor-pointer"
+								onClick={() => handleEditClick(child)}
+							>
+								<TableCell className="font-medium">{child.name}</TableCell>
+								<TableCell>{child.school}</TableCell>
+								<TableCell>{child.year}</TableCell>
+								<TableCell>{child.className}</TableCell>
+								<TableCell>{child.allergens || 'None'}</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+
+			<Dialog
+				open={isChildModalOpen}
+				onOpenChange={(open) => {
+					if (!open && !isLoading) setIsChildModalOpen(false);
+				}}
+			>
+				<DialogContent className={`sm:max-w-[425px] ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}>
+					<DialogHeader>
+						<DialogTitle>{editingChild ? 'Edit Child' : 'Add New Child'}</DialogTitle>
+					</DialogHeader>
+					<form
+						onSubmit={handleSubmit}
+						className="space-y-4"
+					>
+						<div className="space-y-2">
+							<Label htmlFor="name">Child's Name</Label>
+							<Input
+								id="name"
+								name="name"
+								value={editingChild ? editingChild.name : newChild.name}
+								onChange={handleInputChange}
+								placeholder="Enter child's name"
+								required
+								disabled={isLoading}
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="school">School</Label>
+							<Select
+								id="school"
+								name="school"
+								options={schoolOptions}
+								value={schoolOptions.find(
+									(option) => option.value === (editingChild ? editingChild.school : newChild.school)
+								)}
+								onChange={handleSchoolChange}
+								placeholder="Select School"
+								isDisabled={isLoading}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="year">Year</Label>
+								<Input
+									id="year"
+									name="year"
+									value={editingChild ? editingChild.year : newChild.year}
+									onChange={handleInputChange}
+									placeholder="Enter year"
+									required
+									disabled={isLoading}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="className">Class</Label>
+								<Input
+									id="className"
+									name="className"
+									value={editingChild ? editingChild.className : newChild.className}
+									onChange={handleInputChange}
+									placeholder="Enter class"
+									required
+									disabled={isLoading}
+								/>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="allergens">Allergens</Label>
+							<Input
+								id="allergens"
+								name="allergens"
+								value={editingChild ? editingChild.allergens : newChild.allergens}
+								onChange={handleInputChange}
+								placeholder="List allergens or 'None'"
+								disabled={isLoading}
+							/>
+						</div>
+						<DialogFooter>
+							{editingChild && (
+								<Button
+									type="button"
+									variant="destructive"
+									onClick={handleRemoveClick}
+									disabled={isLoading}
+								>
+									Remove Child
+								</Button>
+							)}
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setIsChildModalOpen(false)}
+								disabled={isLoading}
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								disabled={isLoading}
+							>
+								{isLoading ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										{editingChild ? 'Updating...' : 'Adding...'}
+									</>
+								) : (
+									<>{editingChild ? 'Update Child' : 'Add Child'}</>
+								)}
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+		</div>
+	);
 };
 
 export default ChildrenManagement;
