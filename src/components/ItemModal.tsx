@@ -25,7 +25,6 @@ type ItemType = 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon';
 
 const allergenOptions: { value: string; label: string }[] = [
     { value: 'dairy', label: 'Dairy' },
-    { value: 'nuts', label: 'Nuts' },
     { value: 'gluten', label: 'Gluten' },
     { value: 'soy', label: 'Soy' },
     { value: 'eggs', label: 'Eggs' },

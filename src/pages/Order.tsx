@@ -19,7 +19,7 @@ const OrderPage: React.FC = () => {
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 	const [step, setStep] = useState(1);
 	const [isAddingChild, setIsAddingChild] = useState(false);
-	const [newChild, setNewChild] = useState({ name: '', school: '', year: '', className: '' });
+	const [newChild, setNewChild] = useState<Child>(new Child());
 	const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 	const [note, setNote] = useState('');
 
@@ -79,7 +79,7 @@ const OrderPage: React.FC = () => {
 
 	const handleAddChild = () => {
 		if (state.user) {
-			const newChildObject = new Child(newChild.name, newChild.year, newChild.school, newChild.className);
+			const newChildObject = new Child(newChild.name, newChild.allergens, newChild.year, newChild.school, newChild.className);
 			const updatedUser = {
 				...state.user,
 				children: [...state.user.children, newChildObject],
@@ -87,7 +87,7 @@ const OrderPage: React.FC = () => {
 			dispatch({ type: 'UPDATE_USER', payload: updatedUser });
 			setSelectedChild(newChildObject.id);
 			setIsAddingChild(false);
-			setNewChild({ name: '', school: '', year: '', className: '' });
+			setNewChild(new Child());
 		}
 	};
 
@@ -101,6 +101,7 @@ const OrderPage: React.FC = () => {
 						Main: {selectedMainItem.display} (${formatPrice(selectedMainItem.price)})
 					</p>
 				)}
+				<p>Seasonal Fruit & Yogurt <span className='italic'>(included with all meals)</span></p>
 				{selectedAddons.length > 0 && (
 					<p>
 						{' + '}
@@ -112,7 +113,6 @@ const OrderPage: React.FC = () => {
 							.join(', ')}
 					</p>
 				)}
-				<p>Seasonal Fruit & Yogurt</p>
 				<p className="font-semibold mt-2">Total: ${formatPrice(totalPrice)}</p>
 			</div>
 		);
@@ -169,6 +169,15 @@ const OrderPage: React.FC = () => {
 						/>
 					</div>
 					<div className="space-y-2">
+						<Label htmlFor="childName">Allergens</Label>
+						<Input
+							id="allergens"
+							value={newChild.allergens}
+							onChange={(e) => setNewChild({ ...newChild, name: e.target.value })}
+							required
+						/>
+					</div>
+					<div className="space-y-2">
 						<Label htmlFor="childSchool">School*</Label>
 						<Select
 							value={newChild.school}
@@ -182,7 +191,7 @@ const OrderPage: React.FC = () => {
 								{state.schools.map((school) => (
 									<SelectItem
 										key={school.id}
-										value={school.id}
+										value={school.name}
 									>
 										{school.name}
 									</SelectItem>
@@ -325,7 +334,9 @@ const OrderPage: React.FC = () => {
 						key={item.id}
 						image={item.image}
 						title={item.display}
+						allergens={item.allergens}
 						description={item.description}
+						isVegetarian={item.isVegetarian}
 						onOrderNow={() => handleOrderNow(item.id)}
 					/>
 				))}

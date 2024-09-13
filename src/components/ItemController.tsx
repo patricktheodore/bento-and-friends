@@ -169,20 +169,6 @@ const ItemController: React.FC = () => {
         }
     };
 
-    const handleEdit = (item: MenuItem) => {
-        setCurrentItem(item);
-        setSelectedItemType(getItemType(item));
-        setModalMode('edit');
-        setIsItemModalOpen(true);
-    };
-
-    const handleAdd = () => {
-        setCurrentItem(null);
-        setSelectedItemType(null);
-        setModalMode('add');
-        setIsItemModalOpen(true);
-    };
-
     const renderCell = (item: MenuItem, column: string) => {
         const baseClassName = "overflow-hidden";
         switch (column) {
