@@ -12,7 +12,7 @@ const Header: React.FC = () => {
     
     const menuItems = [
         { to: '/menu', label: 'Menu' },
-        { to: '/about', label: 'About' },
+        // { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
         ...(state.user 
             ? (state.user.isAdmin

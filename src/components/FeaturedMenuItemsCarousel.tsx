@@ -5,70 +5,23 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { Link } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
+import { useAppContext } from '@/context/AppContext';
 
 const FeaturedMenuItemsCarousel: React.FC = () => {
 	const sliderRef = useRef<Slider>(null);
-	const featuredItems = [
-		{
-			image: 'src/assets/image-01.webp',
-			title: 'Teriyaki Chicken Bento',
-			description:
-				'Grilled chicken with our special teriyaki sauce, served with steamed rice and seasonal vegetables.',
-			price: 12.99,
-		},
-		{
-			image: 'src/assets/image-02.webp',
-			title: 'Vegetarian Sushi Roll',
-			description: 'Assorted fresh vegetables wrapped in sushi rice and nori, served with wasabi and soy sauce.',
-			price: 9.99,
-		},
-		{
-			image: 'src/assets/image-01.webp',
-			title: 'Teriyaki Chicken Bento',
-			description:
-				'Grilled chicken with our special teriyaki sauce, served with steamed rice and seasonal vegetables.',
-			price: 12.99,
-		},
-		{
-			image: 'src/assets/image-02.webp',
-			title: 'Vegetarian Sushi Roll',
-			description: 'Assorted fresh vegetables wrapped in sushi rice and nori, served with wasabi and soy sauce.',
-			price: 9.99,
-		},
-		{
-			image: 'src/assets/image-01.webp',
-			title: 'Teriyaki Chicken Bento',
-			description:
-				'Grilled chicken with our special teriyaki sauce, served with steamed rice and seasonal vegetables.',
-			price: 12.99,
-		},
-		{
-			image: 'src/assets/image-02.webp',
-			title: 'Vegetarian Sushi Roll',
-			description: 'Assorted fresh vegetables wrapped in sushi rice and nori, served with wasabi and soy sauce.',
-			price: 9.99,
-		},
-		{
-			image: 'src/assets/image-01.webp',
-			title: 'Teriyaki Chicken Bento',
-			description:
-				'Grilled chicken with our special teriyaki sauce, served with steamed rice and seasonal vegetables.',
-			price: 12.99,
-		},
-		{
-			image: 'src/assets/image-02.webp',
-			title: 'Vegetarian Sushi Roll',
-			description: 'Assorted fresh vegetables wrapped in sushi rice and nori, served with wasabi and soy sauce.',
-			price: 9.99,
-		},
-		// Add more items as needed
-	];
+	const {state, dispatch} = useAppContext();
 
+	const featuredItems = state.mains.filter((item) => item.isFeatured);
+	
 	const goToNextSlide = () => {
 		if (sliderRef.current) {
 			sliderRef.current.slickNext();
 		}
 	};
+
+	const handleOrderNow = (id: string) => {
+		console.log('Order Now:', id);
+	}
 
 	const goToPrevSlide = () => {
 		if (sliderRef.current) {
@@ -143,7 +96,15 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 							key={index}
 							className="px-2"
 						>
-							<MenuItemCard {...item} />
+							<MenuItemCard
+								key={item.id}
+								image={item.image}
+								title={item.display}
+								allergens={item.allergens}
+								description={item.description}
+								isVegetarian={item.isVegetarian}
+								onOrderNow={() => handleOrderNow(item.id)}
+							/>
 						</div>
 					))}
 				</Slider>

@@ -1,101 +1,131 @@
-import React, { useState } from 'react';
-import MenuItem, { MenuItemProps } from '../components/MenuItem';
+import React from 'react';
+import { useAppContext } from '../context/AppContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const MenuPage: React.FC = () => {
-	const [newItem, setNewItem] = useState<Omit<MenuItemProps, 'id'>>({
-		name: '',
-		ingredients: [],
-		calories: 0,
-		allergens: [],
-		image: '',
-		isNew: true,
-		isEnabled: true,
-		isFeatured: false,
-	});
+  const { state } = useAppContext();
 
-	const menuItems: MenuItemProps[] = [
-		{
-			id: '1',
-			name: 'Yogurt Parfait',
-			ingredients: ['yogurt', 'granola', 'berries'],
-			calories: 320,
-			allergens: ['dairy', 'gluten'],
-			image: 'https://plus.unsplash.com/premium_photo-1713719216015-00a348bc4526?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: true,
-			isEnabled: true,
-		},
-		{
-			id: '2',
-			name: 'Fruit Salad',
-			ingredients: ['strawberries', 'blueberries', 'kiwi', 'banana'],
-			calories: 210,
-			allergens: [],
-			image: 'https://images.unsplash.com/photo-1658431618511-adeba775bd66?q=80&w=2888&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: false,
-			isEnabled: true,
-		},
-		{
-			id: '3',
-			name: 'Egg & Cheese Sandwich',
-			ingredients: ['egg', 'cheese', 'english muffin'],
-			calories: 350,
-			allergens: ['dairy', 'gluten'],
-			image: 'https://images.unsplash.com/photo-1481070414801-51fd732d7184?q=80&w=2824&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: false,
-			isEnabled: true,
-		},
-		{
-			id: '4',
-			name: 'Acai Bowl',
-			ingredients: ['acai', 'granola', 'berries', 'banana'],
-			calories: 400,
-			allergens: [],
-			image: 'https://images.unsplash.com/photo-1684403620650-81dc661a69db?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: false,
-			isEnabled: true,
-		},
-		{
-			id: '5',
-			name: 'Blueberry Muffin',
-			ingredients: ['blueberries', 'flour', 'sugar'],
-			calories: 250,
-			allergens: ['gluten'],
-			image: 'https://images.unsplash.com/photo-1632498762310-50e4473bce92?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: false,
-			isEnabled: true,
-		},
-		{
-			id: '7',
-			name: 'Sushi',
-			ingredients: ['rice', 'fish', 'seaweed'],
-			calories: 300,
-			allergens: ['fish'],
-			image: 'https://plus.unsplash.com/premium_photo-1664648184107-0e49c1d43668?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-			isNew: false,
-			isEnabled: false,
-		},
-	];
-
-	return (
-		<>
-			<div className="w-full max-w-screen-xl mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-4">
-				<div className="w-full flex flex-col justify-start items-center">
-					<h2 className="w-full text-left text-2xl font-bold text-brand-dark-green mb-4">Menu</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-						{menuItems.map(
-							(item) =>
-								item.isEnabled && (
-									<MenuItem
-										key={item.id}
-										{...item}
-									/>
-								)
-						)}
-					</div>
-				</div>
+  const renderMainItems = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {state.mains.map((item) => (
+        <Card key={item.id}>
+          <CardHeader>
+            <CardTitle>{item.display}</CardTitle>
+            <CardDescription>{item.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <img src={item.image} alt={item.display} className="w-full h-48 object-cover rounded-md mb-4" />
+            <div className="flex flex-wrap gap-2 mb-2">
+              {item.allergens?.map((allergen) => (
+                <Badge key={allergen} variant="outline" className='uppercase'>{allergen}</Badge>
+              ))}
+            </div>
+            <p>Price: ${item.price.toFixed(2)}</p>
+			<div className='flex items-center space-x-2'>
+				{item.isNew && <Badge variant="default">New</Badge>}
+				{item.isVegetarian && <Badge variant='secondary'>Vegetarian</Badge>}
 			</div>
-		</>
-	);
+          </CardContent>
+          <CardFooter>
+            <Button>Order Now</Button>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderAddOns = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {state.addOns.map((addon) => (
+        <Card key={addon.id}>
+          <CardHeader>
+            <CardTitle>{addon.display}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Price: ${addon.price.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderProbiotics = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {state.probiotics.map((probiotic) => (
+        <Card key={probiotic.id}>
+          <CardHeader>
+            <CardTitle>{probiotic.display}</CardTitle>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderFruits = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {state.fruits.map((fruit) => (
+        <Card key={fruit.id}>
+          <CardHeader>
+            <CardTitle>{fruit.display}</CardTitle>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderDrinks = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {state.drinks.map((drink) => (
+        <Card key={drink.id}>
+          <CardHeader>
+            <CardTitle>{drink.display}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {drink.image && <img src={drink.image} alt={drink.display} className="w-full h-32 object-cover rounded-md mb-2" />}
+            <p>Price: ${drink.price.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="container mx-auto p-4 py-8">
+      <h1 className="text-4xl font-bold mb-6">Our Menu</h1>
+      <Tabs defaultValue="mains">
+        <TabsList>
+          <TabsTrigger value="mains">Main Dishes</TabsTrigger>
+          <TabsTrigger value="addons">Add-ons</TabsTrigger>
+          <TabsTrigger value="probiotics">Probiotics</TabsTrigger>
+          <TabsTrigger value="fruits">Fruits</TabsTrigger>
+          {/* <TabsTrigger value="drinks">Drinks</TabsTrigger> */}
+        </TabsList>
+        <TabsContent value="mains" className="mt-6">
+          <h2 className="text-2xl font-semibold mb-4">Main Dishes</h2>
+          {renderMainItems()}
+        </TabsContent>
+        <TabsContent value="addons" className="mt-6">
+          <h2 className="text-2xl font-semibold mb-4">Add-ons</h2>
+          {renderAddOns()}
+        </TabsContent>
+        <TabsContent value="probiotics" className="mt-6">
+          <h2 className="text-2xl font-semibold mb-4">Probiotics</h2>
+          {renderProbiotics()}
+        </TabsContent>
+        <TabsContent value="fruits" className="mt-6">
+          <h2 className="text-2xl font-semibold mb-4">Fruits</h2>
+          {renderFruits()}
+        </TabsContent>
+        <TabsContent value="drinks" className="mt-6">
+          <h2 className="text-2xl font-semibold mb-4">Drinks</h2>
+          {renderDrinks()}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 };
 
 export default MenuPage;

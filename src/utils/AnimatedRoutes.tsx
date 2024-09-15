@@ -8,7 +8,7 @@ import UserloginPage from '../pages/SignInRegister';
 import SignOut from '../pages/SignOut';
 import MenuPage from '../pages/Menu';
 import OrderPage from '../pages/Order';
-import AboutPage from '../pages/About';
+// import AboutPage from '../pages/About';
 import ContactPage from '../pages/Contact';
 import AdminDashboardPage from '../pages/AdminDashboard';
 import SchoolsPage from '../pages/Schools';
@@ -23,7 +23,7 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
         <Route path="/menu" element={<PageTransition><MenuPage /></PageTransition>} />
         <Route path="/order" element={<PageTransition><OrderPage /></PageTransition>} />
-        <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+        {/* <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} /> */}
         <Route path="/contact" element={<PageTransition><ContactPage /></PageTransition>} />
         <Route path="/account" element={<PageTransition><AccountPage /></PageTransition>} />
         <Route path="/signin" element={<PageTransition><UserloginPage /></PageTransition>} />
