@@ -23,15 +23,6 @@ const UserloginPage: React.FC = () => {
         }
     }, [location]);
 
-    if (state.user) {
-
-        if (state.user.isAdmin) {
-            return <Navigate to="/admin" replace />;
-        }
-
-        return <Navigate to="/account" replace />;
-    }
-
     const handleToggleSignup = () => {
         setIsNewUserSignup(!isNewUserSignup);
         setError(null);
@@ -50,6 +41,7 @@ const UserloginPage: React.FC = () => {
                 const user = await signIn(email, password);
                 dispatch({ type: 'SET_USER', payload: user });
                 toast.success('Signed in successfully!');
+                user.isAdmin ? navigate('/admin') : navigate('/order');
             }
         } catch (error: unknown) {
             if (error instanceof FirebaseError) {

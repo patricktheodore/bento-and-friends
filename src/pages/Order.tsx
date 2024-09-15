@@ -14,6 +14,7 @@ import { Meal } from '@/models/order.model';
 import { Main } from '@/models/item.model';
 import { School } from '@/models/school.model';
 import { v4 as uuidv4 } from 'uuid';
+import toast from 'react-hot-toast';
 
 const OrderPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -86,6 +87,8 @@ const OrderPage: React.FC = () => {
 			payload: payload
 		})
 
+		toast.success('Added to cart!');
+
 		setSelectedMain(null);
 		setSelectedAddons([]);
 		setSelectedChild(null);
@@ -124,9 +127,9 @@ const OrderPage: React.FC = () => {
 						Main: {selectedMainItem.display} (${formatPrice(selectedMainItem.price)})
 					</p>
 				)}
-				<p>Seasonal Fruit & Yogurt <span className='italic'>(included with all meals)</span></p>
+				<p className='text-xs'>+ Seasonal Fruit & Yogurt <span className='italic'>(included with all meals)</span></p>
 				{selectedAddons.length > 0 && (
-					<p>
+					<p className='text-xs'> 
 						{' + '}
 						{selectedAddons
 							.map((id) => {

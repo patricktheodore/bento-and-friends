@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AddOn, Main } from '@/models/item.model';
+import { toast } from 'react-hot-toast';
 
 const Cart: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -23,6 +24,7 @@ const Cart: React.FC = () => {
 
 	const removeMeal = (mealId: string) => {
 		dispatch({ type: 'REMOVE_FROM_CART', payload: mealId });
+		toast.success('Item removed from cart');
 	};
 
 	const startEditing = (meal: Meal) => {
@@ -36,6 +38,7 @@ const Cart: React.FC = () => {
 				type: 'UPDATE_MEAL',
 				payload: editingMeal,
 			});
+			toast.success('Order updated');
 		}
 		setEditingMeal(null);
 		setIsDialogOpen(false);

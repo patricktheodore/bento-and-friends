@@ -3,9 +3,9 @@ import Schools from '../components/Schools';
 import ItemController from '../components/ItemController';
 
 const tabs = [
-	{ name: 'Schools', component: Schools },
-	{ name: 'Menu Items', component: ItemController },
 	{ name: 'Orders', component: null }, // TODO: Create Orders component
+	{ name: 'Menu Items', component: ItemController },
+	{ name: 'Schools', component: Schools },
 ];
 
 const AdminDashboardPage: React.FC = () => {

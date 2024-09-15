@@ -91,6 +91,7 @@ const ContactPage = () => {
 										<Input
 											{...field}
 											id="name"
+											className='bg-white'
 										/>
 										{error && <p className="text-red-500 text-sm">{error.message}</p>}
 									</>
@@ -113,6 +114,7 @@ const ContactPage = () => {
 									<>
 										<Input
 											{...field}
+											className='bg-white'
 											id="email"
 											type="email"
 										/>
@@ -137,6 +139,7 @@ const ContactPage = () => {
 									<>
 										<Input
 											{...field}
+											className='bg-white'
 											id="phone"
 											type="tel"
 										/>
@@ -156,7 +159,7 @@ const ContactPage = () => {
 											onValueChange={field.onChange}
 											value={field.value}
 										>
-											<SelectTrigger className="w-full">
+											<SelectTrigger className="w-full bg-white">
 												<SelectValue placeholder="Select an order reference" />
 											</SelectTrigger>
 											<SelectContent>
@@ -183,6 +186,7 @@ const ContactPage = () => {
 								render={({ field, fieldState: { error } }) => (
 									<>
 										<Textarea
+											className='bg-white'
 											{...field}
 											id="message"
 										/>

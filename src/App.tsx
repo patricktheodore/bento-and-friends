@@ -20,7 +20,7 @@ const App: React.FC = () => {
 					<Footer />
 				</div>
 				<Toaster
-					position="top-right"
+					position="bottom-center"
 					toastOptions={{
 						success: {
 							style: {

@@ -91,7 +91,9 @@ const Header: React.FC = () => {
                             <>
                                 <div className="hidden md:flex items-center space-x-4">
                                     {renderMenuItems()}
-                                    <CartIcon />
+                                    {state.user && (
+                                        <CartIcon />
+                                    )}
                                 </div>
 
                                 <div className='flex md:hidden justify-end items-center'>
