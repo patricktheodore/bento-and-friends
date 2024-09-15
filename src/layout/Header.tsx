@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import CartIcon from '@/components/CartIcon';
+import Cart from '@/components/Cart';
 
 const Header: React.FC = () => {
     const { state } = useAppContext();
@@ -86,22 +88,29 @@ const Header: React.FC = () => {
                             />
                         </Link>
                         {!state.isLoading && (
-                            <div className="hidden md:flex items-center space-x-4">
-                                {renderMenuItems()}
-                            </div>
+                            <>
+                                <div className="hidden md:flex items-center space-x-4">
+                                    {renderMenuItems()}
+                                    <CartIcon />
+                                </div>
+
+                                <div className='flex md:hidden justify-end items-center'>
+                                    <CartIcon />
+                                    <button
+                                        className={`scale-75 mt-[8px] text-brand-dark-green hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
+                                        type="button"
+                                        onClick={() => setIsOpen(!isOpen)}
+                                        aria-expanded={isOpen}
+                                        aria-controls="mobile-menu"
+                                        aria-label={isOpen ? "Close main menu" : "Open main menu"}
+                                    >
+                                        <span className="hamburger-box">
+                                            <span className="hamburger-inner"></span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </>
                         )}
-                        <button 
-                            className={`md:hidden scale-75 text-primary hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
-                            type="button"
-                            onClick={() => setIsOpen(!isOpen)}
-                            aria-expanded={isOpen}
-                            aria-controls="mobile-menu"
-                            aria-label={isOpen ? "Close main menu" : "Open main menu"}
-                        >
-                            <span className="hamburger-box">
-                                <span className="hamburger-inner"></span>
-                            </span>
-                        </button>
                     </div>
                     <div 
                         id="mobile-menu"
@@ -119,6 +128,7 @@ const Header: React.FC = () => {
                 </div>
             </nav>
             <div className="overlay"></div>
+            <Cart />
         </>
     );
 };

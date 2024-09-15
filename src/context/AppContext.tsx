@@ -6,10 +6,12 @@ import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
 import { getMains, getProbiotics, getAddOns, getFruits, getDrinks } from '../services/item-service';
 import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
+import { v4 as uuidv4 } from 'uuid';
 
 type AppState = {
 	user: User | null;
-	currentOrder: Order | null;
+	cart: Order | null;
+	isCartOpen: boolean;
 	mains: Main[];
 	probiotics: Probiotic[];
 	fruits: Fruit[];
@@ -32,10 +34,12 @@ type Action =
   | { type: 'SET_FRUITS'; payload: Fruit[] }
   | { type: 'SET_DRINKS'; payload: Drink[] }
   | { type: 'SET_ADD_ONS'; payload: AddOn[] }
-  | { type: 'SET_CURRENT_ORDER'; payload: Order | null }
-  | { type: 'ADD_TO_ORDER'; payload: Meal }
-  | { type: 'REMOVE_FROM_ORDER'; payload: string }
-  | { type: 'CLEAR_ORDER' }
+  | { type: 'ADD_TO_CART'; payload: Meal }
+  | { type: 'REMOVE_FROM_CART'; payload: string }
+  | { type: 'CLEAR_CART' }
+  | { type: 'UPDATE_CART'; payload: Meal[] }
+  | { type: 'UPDATE_MEAL'; payload: { mealId: string; updates: { childId?: string; orderDate?: string } } }
+  | { type: "TOGGLE_CART" }
   | { type: 'SIGN_OUT' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SCHOOLS'; payload: School[] }
@@ -46,7 +50,8 @@ type Action =
 // Initial state
 const initialState: AppState = {
 	user: null,
-	currentOrder: null,
+	cart: null,
+	isCartOpen: false,
 	schools: [],
 	mains: [],
 	probiotics: [],
@@ -72,9 +77,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		case 'SET_USER':
 			return { ...state, user: action.payload };
 		case 'SIGN_OUT':
-			return { ...state, user: null, currentOrder: null };
-		case 'SET_CURRENT_ORDER':
-			return { ...state, currentOrder: action.payload };
+			return { ...state, user: null, cart: null };
 		case 'UPDATE_USER':
 			if (!state.user) return state;
 			return { ...state, user: { ...state.user, ...action.payload } };
@@ -108,6 +111,66 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			return { ...state, addOns: action.payload };
 		case 'SET_LOADING':
       		return { ...state, isLoading: action.payload };
+		case 'ADD_TO_CART':
+			if (!state.cart) {
+				return {
+					...state,
+					cart: {
+						id: uuidv4(),
+						userId: state.user?.id || '',
+						userEmail: state.user?.email || '',
+						deliveryDate: new Date().toISOString(),
+						meals: [action.payload],
+						total: action.payload.total,
+						status: 'pending',
+					},
+				};
+			}
+			return {
+				...state,
+				cart: {
+					...state.cart,
+					meals: [...state.cart.meals, action.payload],
+					total: state.cart.total + action.payload.total,
+				},
+			};
+		case 'REMOVE_FROM_CART':
+			if (!state.cart) return state;
+			const updatedMeals = state.cart.meals.filter(meal => meal.id !== action.payload);
+			return {
+				...state,
+				cart: {
+				...state.cart,
+				meals: updatedMeals,
+				total: updatedMeals.reduce((sum, meal) => sum + meal.total, 0),
+				},
+			};
+		case 'CLEAR_CART':
+			return { ...state, cart: null };
+		case 'TOGGLE_CART':
+			return { ...state, isCartOpen: !state.isCartOpen };
+		case 'UPDATE_MEAL':
+			if (!state.cart) return state;
+			const updatedMeal = state.cart.meals.map(meal => {
+				if (meal.id === action.payload.mealId) {
+				const updatedChild = action.payload.updates.childId
+					? state.user?.children.find(child => child.id === action.payload.updates.childId) || meal.child
+					: meal.child;
+				return {
+					...meal,
+					child: updatedChild,
+					orderDate: action.payload.updates.orderDate || meal.orderDate
+				};
+				}
+				return meal;
+			});
+			return {
+				...state,
+				cart: {
+				...state.cart,
+				meals: updatedMeal
+				}
+			};
 
 
 

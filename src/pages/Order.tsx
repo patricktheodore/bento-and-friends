@@ -10,6 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Child } from '../models/user.model'; // Make sure this import is correct
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Meal } from '@/models/order.model';
+import { Main } from '@/models/item.model';
+import { School } from '@/models/school.model';
+import { v4 as uuidv4 } from 'uuid';
 
 const OrderPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -17,10 +21,10 @@ const OrderPage: React.FC = () => {
 	const [selectedMain, setSelectedMain] = useState<string | null>(null);
 	const [selectedChild, setSelectedChild] = useState<string | null>(null);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+	const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 	const [step, setStep] = useState(1);
 	const [isAddingChild, setIsAddingChild] = useState(false);
 	const [newChild, setNewChild] = useState<Child>(new Child());
-	const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 	const [note, setNote] = useState('');
 
 	useEffect(() => {
@@ -60,11 +64,28 @@ const OrderPage: React.FC = () => {
 		if (step > 1) setStep(step - 1);
 	};
 
-	const handleConfirmOrder = () => {
-		// TODO: Implement order confirmation logic
-		console.log(`Confirmed order: Main: ${selectedMain}, Child: ${selectedChild}, Date: ${selectedDate}`);
+	const handleAddToCart = () => {
 		setIsModalOpen(false);
-		// Reset state
+
+		const payload: Meal = {
+			id: uuidv4(),
+			main: state.mains.find((main) => main.id === selectedMain) as Main,
+			addOns: state.addOns.filter((addon) => selectedAddons.includes(addon.id)),
+			probiotic: undefined,
+			fruit: undefined,
+			drink: undefined,
+			school: state.schools.find((school) => school.name === state.user?.children.find((child) => child.id === selectedChild)?.school) as School,
+			orderDate: new Date(selectedDate as Date).toISOString(),
+			child: state.user?.children.find((child) => child.id === selectedChild) as Child,
+			note,
+			total: totalPrice,
+		}
+
+		dispatch({
+			type: 'ADD_TO_CART',
+			payload: payload
+		})
+
 		setSelectedMain(null);
 		setSelectedChild(null);
 		setSelectedDate(undefined);
@@ -94,7 +115,7 @@ const OrderPage: React.FC = () => {
 	const renderSelectionSummary = () => {
 		const selectedMainItem = state.mains.find((main) => main.id === selectedMain);
 		return (
-			<div className="bg-gray-100 p-3 rounded-md mb-4">
+			<div className="bg-green-100 p-3 rounded-md mb-4">
 				<h3 className="text-sm font-semibold mb-2">Your Current Selection:</h3>
 				{selectedMainItem && (
 					<p>
@@ -325,7 +346,7 @@ const OrderPage: React.FC = () => {
 	};
 
 	return (
-		<div className="container mx-auto py-8">
+		<div className="container mx-auto p-4 py-8">
 			<h1 className="text-4xl font-bold">Order</h1>
 			<h2 className="text-lg mb-2">Start by selecting a main dish</h2>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -366,7 +387,7 @@ const OrderPage: React.FC = () => {
 									Next
 								</Button>
 							) : (
-								<Button onClick={handleConfirmOrder}>Add to Cart</Button>
+								<Button onClick={handleAddToCart}>Add to Cart</Button>
 							)}
 						</div>
 					</div>
