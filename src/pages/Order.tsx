@@ -87,8 +87,10 @@ const OrderPage: React.FC = () => {
 		})
 
 		setSelectedMain(null);
+		setSelectedAddons([]);
 		setSelectedChild(null);
 		setSelectedDate(undefined);
+		setNote('');
 		setStep(1);
 	};
 
@@ -288,9 +290,18 @@ const OrderPage: React.FC = () => {
 		);
 	};
 
-	const isWeekday = (date: Date) => {
+	const isValidDate = (date: Date) => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
+		
 		const day = date.getDay();
-		return day === 0 || day === 6;
+		const isWeekend = day === 0 || day === 6;
+		const isPast = date <= today;
+
+		return isWeekend || isPast;
 	};
 
 	const renderStepContent = () => {
@@ -315,7 +326,7 @@ const OrderPage: React.FC = () => {
 									mode="single"
 									selected={selectedDate}
 									onSelect={setSelectedDate}
-									disabled={isWeekday}
+									disabled={isValidDate}
 									className="rounded-md border"
 								/>
 							</div>

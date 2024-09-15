@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Meal } from '@/models/order.model';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { AddOn, Main } from '@/models/item.model';
 
 const Cart: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 	const { cart, isCartOpen, user } = state;
-	const [editingMeal, setEditingMeal] = useState<string | null>(null);
-	const [tempChildId, setTempChildId] = useState<string>('');
-	const [tempOrderDate, setTempOrderDate] = useState<Date | undefined>(undefined);
+	const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 	const closeCart = () => dispatch({ type: 'TOGGLE_CART' });
@@ -24,23 +26,15 @@ const Cart: React.FC = () => {
 	};
 
 	const startEditing = (meal: Meal) => {
-		setEditingMeal(meal.id);
-		setTempChildId(meal.child.id);
-		setTempOrderDate(new Date(meal.orderDate));
+		setEditingMeal({ ...meal });
 		setIsDialogOpen(true);
 	};
 
 	const updateMeal = () => {
-		if (editingMeal && (tempChildId || tempOrderDate)) {
+		if (editingMeal) {
 			dispatch({
 				type: 'UPDATE_MEAL',
-				payload: {
-					mealId: editingMeal,
-					updates: {
-						childId: tempChildId,
-						orderDate: tempOrderDate?.toISOString(),
-					},
-				},
+				payload: editingMeal,
 			});
 		}
 		setEditingMeal(null);
@@ -52,9 +46,40 @@ const Cart: React.FC = () => {
 		setIsDialogOpen(false);
 	};
 
-	const isWeekday = (date: Date) => {
+	const isValidDate = (date: Date) => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
+		
 		const day = date.getDay();
-		return day === 0 || day === 6;
+		const isWeekend = day === 0 || day === 6;
+		const isPast = date <= today;
+
+		return isWeekend || isPast;
+	};
+
+	const handleCheckout = () => {
+		console.log(cart);
+	};
+
+	const handleAddOnToggle = (addonId: string) => {
+		if (editingMeal) {
+			const updatedAddOns = editingMeal.addOns.some((addon) => addon.id === addonId)
+				? editingMeal.addOns.filter((addon) => addon.id !== addonId)
+				: [...editingMeal.addOns, state.addOns.find((addon) => addon.id === addonId)!];
+
+			setEditingMeal({
+				...editingMeal,
+				addOns: updatedAddOns,
+				total: calculateTotal(editingMeal.main, updatedAddOns),
+			});
+		}
+	};
+
+	const calculateTotal = (main: Main, addOns: AddOn[]) => {
+		return main.price + addOns.reduce((sum, addon) => sum + addon.price, 0);
 	};
 
 	return (
@@ -64,20 +89,19 @@ const Cart: React.FC = () => {
 		>
 			<SheetContent
 				side="right"
-				className="w-full md:w-[400px]"
+				className="w-full md:w-[400px] custom-sheet-header"
 			>
-				<SheetHeader>
+				<SheetHeader className='flex flex-row justify-between items-center space-y-0'>
 					<SheetTitle>Your Cart</SheetTitle>
 					<Button
 						variant="ghost"
 						size="icon"
 						onClick={closeCart}
-						className="absolute right-4 top-4"
 					>
 						<X className="h-4 w-4" />
 					</Button>
 				</SheetHeader>
-				<ScrollArea className="h-[calc(100vh-10rem)] mt-4">
+				<ScrollArea className="h-[calc(100vh-12rem)] mt-4">
 					{cart && cart.meals.length > 0 ? (
 						cart.meals.map((meal) => (
 							<div
@@ -110,39 +134,112 @@ const Cart: React.FC = () => {
 											<DialogHeader>
 												<DialogTitle>Edit Order</DialogTitle>
 											</DialogHeader>
-											<div className="space-y-4 mt-4">
-												<div>
-													<label className="text-sm font-medium">Child</label>
-													<Select
-														value={tempChildId}
-														onValueChange={setTempChildId}
-													>
-														<SelectTrigger>
-															<SelectValue placeholder="Select a child" />
-														</SelectTrigger>
-														<SelectContent>
-															{user?.children.map((child) => (
-																<SelectItem
-																	key={child.id}
-																	value={child.id}
-																>
-																	{child.name}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+											{editingMeal && (
+												<div className="space-y-4 mt-4">
+													<div>
+														<label className="text-sm font-medium">Main Dish</label>
+														<Select
+															value={editingMeal.main.id}
+															onValueChange={(value) => {
+																const newMain = state.mains.find(
+																	(main) => main.id === value
+																)!;
+																setEditingMeal({
+																	...editingMeal,
+																	main: newMain,
+																	total: calculateTotal(newMain, editingMeal.addOns),
+																});
+															}}
+														>
+															<SelectTrigger>
+																<SelectValue placeholder="Select main dish" />
+															</SelectTrigger>
+															<SelectContent>
+																{state.mains.map((main) => (
+																	<SelectItem
+																		key={main.id}
+																		value={main.id}
+																	>
+																		{main.display}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+													<div>
+														<label className="text-sm font-medium">Add-ons</label>
+														{state.addOns.map((addon) => (
+															<div
+																key={addon.id}
+																className="flex items-center space-x-2 mb-2"
+															>
+																<Checkbox
+																	id={addon.id}
+																	checked={editingMeal.addOns.some(
+																		(a) => a.id === addon.id
+																	)}
+																	onCheckedChange={() => handleAddOnToggle(addon.id)}
+																/>
+																<Label htmlFor={addon.id}>{addon.display}</Label>
+															</div>
+														))}
+													</div>
+													<div>
+														<label className="text-sm font-medium">Child</label>
+														<Select
+															value={editingMeal.child.id}
+															onValueChange={(value) => {
+																const newChild = user?.children.find(
+																	(child) => child.id === value
+																)!;
+																setEditingMeal({ ...editingMeal, child: newChild });
+															}}
+														>
+															<SelectTrigger>
+																<SelectValue placeholder="Select a child" />
+															</SelectTrigger>
+															<SelectContent>
+																{user?.children.map((child) => (
+																	<SelectItem
+																		key={child.id}
+																		value={child.id}
+																	>
+																		{child.name}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+													<div>
+														<label className="text-sm font-medium">Date</label>
+														<Calendar
+															mode="single"
+															selected={new Date(editingMeal.orderDate)}
+															onSelect={(date) =>
+																date &&
+																setEditingMeal({
+																	...editingMeal,
+																	orderDate: date.toISOString(),
+																})
+															}
+															disabled={isValidDate}
+															className="rounded-md border"
+														/>
+													</div>
+													<div>
+														<label className="text-sm font-medium">
+															Special Instructions
+														</label>
+														<Textarea
+															value={editingMeal.note}
+															onChange={(e) =>
+																setEditingMeal({ ...editingMeal, note: e.target.value })
+															}
+															placeholder="Any special instructions for your order"
+														/>
+													</div>
 												</div>
-												<div>
-													<label className="text-sm font-medium">Date</label>
-													<Calendar
-														mode="single"
-														selected={tempOrderDate}
-														onSelect={setTempOrderDate}
-														disabled={isWeekday}
-														className="rounded-md border"
-													/>
-												</div>
-											</div>
+											)}
 											<DialogFooter>
 												<Button
 													variant="outline"
@@ -150,7 +247,7 @@ const Cart: React.FC = () => {
 												>
 													Cancel
 												</Button>
-												<Button onClick={updateMeal}>OK</Button>
+												<Button onClick={updateMeal}>Save Changes</Button>
 											</DialogFooter>
 										</DialogContent>
 									</Dialog>
@@ -171,7 +268,12 @@ const Cart: React.FC = () => {
 				{cart && cart.meals.length > 0 && (
 					<div className="mt-4">
 						<p className="font-semibold text-lg">Total: ${cart.total.toFixed(2)}</p>
-						<Button className="w-full mt-2">Proceed to Checkout</Button>
+						<Button
+							onClick={handleCheckout}
+							className="w-full mt-2"
+						>
+							Proceed to Checkout
+						</Button>
 					</div>
 				)}
 			</SheetContent>

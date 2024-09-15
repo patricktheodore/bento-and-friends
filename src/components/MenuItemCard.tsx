@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Wheat, Egg, Milk, Bean, Leaf } from 'lucide-react';
+import { Wheat, Egg, Milk, Bean } from 'lucide-react';
 
 export interface MenuItemProps {
 	image?: string;
@@ -20,7 +20,7 @@ const allergenIcons: { [key: string]: React.ReactNode } = {
 	soy: <Bean size={18} />,
 };
 
-const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, allergens, isVegetarian, onOrderNow }) => {
+const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, allergens, onOrderNow }) => {
 	return (
 		<Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg flex flex-col h-full">
 			<div className="overflow-hidden h-48 relative">
@@ -52,18 +52,6 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, alle
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2 text-lg font-semibold text-brand-dark-green">
 						<span>{title}</span>
-						{isVegetarian && (
-							<TooltipProvider>
-								<Tooltip>
-								<TooltipTrigger>
-									<Leaf className="h-5 w-5 text-green-500" />
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Vegetarian</p>
-								</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						)}
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="flex-grow">

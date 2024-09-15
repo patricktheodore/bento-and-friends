@@ -7,15 +7,13 @@ export class Order {
     id: string;
     userId: string;
     userEmail: string;
-    deliveryDate: string;
     meals: Meal[];
     total: number;
     status: string;
-    constructor(userId: string, userEmail:string, deliveryDate:string, meals: Meal[], total: number, status: string, id?: string) {
+    constructor(userId: string, userEmail:string, meals: Meal[], total: number, status: string, id?: string) {
         this.id = id ?? uuidv4();
         this.userId = userId;
         this.userEmail = userEmail;
-        this.deliveryDate = deliveryDate;
         this.meals = meals;
         this.total = total;
         this.status = status;

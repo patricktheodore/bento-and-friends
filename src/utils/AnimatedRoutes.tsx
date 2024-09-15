@@ -9,7 +9,7 @@ import SignOut from '../pages/SignOut';
 import MenuPage from '../pages/Menu';
 import OrderPage from '../pages/Order';
 import AboutPage from '../pages/About';
-import ContactPage from '../pages/Enquire';
+import ContactPage from '../pages/Contact';
 import AdminDashboardPage from '../pages/AdminDashboard';
 import SchoolsPage from '../pages/Schools';
 import { AdminRoute } from './RouteGuard';

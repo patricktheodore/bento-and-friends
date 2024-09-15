@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { User, Child } from '../models/user.model';
+import { User } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
@@ -24,29 +24,28 @@ type AppState = {
 
 // Define action types
 type Action =
-  | { type: 'SET_USER'; payload: User | null }
-  | { type: 'UPDATE_USER'; payload: Partial<User> }
-  | { type: 'ADD_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
-  | { type: 'UPDATE_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
-  | { type: 'SET_MENU_ITEMS'; payload: Array<Main | Probiotic | Fruit | Drink | AddOn> }
-  | { type: 'SET_MAINS'; payload: Main[] }
-  | { type: 'SET_PROBIOTICS'; payload: Probiotic[] }
-  | { type: 'SET_FRUITS'; payload: Fruit[] }
-  | { type: 'SET_DRINKS'; payload: Drink[] }
-  | { type: 'SET_ADD_ONS'; payload: AddOn[] }
-  | { type: 'ADD_TO_CART'; payload: Meal }
-  | { type: 'REMOVE_FROM_CART'; payload: string }
-  | { type: 'CLEAR_CART' }
-  | { type: 'UPDATE_CART'; payload: Meal[] }
-  | { type: 'UPDATE_MEAL'; payload: { mealId: string; updates: { childId?: string; orderDate?: string } } }
-  | { type: "TOGGLE_CART" }
-  | { type: 'SIGN_OUT' }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_SCHOOLS'; payload: School[] }
-  | { type: 'ADD_SCHOOL'; payload: School }
-  | { type: 'UPDATE_SCHOOL'; payload: School };
-  ;
-
+	| { type: 'SET_USER'; payload: User | null }
+	| { type: 'UPDATE_USER'; payload: Partial<User> }
+	| { type: 'ADD_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
+	| { type: 'UPDATE_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
+	| { type: 'SET_MENU_ITEMS'; payload: Array<Main | Probiotic | Fruit | Drink | AddOn> }
+	| { type: 'SET_MAINS'; payload: Main[] }
+	| { type: 'SET_PROBIOTICS'; payload: Probiotic[] }
+	| { type: 'SET_FRUITS'; payload: Fruit[] }
+	| { type: 'SET_DRINKS'; payload: Drink[] }
+	| { type: 'SET_ADD_ONS'; payload: AddOn[] }
+	| { type: 'SET_CART'; payload: Order | null }
+	| { type: 'ADD_TO_CART'; payload: Meal }
+	| { type: 'REMOVE_FROM_CART'; payload: string }
+	| { type: 'CLEAR_CART' }
+	| { type: 'UPDATE_CART'; payload: Meal[] }
+	| { type: 'UPDATE_MEAL'; payload: Meal }
+	| { type: 'TOGGLE_CART' }
+	| { type: 'SIGN_OUT' }
+	| { type: 'SET_LOADING'; payload: boolean }
+	| { type: 'SET_SCHOOLS'; payload: School[] }
+	| { type: 'ADD_SCHOOL'; payload: School }
+	| { type: 'UPDATE_SCHOOL'; payload: School };
 // Initial state
 const initialState: AppState = {
 	user: null,
@@ -62,17 +61,31 @@ const initialState: AppState = {
 	isLoading: true,
 };
 
+const loadCartFromLocalStorage = (): Order | null => {
+	const savedCart = localStorage.getItem('cart');
+	return savedCart ? JSON.parse(savedCart) : null;
+};
+
+const saveCartToLocalStorage = (cart: Order | null) => {
+	if (cart) {
+		localStorage.setItem('cart', JSON.stringify(cart));
+	} else {
+		localStorage.removeItem('cart');
+	}
+};
+
 // Create the context
 const AppContext = createContext<
 	| {
-		state: AppState;
-		dispatch: React.Dispatch<Action>;
+			state: AppState;
+			dispatch: React.Dispatch<Action>;
 	  }
 	| undefined
 >(undefined);
 
 // Reducer function
 const appReducer = (state: AppState, action: Action): AppState => {
+	let newState: AppState;
 	switch (action.type) {
 		case 'SET_USER':
 			return { ...state, user: action.payload };
@@ -82,7 +95,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			if (!state.user) return state;
 			return { ...state, user: { ...state.user, ...action.payload } };
 		case 'SET_SCHOOLS':
-      		return { ...state, schools: action.payload };
+			return { ...state, schools: action.payload };
 		case 'ADD_SCHOOL':
 			return { ...state, schools: [...state.schools, action.payload] };
 		case 'UPDATE_SCHOOL':
@@ -110,69 +123,70 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		case 'SET_ADD_ONS':
 			return { ...state, addOns: action.payload };
 		case 'SET_LOADING':
-      		return { ...state, isLoading: action.payload };
+			return { ...state, isLoading: action.payload };
+		case 'SET_CART':
+			newState = { ...state, cart: action.payload };
+			saveCartToLocalStorage(action.payload);
+			return newState;
 		case 'ADD_TO_CART':
 			if (!state.cart) {
-				return {
+				newState = {
 					...state,
 					cart: {
 						id: uuidv4(),
 						userId: state.user?.id || '',
 						userEmail: state.user?.email || '',
-						deliveryDate: new Date().toISOString(),
 						meals: [action.payload],
 						total: action.payload.total,
 						status: 'pending',
 					},
 				};
+			} else {
+				newState = {
+					...state,
+					cart: {
+						...state.cart,
+						meals: [...state.cart.meals, action.payload],
+						total: state.cart.total + action.payload.total,
+					},
+				};
 			}
-			return {
+			saveCartToLocalStorage(newState.cart);
+			return newState;
+		case 'REMOVE_FROM_CART':
+			if (!state.cart) return state;
+			const updatedMeals = state.cart.meals.filter((meal) => meal.id !== action.payload);
+			newState = {
 				...state,
 				cart: {
 					...state.cart,
-					meals: [...state.cart.meals, action.payload],
-					total: state.cart.total + action.payload.total,
+					meals: updatedMeals,
+					total: updatedMeals.reduce((sum, meal) => sum + meal.total, 0),
 				},
 			};
-		case 'REMOVE_FROM_CART':
-			if (!state.cart) return state;
-			const updatedMeals = state.cart.meals.filter(meal => meal.id !== action.payload);
-			return {
-				...state,
-				cart: {
-				...state.cart,
-				meals: updatedMeals,
-				total: updatedMeals.reduce((sum, meal) => sum + meal.total, 0),
-				},
-			};
-		case 'CLEAR_CART':
-			return { ...state, cart: null };
-		case 'TOGGLE_CART':
-			return { ...state, isCartOpen: !state.isCartOpen };
+			saveCartToLocalStorage(newState.cart);
+			return newState;
 		case 'UPDATE_MEAL':
 			if (!state.cart) return state;
-			const updatedMeal = state.cart.meals.map(meal => {
-				if (meal.id === action.payload.mealId) {
-				const updatedChild = action.payload.updates.childId
-					? state.user?.children.find(child => child.id === action.payload.updates.childId) || meal.child
-					: meal.child;
-				return {
-					...meal,
-					child: updatedChild,
-					orderDate: action.payload.updates.orderDate || meal.orderDate
-				};
-				}
-				return meal;
-			});
+			const updatedMeal = state.cart.meals.map(meal =>
+				meal.id === action.payload.id ? action.payload : meal
+			);
+			const newCart = {
+				...state.cart,
+				meals: updatedMeal,
+				total: updatedMeal.reduce((sum, meal) => sum + meal.total, 0),
+			};
+			saveCartToLocalStorage(newCart);
 			return {
 				...state,
-				cart: {
-				...state.cart,
-				meals: updatedMeal
-				}
+				cart: newCart,
 			};
-
-
+		case 'CLEAR_CART':
+			newState = { ...state, cart: null };
+			saveCartToLocalStorage(null);
+			return newState;
+		case 'TOGGLE_CART':
+			return { ...state, isCartOpen: !state.isCartOpen };
 
 		// case 'ADD_TO_ORDER':
 		// 	if (!state.currentOrder) {
@@ -216,40 +230,46 @@ const appReducer = (state: AppState, action: Action): AppState => {
 // Context provider component
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	const [state, dispatch] = useReducer(appReducer, initialState);
-  
+
 	useEffect(() => {
 		const loadAllData = async () => {
-		  dispatch({ type: 'SET_LOADING', payload: true });
-		  try {
-			const [user, schools, mains, probiotics, addOns, fruits, drinks] = await Promise.all([
-			  getCurrentUser(),
-			  getSchools(),
-			  getMains(),
-			  getProbiotics(),
-			  getAddOns(),
-			  getFruits(),
-			  getDrinks()
-			]);
-	
-			dispatch({ type: 'SET_USER', payload: user });
-			dispatch({ type: 'SET_SCHOOLS', payload: schools.data ? schools.data : [] });
-			dispatch({ type: 'SET_MAINS', payload: mains.data ? mains.data : [] });
-			dispatch({ type: 'SET_PROBIOTICS', payload: probiotics.data ? probiotics.data : [] });
-			dispatch({ type: 'SET_ADD_ONS', payload: addOns.data ? addOns.data : [] });
-			dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });
-			dispatch({ type: 'SET_DRINKS', payload: drinks.data ? drinks.data : [] });
-		  } catch (error) {
-			console.error('Error loading data:', error);
-		  } finally {
-			dispatch({ type: 'SET_LOADING', payload: false });
-		  }
+			dispatch({ type: 'SET_LOADING', payload: true });
+			try {
+				const [user, schools, mains, probiotics, addOns, fruits, drinks] = await Promise.all([
+					getCurrentUser(),
+					getSchools(),
+					getMains(),
+					getProbiotics(),
+					getAddOns(),
+					getFruits(),
+					getDrinks(),
+				]);
+
+				dispatch({ type: 'SET_USER', payload: user });
+				dispatch({ type: 'SET_SCHOOLS', payload: schools.data ? schools.data : [] });
+				dispatch({ type: 'SET_MAINS', payload: mains.data ? mains.data : [] });
+				dispatch({ type: 'SET_PROBIOTICS', payload: probiotics.data ? probiotics.data : [] });
+				dispatch({ type: 'SET_ADD_ONS', payload: addOns.data ? addOns.data : [] });
+				dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });
+				dispatch({ type: 'SET_DRINKS', payload: drinks.data ? drinks.data : [] });
+
+				// Load cart from localStorage
+				const savedCart = loadCartFromLocalStorage();
+				if (savedCart) {
+					dispatch({ type: 'SET_CART', payload: savedCart });
+				}
+			} catch (error) {
+				console.error('Error loading data:', error);
+			} finally {
+				dispatch({ type: 'SET_LOADING', payload: false });
+			}
 		};
-	
+
 		loadAllData();
-	  }, []);
-  
+	}, []);
+
 	return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
-  };
+};
 
 // Custom hook to use the AppContext
 export const useAppContext = () => {

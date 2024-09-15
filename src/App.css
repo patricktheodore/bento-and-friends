@@ -161,3 +161,7 @@
     background-color: hsl(var(--switch-foreground)) !important;
   }
 }
+
+.custom-sheet-header > button:first-of-type {
+  display: none !important;
+}
