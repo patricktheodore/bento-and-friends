@@ -9,8 +9,8 @@ const stripe = new Stripe(functions.config().stripe.secret_key, {
 });
 
 interface Meal {
-  main: {display: string};
-  child: {name: string};
+  main: { display: string };
+  child: { name: string };
   orderDate: string;
   total: number;
 }
@@ -22,8 +22,14 @@ interface Cart {
 }
 
 export const createCheckoutSession = functions.https.onCall(
-  async (data:
-    {cart: Cart; successUrl: string; cancelUrl: string}, context) => {
+  async (data: {
+    cart: Cart;
+    bundleDiscount: number;
+    couponDiscount: number;
+    couponCode?: string;
+    successUrl: string;
+    cancelUrl: string;
+  }, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -31,39 +37,72 @@ export const createCheckoutSession = functions.https.onCall(
       );
     }
 
-    const {cart, successUrl, cancelUrl} = data;
+    const {
+      cart,
+      bundleDiscount,
+      couponDiscount,
+      couponCode,
+      successUrl,
+      cancelUrl,
+    } = data;
 
     try {
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        line_items: cart.meals.map((meal) => ({
-          price_data: {
-            currency: "aud",
-            product_data: {
-              name:
-                `${meal.main.display} for ${meal.child.name}`,
-              description:
-                `Order Date: ${new Date(meal.orderDate).toLocaleDateString()}`,
-            },
-            unit_amount: Math.round(meal.total * 100),
+      const lineItems = cart.meals.map((meal) => ({
+        price_data: {
+          currency: "aud",
+          product_data: {
+            name: `${meal.main.display} for ${meal.child.name}`,
+            description:
+              `Order Date: ${new Date(meal.orderDate).toLocaleDateString()}`,
           },
-          quantity: 1,
-        })),
+          unit_amount: Math.round(meal.total * 100),
+        },
+        quantity: 1,
+      }));
+
+      const totalDiscount = bundleDiscount + couponDiscount;
+      let discountCoupon;
+
+      if (totalDiscount > 0) {
+        const discountName = couponCode ?
+          `Bundle + Coupon (${couponCode})` :
+          "Bundle Discount";
+
+        discountCoupon = await stripe.coupons.create({
+          amount_off: Math.round(totalDiscount * 100),
+          currency: "aud",
+          duration: "once",
+          name: discountName,
+        });
+      }
+
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        line_items: lineItems,
         mode: "payment",
         success_url: successUrl,
         cancel_url: cancelUrl,
         metadata: {
           orderId: cart.id,
           userEmail: cart.userEmail,
+          bundleDiscount: bundleDiscount.toString(),
+          couponDiscount: couponDiscount.toString(),
+          couponCode: couponCode || "",
         },
-      });
+      };
+
+      if (discountCoupon) {
+        sessionParams.discounts = [{coupon: discountCoupon.id}];
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       return {sessionId: session.id};
     } catch (error) {
       console.error("Error creating Checkout Session:", error);
       throw new functions.https.HttpsError(
         "internal",
-        "Unable to create Checkout Session"
+        "Unable to create Checkout Session: " + (error as Error).message
       );
     }
   }

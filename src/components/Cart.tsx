@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,7 +7,7 @@ import { X, Trash2, Edit2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Meal } from '@/models/order.model';
+import { Meal, Order } from '@/models/order.model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,10 @@ import { AddOn, Main } from '@/models/item.model';
 import { toast } from 'react-hot-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import DiscountMessage from './DiscountMessage';
+import { Coupon } from '@/models/user.model';
+import { Input } from './ui/input';
+import { validateCoupon } from '../services/coupon-service';
 
 const stripePromise = loadStripe(
 	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
@@ -30,6 +34,67 @@ const Cart: React.FC = () => {
 	const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [couponCode, setCouponCode] = useState('');
+	const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+
+	const calculateDiscount = (mealCount: number) => {
+		if (mealCount >= 5) return 0.2;
+		if (mealCount >= 3) return 0.1;
+		if (mealCount >= 2) return 0.05;
+		return 0;
+	};
+
+	const { bundleDiscountedTotal, bundleDiscountPercentage } = useMemo(() => {
+		if (!cart) return { bundleDiscountedTotal: 0, bundleDiscountPercentage: 0 };
+
+		const mealCount = cart.meals.length;
+		const discount = calculateDiscount(mealCount);
+		const bundleDiscountedTotal = cart.total * (1 - discount);
+
+		return {
+			bundleDiscountedTotal,
+			bundleDiscountPercentage: discount * 100,
+		};
+	}, [cart]);
+
+	const finalTotal = useMemo(() => {
+		if (appliedCoupon) {
+			if (appliedCoupon.discountType === 'percentage') {
+				return bundleDiscountedTotal * (1 - appliedCoupon.discountAmount / 100);
+			} else {
+				return Math.max(0, bundleDiscountedTotal - appliedCoupon.discountAmount);
+			}
+		}
+		return bundleDiscountedTotal;
+	}, [bundleDiscountedTotal, appliedCoupon]);
+
+	const handleApplyCoupon = async (code: string) => {
+		try {
+			console.log('Applying coupon:', code);
+			const couponResult = await validateCoupon(code);
+			console.log('Coupon validation result:', couponResult);
+			if (couponResult.success && couponResult.data) {
+				setAppliedCoupon(couponResult.data);
+				toast.success('Coupon applied successfully!');
+				setCouponCode('');
+			} else {
+				toast.error(couponResult.error || 'Invalid coupon code');
+			}
+		} catch (error) {
+			console.error('Error applying coupon:', error);
+			toast.error('Error applying coupon');
+		}
+	};
+
+	const handleRemoveCoupon = () => {
+		setAppliedCoupon(null);
+		toast.success('Coupon removed');
+	};
+
+	const calculateDiscountedPrice = (mealPrice: number) => {
+		const discount = calculateDiscount(cart?.meals.length || 0);
+		return mealPrice * (1 - discount);
+	};
 
 	const closeCart = () => dispatch({ type: 'TOGGLE_CART' });
 
@@ -75,37 +140,57 @@ const Cart: React.FC = () => {
 
 	const handleCheckout = async () => {
 		if (!cart) return;
-
+	  
 		setIsProcessing(true);
-		const stripe = await stripePromise;
 		const functions = getFunctions();
-		const createCheckoutSession = httpsCallable<{ cart: typeof cart; successUrl: string; cancelUrl: string }, CheckoutSessionResponse>(functions, 'createCheckoutSession');
-
+		const createCheckoutSession = httpsCallable<
+		  {
+			cart: Order;
+			bundleDiscount: number;
+			couponDiscount: number;
+			couponCode?: string;
+			successUrl: string;
+			cancelUrl: string;
+		  },
+		  { sessionId: string }
+		>(functions, 'createCheckoutSession');
+	  
 		try {
-			const result = await createCheckoutSession({
-				cart,
-				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-				cancelUrl: `${window.location.origin}/checkout`,
-			});
-
-			const { sessionId } = result.data;
-
-			if (stripe && sessionId) {
-				const { error } = await stripe.redirectToCheckout({ sessionId });
-
-				if (error) {
-					toast.error(error.message || 'An error occurred during checkout');
-				}
-			} else {
-				throw new Error('Failed to create checkout session');
+		  const bundleDiscount = cart.total - bundleDiscountedTotal;
+		  const couponDiscount = appliedCoupon
+			? (appliedCoupon.discountType === 'percentage'
+			  ? bundleDiscountedTotal * (appliedCoupon.discountAmount / 100)
+			  : appliedCoupon.discountAmount)
+			: 0;
+	  
+		  const result = await createCheckoutSession({
+			cart,
+			bundleDiscount,
+			couponDiscount,
+			couponCode: appliedCoupon?.code,
+			successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+			cancelUrl: `${window.location.origin}/checkout`,
+		  });
+	  
+		  const { sessionId } = result.data;
+	  
+		  if (sessionId) {
+			const stripe = await stripePromise;
+			const { error } = await stripe!.redirectToCheckout({ sessionId });
+	  
+			if (error) {
+			  toast.error(error.message || 'An error occurred during checkout');
 			}
+		  } else {
+			throw new Error('Failed to create checkout session');
+		  }
 		} catch (error) {
-			console.error('Error:', error);
-			toast.error('An error occurred during checkout');
+		  console.error('Error:', error);
+		  toast.error('An error occurred during checkout');
 		} finally {
-			setIsProcessing(false);
+		  setIsProcessing(false);
 		}
-	};
+	  };
 
 	const handleAddOnToggle = (addonId: string) => {
 		if (editingMeal) {
@@ -134,17 +219,25 @@ const Cart: React.FC = () => {
 				side="right"
 				className="w-full md:w-[400px] custom-sheet-header"
 			>
-				<SheetHeader className="flex flex-row justify-between items-center space-y-0">
-					<SheetTitle>Your Cart</SheetTitle>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={closeCart}
-					>
-						<X className="h-4 w-4" />
-					</Button>
+				<SheetHeader className="space-y-0 gap-y-2">
+					<div className="flex flex-row justify-between items-center">
+						<SheetTitle>Your Cart</SheetTitle>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={closeCart}
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
+					{cart && (
+						<DiscountMessage
+							mealCount={cart.meals.length}
+							currentDiscount={bundleDiscountPercentage}
+						/>
+					)}
 				</SheetHeader>
-				<ScrollArea className="h-[calc(100vh-12rem)] mt-4">
+				<ScrollArea className="h-[calc(100vh-22rem)] mt-4">
 					{cart && cart.meals.length > 0 ? (
 						cart.meals.map((meal) => (
 							<div
@@ -158,7 +251,20 @@ const Cart: React.FC = () => {
 								<p className="text-sm">
 									{meal.child.name} - {new Date(meal.orderDate).toLocaleDateString()}
 								</p>
-								<p className="text-sm font-medium">${meal.total.toFixed(2)}</p>
+
+								{bundleDiscountPercentage > 0 ? (
+									<span>
+										<span className="text-sm font-medium line-through mr-2">
+											${meal.total.toFixed(2)}
+										</span>
+										<span className="text-sm font-medium">
+											${calculateDiscountedPrice(meal.total).toFixed(2)}
+										</span>
+									</span>
+								) : (
+									<p className="text-sm font-medium">${meal.total.toFixed(2)}</p>
+								)}
+
 								<div className="flex justify-end space-x-2 mt-2">
 									<Dialog
 										open={isDialogOpen}
@@ -310,7 +416,41 @@ const Cart: React.FC = () => {
 				</ScrollArea>
 				{cart && cart.meals.length > 0 && (
 					<div className="mt-4">
-						<p className="font-semibold text-lg">Total: ${cart.total.toFixed(2)}</p>
+						<span className="font-semibold text-lg flex justify-between items-center">
+							<p>Bundle Discount:</p>
+							<p>-${(cart.total - bundleDiscountedTotal).toFixed(2)}</p>
+						</span>
+						{appliedCoupon && (
+							<span className="font-semibold text-lg flex justify-between items-center">
+								<p>Coupon Discount:</p>
+								<p>-${(bundleDiscountedTotal - finalTotal).toFixed(2)}</p>
+							</span>
+						)}
+						<span className="font-semibold text-lg flex justify-between items-center">
+							<p>Total:</p>
+							<p>${finalTotal.toFixed(2)}</p>
+						</span>
+						{appliedCoupon ? (
+							<div className="flex justify-between items-center mt-2">
+								<p>Applied Coupon: {appliedCoupon.code}</p>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={handleRemoveCoupon}
+								>
+									Remove
+								</Button>
+							</div>
+						) : (
+							<div className="flex space-x-2 mt-2">
+								<Input
+									placeholder="Enter coupon code"
+									value={couponCode}
+									onChange={(e) => setCouponCode(e.target.value)}
+								/>
+								<Button onClick={() => handleApplyCoupon(couponCode)}>Apply</Button>
+							</div>
+						)}
 						<Button
 							onClick={handleCheckout}
 							className="w-full mt-2"

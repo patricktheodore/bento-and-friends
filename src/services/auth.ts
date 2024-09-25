@@ -18,6 +18,7 @@ export const signUp = async (email: string, password: string, displayName: strin
 		email: user.email!,
 		displayName,
 		isAdmin: false,
+		activeCoupons: [],
 		children: [],
 		orderHistory: [],
 	};

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { User } from '../models/user.model';
+import { Coupon, User } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
 import { getMains, getProbiotics, getAddOns, getFruits, getDrinks } from '../services/item-service';
+import { getCoupons } from '@/services/coupon-service';
 import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,6 +19,7 @@ type AppState = {
 	drinks: Drink[];
 	addOns: AddOn[];
 	schools: School[];
+	coupons: Coupon[];
 	items: Array<Main | Probiotic | Fruit | Drink | AddOn>;
 	isLoading: boolean;
 };
@@ -45,7 +47,12 @@ type Action =
 	| { type: 'SET_LOADING'; payload: boolean }
 	| { type: 'SET_SCHOOLS'; payload: School[] }
 	| { type: 'ADD_SCHOOL'; payload: School }
-	| { type: 'UPDATE_SCHOOL'; payload: School };
+	| { type: 'UPDATE_SCHOOL'; payload: School }
+	| { type: 'SET_COUPONS'; payload: Coupon[] }
+	| { type: 'ADD_COUPON'; payload: Coupon }
+	| { type: 'UPDATE_COUPON'; payload: Coupon }
+	| { type: 'DELETE_COUPON'; payload: string };
+
 // Initial state
 const initialState: AppState = {
 	user: null,
@@ -58,6 +65,7 @@ const initialState: AppState = {
 	drinks: [],
 	addOns: [],
 	items: [],
+	coupons: [],
 	isLoading: true,
 };
 
@@ -188,6 +196,23 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		case 'TOGGLE_CART':
 			return { ...state, isCartOpen: !state.isCartOpen };
 
+		case 'SET_COUPONS':
+			return { ...state, coupons: action.payload };
+		case 'ADD_COUPON':
+			return { ...state, coupons: [...state.coupons, action.payload] };
+		case 'UPDATE_COUPON':
+			return {
+				...state,
+				coupons: state.coupons.map(coupon =>
+				coupon.id === action.payload.id ? action.payload : coupon
+				),
+			};
+		case 'DELETE_COUPON':
+			return {
+				...state,
+				coupons: state.coupons.filter(coupon => coupon.id !== action.payload),
+			};
+
 		// case 'ADD_TO_ORDER':
 		// 	if (!state.currentOrder) {
 		// 		return {
@@ -235,7 +260,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 		const loadAllData = async () => {
 			dispatch({ type: 'SET_LOADING', payload: true });
 			try {
-				const [user, schools, mains, probiotics, addOns, fruits, drinks] = await Promise.all([
+				const [user, schools, mains, probiotics, addOns, fruits, drinks, coupons] = await Promise.all([
 					getCurrentUser(),
 					getSchools(),
 					getMains(),
@@ -243,6 +268,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 					getAddOns(),
 					getFruits(),
 					getDrinks(),
+					getCoupons(),
 				]);
 
 				dispatch({ type: 'SET_USER', payload: user });
@@ -252,6 +278,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 				dispatch({ type: 'SET_ADD_ONS', payload: addOns.data ? addOns.data : [] });
 				dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });
 				dispatch({ type: 'SET_DRINKS', payload: drinks.data ? drinks.data : [] });
+				dispatch({ type: 'SET_COUPONS', payload: coupons.data ? coupons.data : [] });
 
 				// Load cart from localStorage
 				const savedCart = loadCartFromLocalStorage();

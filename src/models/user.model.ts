@@ -1,4 +1,3 @@
-import { Order } from "../models/order.model";
 import { v4 as uuidv4 } from 'uuid';
 
 export class User {
@@ -8,6 +7,7 @@ export class User {
     isAdmin: boolean;
     children: Child[];
     orderHistory: OrderHistorySummary[];
+    activeCoupons: Coupon[];
     constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[]) {
         this.id = uuidv4();
         this.displayName = displayName;
@@ -15,6 +15,7 @@ export class User {
         this.isAdmin = isAdmin ?? false;
         this.orderHistory = orderHistory;
         this.children = children ?? [];
+        this.activeCoupons = [];
     }
 }
 
@@ -47,5 +48,24 @@ export class Child {
         this.school = school;
         this.className = className;
         this.allergens = allergens;
+    }
+}
+
+export class Coupon {
+    id: string;
+    code: string;
+    discountType: "percentage" | "fixed";
+    discountAmount: number;
+    expiryDate: string;
+    isSingleUse: boolean = false;
+    isActive: boolean = true;
+    constructor(code: string, discountType: "percentage" | "fixed", discountAmount: number, expiryDate: string, isSingleUse: boolean = false, isActive: boolean = true) {
+        this.id = uuidv4();
+        this.code = code;
+        this.discountType = discountType;
+        this.discountAmount = discountAmount;
+        this.expiryDate = expiryDate;
+        this.isSingleUse = isSingleUse;
+        this.isActive = isActive;
     }
 }
