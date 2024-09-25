@@ -25,7 +25,8 @@ const HomePage: React.FC = () => {
 				</div>
 
 				<div className="z-10 text-center px-4">
-					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-8">Welcome to Bento & Friends!</h1>
+					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-2">Welcome to Bento & Friends!</h1>
+					<h2 className='text-2xl md:text-4xl text-brand-cream mb-8 font-light'>Powering our school kids with every bite.</h2>
 					{state.user ? (
 						<Link
 							to="/order"

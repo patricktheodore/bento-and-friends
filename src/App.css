@@ -165,3 +165,27 @@
 .custom-sheet-header > button:first-of-type {
   display: none !important;
 }
+
+.rolling-banner {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.banner-content {
+  display: inline-block;
+  animation: roll 30s linear infinite;
+}
+
+@keyframes roll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Pause animation on hover */
+.rolling-banner:hover .banner-content {
+  animation-play-state: paused;
+}

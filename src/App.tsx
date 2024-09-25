@@ -6,6 +6,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import AnimatedRoutes from './utils/AnimatedRoutes';
 import ScrollToTop from './utils/ScrollToTop';
 import { Toaster } from 'react-hot-toast';
+import RollingBanner from './components/RollingBanner';
 
 const App: React.FC = () => {
 	return (
@@ -14,6 +15,7 @@ const App: React.FC = () => {
 				<ScrollToTop />
 				<div className="flex flex-col min-h-screen">
 					<Header />
+					<RollingBanner />
 					<main className="w-full min-h-[75vh] flex-grow bg-primary">
 						<AnimatedRoutes />
 					</main>
