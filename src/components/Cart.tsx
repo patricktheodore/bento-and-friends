@@ -13,12 +13,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AddOn, Main } from '@/models/item.model';
 import { toast } from 'react-hot-toast';
+import { loadStripe } from '@stripe/stripe-js';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+const stripePromise = loadStripe(
+	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
+);
+
+interface CheckoutSessionResponse {
+	sessionId: string;
+}
 
 const Cart: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 	const { cart, isCartOpen, user } = state;
 	const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [isProcessing, setIsProcessing] = useState(false);
 
 	const closeCart = () => dispatch({ type: 'TOGGLE_CART' });
 
@@ -55,7 +66,6 @@ const Cart: React.FC = () => {
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
-		
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
 		const isPast = date <= today;
@@ -63,8 +73,38 @@ const Cart: React.FC = () => {
 		return isWeekend || isPast;
 	};
 
-	const handleCheckout = () => {
-		console.log(cart);
+	const handleCheckout = async () => {
+		if (!cart) return;
+
+		setIsProcessing(true);
+		const stripe = await stripePromise;
+		const functions = getFunctions();
+		const createCheckoutSession = httpsCallable<{ cart: typeof cart; successUrl: string; cancelUrl: string }, CheckoutSessionResponse>(functions, 'createCheckoutSession');
+
+		try {
+			const result = await createCheckoutSession({
+				cart,
+				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+				cancelUrl: `${window.location.origin}/checkout`,
+			});
+
+			const { sessionId } = result.data;
+
+			if (stripe && sessionId) {
+				const { error } = await stripe.redirectToCheckout({ sessionId });
+
+				if (error) {
+					toast.error(error.message || 'An error occurred during checkout');
+				}
+			} else {
+				throw new Error('Failed to create checkout session');
+			}
+		} catch (error) {
+			console.error('Error:', error);
+			toast.error('An error occurred during checkout');
+		} finally {
+			setIsProcessing(false);
+		}
 	};
 
 	const handleAddOnToggle = (addonId: string) => {
@@ -94,7 +134,7 @@ const Cart: React.FC = () => {
 				side="right"
 				className="w-full md:w-[400px] custom-sheet-header"
 			>
-				<SheetHeader className='flex flex-row justify-between items-center space-y-0'>
+				<SheetHeader className="flex flex-row justify-between items-center space-y-0">
 					<SheetTitle>Your Cart</SheetTitle>
 					<Button
 						variant="ghost"
@@ -274,8 +314,9 @@ const Cart: React.FC = () => {
 						<Button
 							onClick={handleCheckout}
 							className="w-full mt-2"
+							disabled={isProcessing}
 						>
-							Proceed to Checkout
+							{isProcessing ? 'Processing...' : 'Proceed to Checkout'}
 						</Button>
 					</div>
 				)}

@@ -4,19 +4,11 @@ import ChildrenManagement from '../components/ChildrenManagement';
 import { Child } from '../models/user.model';
 import { updateUserInFirebase } from '../services/user-service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-const tabs = [
-	{ name: 'Profile', component: ChildrenManagement },
-	{ name: 'Order History', component: null },
-];
+import OrderHistory from '@/components/OrderHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const AccountPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
-	const [activeTab, setActiveTab] = useState<number>(0);
-
-	const handleTabClick = (index: number) => {
-		setActiveTab(index);
-	};
 
 	const handleAddChild = (childData: Omit<Child, 'id'>) => {
 		if (state.user) {
@@ -76,41 +68,36 @@ const AccountPage: React.FC = () => {
 	);
 
 	return (
-		<div className="min-h-[75vh] w-full mx-auto p-4 pb-8 flex flex-col justify-start items-center gap-2">
+		<div className="container mx-auto p-4 py-8">
 			{state.user ? (
-				<>
-					<div className="w-full flex justify-between items-center gap-4">
-						<div className="flex justify-start items-center gap-2 rounded-md p-1 bg-stone-200">
-							{tabs.map((tab, index) => (
-								<div
-									key={index}
-									onClick={() => handleTabClick(index)}
-									className={`text-sm rounded-md py-1 px-2 hover:cursor-pointer ${
-										activeTab === index ? 'bg-white font-bold' : 'bg-stone-200'
-									}`}
-								>
-									{tab.name}
-								</div>
-							))}
+				<Tabs defaultValue="profile">
+					<div className="w-full flex justify-between items-center">
+						<h1 className="text-4xl font-bold">My Account</h1>
+						<TabsList>
+							<TabsTrigger value="profile">Profile</TabsTrigger>
+							<TabsTrigger value="order-history">Order History</TabsTrigger>
+						</TabsList>
+					</div>
+					
+					<TabsContent value="profile">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							{state.user.children.length === 0 && <NoChildrenMessage />}
+							<ChildrenManagement
+								user={state.user}
+								onAddChild={handleAddChild}
+								onRemoveChild={handleRemoveChild}
+								onEditChild={handleEditChild}
+							/>
+							{state.user.children.length > 0 && <StartOrderMessage />}
 						</div>
-					</div>
-
-					<div className="w-full bg-white rounded-lg border border-stone-200 p-4">
-						{activeTab === 0 && (
-							<>
-								{state.user.children.length === 0 && <NoChildrenMessage />}
-								<ChildrenManagement
-									user={state.user}
-									onAddChild={handleAddChild}
-									onRemoveChild={handleRemoveChild}
-									onEditChild={handleEditChild}
-								/>
-								{state.user.children.length > 0 && <StartOrderMessage />}
-							</>
-						)}
-					{activeTab === 1 && <div>Order History component not implemented yet</div>}
-					</div>
-				</>
+					</TabsContent>
+					
+					<TabsContent value="order-history">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							<OrderHistory />
+						</div>
+					</TabsContent>
+				</Tabs>
 			) : (
 				<div className="w-full flex flex-col justify-center items-center p-4">
 					<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>

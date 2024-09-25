@@ -13,6 +13,8 @@ import ContactPage from '../pages/Contact';
 import AdminDashboardPage from '../pages/AdminDashboard';
 import SchoolsPage from '../pages/Schools';
 import { AdminRoute } from './RouteGuard';
+import CheckoutPage from '@/pages/Checkout';
+import OrderSuccessPage from '@/pages/OrderSuccess';
 
 const AnimatedRoutes: React.FC = () => {
   const location = useLocation();
@@ -29,6 +31,8 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/signin" element={<PageTransition><UserloginPage /></PageTransition>} />
         <Route path="/signout" element={<PageTransition><SignOut /></PageTransition>} />
         <Route path="/schools" element={<PageTransition><SchoolsPage /></PageTransition>} />
+        <Route path="/checkout" element={<PageTransition><CheckoutPage /></PageTransition>} />
+        <Route path="/order-success" element={<PageTransition><OrderSuccessPage /></PageTransition>} />
 
         {/* admin routes */}
         <Route path='/admin' element={

@@ -7,14 +7,28 @@ export class User {
     email: string;
     isAdmin: boolean;
     children: Child[];
-    orderHistory: Order[];
-    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: Order[]) {
+    orderHistory: OrderHistorySummary[];
+    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[]) {
         this.id = uuidv4();
         this.displayName = displayName;
         this.email = email;
         this.isAdmin = isAdmin ?? false;
         this.orderHistory = orderHistory;
         this.children = children ?? [];
+    }
+}
+
+export class OrderHistorySummary {
+    orderId: string;
+    createdAt: string;
+    total: number;
+    items: number;
+
+    constructor(orderId: string, createdAt: string, total: number, items: number) {
+        this.orderId = orderId;
+        this.createdAt = createdAt;
+        this.total = total;
+        this.items = items;
     }
 }
 

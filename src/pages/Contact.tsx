@@ -15,7 +15,6 @@ type FormData = {
 	name: string;
 	email: string;
 	phone: string;
-	orderReference: string;
 	message: string;
 };
 
@@ -26,7 +25,6 @@ const ContactPage = () => {
 			name: '',
 			email: '',
 			phone: '',
-			orderReference: '',
 			message: '',
 		},
 	});
@@ -43,8 +41,6 @@ const ContactPage = () => {
 		toast("We've received your message and will get back to you soon.");
 		reset();
 	};
-
-	const previousOrders = state.user?.orderHistory?.map((order) => order.id) || [];
 
 	return (
 		<div className="container mx-auto p-4 py-8">
@@ -148,35 +144,6 @@ const ContactPage = () => {
 								)}
 							/>
 						</div>
-						{previousOrders.length > 0 && (
-							<div className="space-y-2">
-								<Label htmlFor="orderReference">Order Reference</Label>
-								<Controller
-									name="orderReference"
-									control={control}
-									render={({ field }) => (
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
-											<SelectTrigger className="w-full bg-white">
-												<SelectValue placeholder="Select an order reference" />
-											</SelectTrigger>
-											<SelectContent>
-												{previousOrders.map((orderId) => (
-													<SelectItem
-														key={orderId}
-														value={orderId}
-													>
-														Order #{orderId}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									)}
-								/>
-							</div>
-						)}
 						<div className="space-y-2">
 							<Label htmlFor="message">Message*</Label>
 							<Controller
