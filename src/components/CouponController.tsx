@@ -130,7 +130,7 @@ const CouponController: React.FC = () => {
             <TableRow>
               <TableHead className="w-1/5">Code</TableHead>
               <TableHead className="w-1/6 hidden md:table-cell">Discount</TableHead>
-              <TableHead className="w-1/6 hidden md:table-cell">Type</TableHead>
+              <TableHead className="w-1/6 hidden md:table-cell">Status</TableHead>
               <TableHead className="w-1/6 hidden md:table-cell">Expiry Date</TableHead>
               <TableHead className="w-1/6 hidden md:table-cell">Usage Type</TableHead>
               <TableHead className="w-1/6">Actions</TableHead>
@@ -146,7 +146,7 @@ const CouponController: React.FC = () => {
                     : `$${coupon.discountAmount}`}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {coupon.discountType.charAt(0).toUpperCase() + coupon.discountType.slice(1)}
+                  {coupon.isActive ? 'Active' : 'Inactive'}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {new Date(coupon.expiryDate).toLocaleDateString()}

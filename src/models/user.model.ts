@@ -59,7 +59,7 @@ export class Coupon {
     expiryDate: string;
     isSingleUse: boolean = false;
     isActive: boolean = true;
-    constructor(code: string, discountType: "percentage" | "fixed", discountAmount: number, expiryDate: string, isSingleUse: boolean = false, isActive: boolean = true) {
+    constructor(code: string, discountType: "percentage" | "fixed", discountAmount: number, expiryDate: string, isSingleUse: boolean = false, isActive: boolean) {
         this.id = uuidv4();
         this.code = code;
         this.discountType = discountType;

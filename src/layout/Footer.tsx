@@ -64,8 +64,6 @@ const Footer: React.FC = () => {
         <div className="mt-8 pt-8 border-t border-brand-cream/30 flex flex-col items-center">
           <div className="flex flex-wrap justify-center space-x-4 mb-6">
             <span>&copy; Bento&Friends {new Date().getFullYear()}</span>
-            <Link to="/terms" className='hover:text-brand-gold'>Terms of Service</Link>
-            <Link to="/privacy" className='hover:text-brand-gold'>Privacy Policy</Link>
           </div>
           <div className="flex space-x-6 mb-6">
             {[faTwitter, faInstagram, faFacebook].map((icon, index) => (

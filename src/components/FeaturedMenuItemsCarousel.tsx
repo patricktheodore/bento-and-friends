@@ -71,9 +71,9 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 	};
 
 	return (
-		<div className="w-full max-w-screen-xl mx-auto p-4 pb-8">
+		<div className="w-full mx-auto p-4 pb-12 mt-8">
 			<div className="flex flex-row items-start justify-between md:items-center px-2 md:px-12 mb-4 gap-y-2">
-				<h2 className="text-2xl md:text-3xl text-primary">Featured Items</h2>
+				<h2 className="text-4xl text-primary">Featured Items</h2>
 				<Link
 					to={'/menu'}
 					className="text-primary underline text-lg font-light tracking-wide hover:cursor-pointer hover:text-secondary underline-offset-[6px] hover:underline-offset-8 transition-all duration-300"

@@ -33,12 +33,14 @@ const CouponModal: React.FC<CouponModalProps> = ({ isOpen, onClose, onSubmit, co
 			setDiscountType(coupon.discountType);
 			setExpiryDate(new Date(coupon.expiryDate));
 			setIsSingleUse(coupon.isSingleUse);
+			setIsActive(coupon.isActive);
 		} else {
 			setCode('');
 			setDiscountAmount('');
 			setDiscountType('percentage');
 			setExpiryDate(undefined);
 			setIsSingleUse(false);
+			setIsActive(true);
 		}
 	}, [coupon]);
 
@@ -54,7 +56,7 @@ const CouponModal: React.FC<CouponModalProps> = ({ isOpen, onClose, onSubmit, co
 			discountType,
 			expiryDate: expiryDate!.toISOString(),
 			isSingleUse,
-			isActive: true,
+			isActive,
 		};
 		onSubmit(newCoupon);
 	};

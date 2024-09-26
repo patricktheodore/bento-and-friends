@@ -8,6 +8,7 @@ import SustainabilityComponent from '../components/Sustainability';
 import AboutUsComponent from '../components/AboutUs';
 import OurStoryComponent from '../components/OurStory';
 import { useAppContext } from '../context/AppContext';
+import DiscountOptionsComponent from '@/components/DiscountOptions';
 
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
@@ -21,7 +22,7 @@ const HomePage: React.FC = () => {
 						backgroundImage: "url('src/assets/image-01.webp')",
 					}}
 				>
-					<div className="absolute inset-0 bg-black opacity-50"></div>
+					<div className="absolute inset-0 bg-black opacity-75"></div>
 				</div>
 
 				<div className="z-10 text-center px-4">
@@ -53,8 +54,9 @@ const HomePage: React.FC = () => {
 				</div>
 			</div>
 			<HowItWorksSummaryComponent />
+			<DiscountOptionsComponent />
 			<NutritionComponent />
-			<AboutUsComponent />
+			{/* <AboutUsComponent /> */}
 			<OurStoryComponent />
             <FeaturedMenuItemsCarousel />
 			{/* <TestimonialsComponent /> */}

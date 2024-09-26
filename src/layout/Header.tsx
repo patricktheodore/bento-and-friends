@@ -82,9 +82,9 @@ const Header: React.FC = () => {
                             className="flex items-center hover:scale-105 transition-transform duration-300 ease-in-out hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-gold"
                         >
                             <img
-                                src="src/assets/logo-green.png"
+                                src="src/assets/bento-logo.png"
                                 alt="Bento&Friends Logo"
-                                className="h-12 w-auto"
+                                className="h-16 w-auto"
                             />
                         </Link>
                         {!state.isLoading && (
