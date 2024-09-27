@@ -8,6 +8,11 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { User } from '../models/user.model';
+import { sendPasswordResetEmail as firebaseSendPasswordResetEmail } from 'firebase/auth';
+
+export const sendPasswordResetEmail = (email: string) => {
+	return firebaseSendPasswordResetEmail(auth, email);
+};
 
 export const signUp = async (email: string, password: string, displayName: string): Promise<User> => {
 	const userCredential = await createUserWithEmailAndPassword(auth, email, password);

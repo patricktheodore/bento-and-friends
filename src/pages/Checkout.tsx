@@ -58,23 +58,29 @@ const CheckoutPage: React.FC = () => {
 	}, [cart]);
 
 	const { finalTotal, couponDiscountAmount, totalDiscountPercentage } = useMemo(() => {
-		let finalTotal = bundleDiscountedTotal;
+		if (!cart) return { finalTotal: 0, couponDiscountAmount: 0, totalDiscountPercentage: 0 };
+	
+		let subtotalAfterBundleDiscount = bundleDiscountedTotal;
 		let couponDiscountAmount = 0;
-
+	
 		if (appliedCoupon) {
-			if (appliedCoupon.discountType === 'percentage') {
-				couponDiscountAmount = bundleDiscountedTotal * (appliedCoupon.discountAmount / 100);
-			} else {
-				couponDiscountAmount = appliedCoupon.discountAmount;
-			}
-			finalTotal -= couponDiscountAmount;
+		  if (appliedCoupon.discountType === 'percentage') {
+			couponDiscountAmount = subtotalAfterBundleDiscount * (appliedCoupon.discountAmount / 100);
+		  } else {
+			couponDiscountAmount = Math.min(appliedCoupon.discountAmount, subtotalAfterBundleDiscount);
+		  }
 		}
-
+	
 		const totalDiscountAmount = bundleDiscountAmount + couponDiscountAmount;
-		const totalDiscountPercentage = cart ? (totalDiscountAmount / cart.total) * 100 : 0;
-
-		return { finalTotal, couponDiscountAmount, totalDiscountPercentage };
-	}, [bundleDiscountedTotal, appliedCoupon, bundleDiscountAmount, cart]);
+		const finalTotal = Math.max(0, subtotalAfterBundleDiscount - couponDiscountAmount);
+		const totalDiscountPercentage = (totalDiscountAmount / cart.total) * 100;
+	
+		return { 
+		  finalTotal, 
+		  couponDiscountAmount, 
+		  totalDiscountPercentage 
+		};
+	}, [cart, bundleDiscountedTotal, bundleDiscountAmount, appliedCoupon]);
 
 	const handleApplyCoupon = async (code: string) => {
 		try {
@@ -436,7 +442,7 @@ const CheckoutPage: React.FC = () => {
 							value={couponCode}
 							onChange={(e) => setCouponCode(e.target.value)}
 						/>
-						<Button onClick={() => handleApplyCoupon(couponCode)}>Apply Coupon</Button>
+						<Button variant={'outline'} onClick={() => handleApplyCoupon(couponCode)}>Apply Coupon</Button>
 					</div>
 				)}
 				<Button

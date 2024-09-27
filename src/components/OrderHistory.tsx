@@ -151,7 +151,8 @@ const OrderHistory: React.FC = () => {
 						<TableRow>
 							<TableHead className="w-[50px]"></TableHead>
 							<TableHead className="w-[150px]">Date</TableHead>
-							<TableHead className="w-[80px]">Total</TableHead>
+							<TableHead className="w-[100px]">Meals</TableHead>
+							<TableHead className="w-[100px]">Total</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -173,6 +174,7 @@ const OrderHistory: React.FC = () => {
 										)}
 									</TableCell>
 									<TableCell>{formatDate(orderSummary.createdAt)}</TableCell>
+									<TableCell>{orderSummary.items}</TableCell>
 									<TableCell>${orderSummary.total.toFixed(2)}</TableCell>
 								</TableRow>
 								{expandedOrderId === orderSummary.orderId && expandedOrderDetails && (
