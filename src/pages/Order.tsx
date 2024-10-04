@@ -7,9 +7,8 @@ import { Calendar } from '../components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Child } from '../models/user.model'; // Make sure this import is correct
+import { Child } from '../models/user.model';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Meal } from '@/models/order.model';
 import { Main } from '@/models/item.model';
 import { School } from '@/models/school.model';
@@ -26,7 +25,6 @@ const OrderPage: React.FC = () => {
 	const [step, setStep] = useState(1);
 	const [isAddingChild, setIsAddingChild] = useState(false);
 	const [newChild, setNewChild] = useState<Child>(new Child());
-	const [note, setNote] = useState('');
 
 	useEffect(() => {
 		if (state.user?.children.length === 1) {
@@ -78,7 +76,6 @@ const OrderPage: React.FC = () => {
 			school: state.schools.find((school) => school.name === state.user?.children.find((child) => child.id === selectedChild)?.school) as School,
 			orderDate: new Date(selectedDate as Date).toISOString(),
 			child: state.user?.children.find((child) => child.id === selectedChild) as Child,
-			note,
 			total: totalPrice,
 		}
 
@@ -93,7 +90,6 @@ const OrderPage: React.FC = () => {
 		setSelectedAddons([]);
 		setSelectedChild(null);
 		setSelectedDate(undefined);
-		setNote('');
 		setStep(1);
 	};
 
@@ -166,15 +162,6 @@ const OrderPage: React.FC = () => {
 							<span>${formatPrice(addon.price)}</span>
 						</div>
 					))}
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="note">Special Instructions</Label>
-					<Textarea
-						id="note"
-						placeholder="Any special instructions or notes for your order"
-						value={note}
-						onChange={(e) => setNote(e.target.value)}
-					/>
 				</div>
 			</div>
 		);
@@ -303,8 +290,11 @@ const OrderPage: React.FC = () => {
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
 		const isPast = date <= today;
+		const isBlocked = state.blockedDates.some(
+			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
+		);
 
-		return isWeekend || isPast;
+		return isWeekend || isPast || isBlocked;
 	};
 
 	const renderStepContent = () => {
@@ -346,12 +336,6 @@ const OrderPage: React.FC = () => {
 							<p>At: {state.user?.children.find((child) => child.id === selectedChild)?.school}</p>
 							<p>On: {selectedDate?.toLocaleDateString()}</p>
 						</div>
-						{note && (
-							<div className="bg-gray-100 p-3 rounded-md">
-								<h3 className="text-sm font-semibold mb-2">Special Instructions:</h3>
-								<p>{note}</p>
-							</div>
-						)}
 					</div>
 				);
 			default:

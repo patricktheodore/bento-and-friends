@@ -29,11 +29,10 @@ export class Meal {
     drink?: Drink;
     child: Child;
     school: School;
-    note: string;
     total: number;
     orderDate: string;
 
-    constructor(main: Main, addOns: AddOn[], probiotic: Probiotic, fruit: Fruit, drink: Drink, child: Child, school: School, note: string, total: number, orderDate: string) {
+    constructor(main: Main, addOns: AddOn[], probiotic: Probiotic, fruit: Fruit, drink: Drink, child: Child, school: School, total: number, orderDate: string) {
         this.id = uuidv4();
         this.main = main;
         this.addOns = addOns;
@@ -42,7 +41,6 @@ export class Meal {
         this.drink = drink || null;
         this.child = child;
         this.school = school;
-        this.note = note;
         this.total = total;
         this.orderDate = orderDate;
     }

@@ -9,11 +9,12 @@ import {
 import Schools from '../components/Schools';
 import ItemController from '../components/ItemController';
 import CouponController from '@/components/CouponController';
+import DeliveryDates from '@/components/DeliveryDates';
 
 const tabs = [
   { name: 'Orders', component: null },
   { name: 'Users', component: null },
-  { name: 'Delivery Dates', component: null },
+  { name: 'Delivery Dates', component: DeliveryDates },
   { name: 'Menu Items', component: ItemController },
   { name: 'Schools', component: Schools },
   { name: 'Coupons', component: CouponController },

@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Meal, Order } from '@/models/order.model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { AddOn, Main } from '@/models/item.model';
 import { toast } from 'react-hot-toast';
 import { loadStripe } from '@stripe/stripe-js';
@@ -131,11 +130,15 @@ const Cart: React.FC = () => {
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
+		
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
 		const isPast = date <= today;
+		const isBlocked = state.blockedDates.some(
+			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
+		);
 
-		return isWeekend || isPast;
+		return isWeekend || isPast || isBlocked;
 	};
 
 	const handleCheckout = async () => {
@@ -373,18 +376,6 @@ const Cart: React.FC = () => {
 															}
 															disabled={isValidDate}
 															className="rounded-md border"
-														/>
-													</div>
-													<div>
-														<label className="text-sm font-medium">
-															Special Instructions
-														</label>
-														<Textarea
-															value={editingMeal.note}
-															onChange={(e) =>
-																setEditingMeal({ ...editingMeal, note: e.target.value })
-															}
-															placeholder="Any special instructions for your order"
 														/>
 													</div>
 												</div>

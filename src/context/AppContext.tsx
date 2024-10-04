@@ -22,6 +22,7 @@ type AppState = {
 	coupons: Coupon[];
 	items: Array<Main | Probiotic | Fruit | Drink | AddOn>;
 	isLoading: boolean;
+	blockedDates: string[];
 };
 
 // Define action types
@@ -51,7 +52,8 @@ type Action =
 	| { type: 'SET_COUPONS'; payload: Coupon[] }
 	| { type: 'ADD_COUPON'; payload: Coupon }
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
-	| { type: 'DELETE_COUPON'; payload: string };
+	| { type: 'DELETE_COUPON'; payload: string }
+	| { type: 'SET_BLOCKED_DATES'; payload: string[] };
 
 // Initial state
 const initialState: AppState = {
@@ -66,6 +68,7 @@ const initialState: AppState = {
 	addOns: [],
 	items: [],
 	coupons: [],
+	blockedDates: [],
 	isLoading: true,
 };
 
@@ -212,6 +215,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
 				...state,
 				coupons: state.coupons.filter(coupon => coupon.id !== action.payload),
 			};
+		case 'SET_BLOCKED_DATES':
+			return { ...state, blockedDates: action.payload };
 
 		// case 'ADD_TO_ORDER':
 		// 	if (!state.currentOrder) {
