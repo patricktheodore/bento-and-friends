@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Coupon, User } from '../models/user.model';
+import { Coupon, OrderHistorySummary, User } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
@@ -53,7 +53,8 @@ type Action =
 	| { type: 'ADD_COUPON'; payload: Coupon }
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
 	| { type: 'DELETE_COUPON'; payload: string }
-	| { type: 'SET_BLOCKED_DATES'; payload: string[] };
+	| { type: 'SET_BLOCKED_DATES'; payload: string[] }
+	| { type: 'CONFIRM_ORDER'; payload: OrderHistorySummary };
 
 // Initial state
 const initialState: AppState = {
@@ -217,6 +218,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			};
 		case 'SET_BLOCKED_DATES':
 			return { ...state, blockedDates: action.payload };
+		case 'CONFIRM_ORDER':
+			if (!state.user) return state;
+			return {
+				...state,
+				user: {
+					...state.user,
+					orderHistory: [action.payload, ...state.user.orderHistory]
+				}
+			};
 
 		// case 'ADD_TO_ORDER':
 		// 	if (!state.currentOrder) {

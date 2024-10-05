@@ -21,14 +21,18 @@ export class User {
 
 export class OrderHistorySummary {
     orderId: string;
+    customOrderNumber?: string;
     createdAt: string;
+    originalTotal: number;
     total: number;
     items: number;
 
-    constructor(orderId: string, createdAt: string, total: number, items: number) {
+    constructor(orderId: string, createdAt: string, originalTotal: number, total: number, items: number, customOrderNumber?: string) {
         this.orderId = orderId;
+        this.customOrderNumber = customOrderNumber ?? '';
         this.createdAt = createdAt;
         this.total = total;
+        this.originalTotal = originalTotal;
         this.items = items;
     }
 }

@@ -5,13 +5,15 @@ import { School } from './school.model';
 
 export class Order {
     id: string;
+    customOrderNumber?: string;
     userId: string;
     userEmail: string;
     meals: Meal[];
     total: number;
     status: string;
-    constructor(userId: string, userEmail:string, meals: Meal[], total: number, status: string, id?: string) {
+    constructor(userId: string, userEmail:string, meals: Meal[], total: number, status: string, id?: string, customOrderNumber?: string) {
         this.id = id ?? uuidv4();
+        this.customOrderNumber = customOrderNumber;
         this.userId = userId;
         this.userEmail = userEmail;
         this.meals = meals;

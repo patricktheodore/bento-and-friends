@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Meal, Order } from '@/models/order.model';
@@ -21,10 +20,6 @@ import DiscountMessage from '../components/DiscountMessage';
 const stripePromise = loadStripe(
 	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
 );
-
-interface CheckoutSessionResponse {
-	sessionId: string;
-}
 
 const CheckoutPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -363,17 +358,6 @@ const CheckoutPage: React.FC = () => {
 													}
 													disabled={isValidDate}
 													className="rounded-md border"
-												/>
-											</div>
-											{/* Special Instructions */}
-											<div>
-												<label className="text-sm font-medium">Special Instructions</label>
-												<Textarea
-													value={editingMeal.note}
-													onChange={(e) =>
-														setEditingMeal({ ...editingMeal, note: e.target.value })
-													}
-													placeholder="Any special instructions for your order"
 												/>
 											</div>
 										</div>

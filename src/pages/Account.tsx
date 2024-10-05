@@ -5,6 +5,7 @@ import { Child } from '../models/user.model';
 import { updateUserInFirebase } from '../services/user-service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import OrderHistory from '@/components/OrderHistory';
+import AccountSummary from '@/components/AccountSummary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const AccountPage: React.FC = () => {
@@ -97,7 +98,11 @@ const AccountPage: React.FC = () => {
 							<OrderHistory />
 						</div>
 					</TabsContent>
+					
+					<AccountSummary user={state.user} />
+					
 				</Tabs>
+
 			) : (
 				<div className="w-full flex flex-col justify-center items-center p-4">
 					<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>

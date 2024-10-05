@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
-import { Order } from '@/models/order.model';
+import { Meal, Order } from '@/models/order.model';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { OrderHistorySummary } from '@/models/user.model';
+
+interface SaveOrderResponse {
+	orderId: string;
+	customOrderNumber: string;
+	finalTotal: number;
+}
 
 const OrderSuccessPage: React.FC = () => {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { state, dispatch } = useAppContext();
-	const [orderSummary, setOrderSummary] = useState<Order | null>(null);
+	const [orderSummary, setOrderSummary] = useState<OrderHistorySummary | null>(null);
+	const [mealSummary, setMealSummary] = useState<Meal[] | undefined>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
@@ -21,15 +29,39 @@ const OrderSuccessPage: React.FC = () => {
 		if (session_id && state.cart) {
 			const saveOrderToDb = async () => {
 				const functions = getFunctions();
-				const saveOrder = httpsCallable(functions, 'saveOrder');
+				const saveOrder = httpsCallable<{ order: Order; sessionId: string }, SaveOrderResponse>(
+					functions,
+					'saveOrder'
+				);
 
 				try {
-					const result = await saveOrder({
-						order: state.cart,
+					const result: HttpsCallableResult<SaveOrderResponse> = await saveOrder({
+						order: state.cart as Order,
 						sessionId: session_id,
 					});
 
-					setOrderSummary(state.cart as Order);
+					const { orderId, customOrderNumber } = result.data;
+					console.log('Order saved:', orderId, customOrderNumber);
+
+					const updatedOrder = {
+						...state.cart,
+						orderId: orderId,
+						customOrderNumber,
+						status: 'paid',
+						createdAt: new Date().toISOString(),
+						items: state.cart?.meals.length ?? 0,
+						originalTotal: state.cart?.total ?? 0,
+						total: result.data.finalTotal,
+					};
+
+					setMealSummary(state.cart?.meals);
+					setOrderSummary(updatedOrder);
+
+					// Dispatch action to update user's order history
+					dispatch({
+						type: 'CONFIRM_ORDER',
+						payload: updatedOrder,
+					});
 
 					// Clear the cart
 					dispatch({ type: 'CLEAR_CART' });
@@ -49,6 +81,10 @@ const OrderSuccessPage: React.FC = () => {
 			navigate('/');
 		}
 	}, [location, state.cart, dispatch, navigate]);
+
+	const calculateSavings = (originalTotal: number, finalTotal: number) => {
+		return originalTotal - finalTotal;
+	};
 
 	const formatDate = (dateString: string): string => {
 		const date = new Date(dateString);
@@ -108,25 +144,44 @@ const OrderSuccessPage: React.FC = () => {
 					</div>
 					<h2 className="text-xl font-semibold mb-4">Order Summary</h2>
 					<div className="space-y-4">
-						{orderSummary.meals.map((meal, index) => (
-							<div
-								key={index}
-								className="border p-4 rounded-md bg-white shadow-sm"
-							>
-								<h3 className="font-semibold">{meal.main.display}</h3>
-								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')}
-								</p>
-								<p className="text-sm">
-									{meal.child.name} - {formatDate(meal.orderDate)}
-								</p>
-								<p className="text-sm font-medium mt-2">${meal.total.toFixed(2)}</p>
-							</div>
-						))}
+						{mealSummary &&
+							mealSummary.map((meal, index) => (
+								<div
+									key={index}
+									className="border p-4 rounded-md bg-white shadow-sm"
+								>
+									<h3 className="font-semibold">{meal.main.display}</h3>
+									<p className="text-sm text-gray-500">
+										{meal.addOns.map((addon) => addon.display).join(', ')}
+									</p>
+									<p className="text-sm">
+										{meal.child.name} - {formatDate(meal.orderDate)}
+									</p>
+									<p className="text-sm font-medium mt-2">${meal.total.toFixed(2)}</p>
+								</div>
+							))}
 					</div>
-					<div className="mt-6 text-right">
-						<p className="text-xl font-bold">Total: ${orderSummary.total.toFixed(2)}</p>
+					<div className="mt-6 bg-green-50 p-4 rounded-lg">
+						<div className="flex justify-between items-center mb-2">
+							<span className="text-lg">Original Total:</span>
+							<span className="text-lg line-through">${orderSummary.originalTotal.toFixed(2)}</span>
+						</div>
+						<div className="flex justify-between items-center mb-2">
+							<span className="text-lg font-semibold">Discounted Total:</span>
+							<span className="text-lg font-semibold text-green-600">
+								${orderSummary.total.toFixed(2)}
+							</span>
+						</div>
+						<div className="flex justify-between items-center text-green-600">
+							<span className="text-lg font-bold">Your Savings:</span>
+							<span className="text-lg font-bold">
+								${calculateSavings(orderSummary.originalTotal, orderSummary.total).toFixed(2)}
+							</span>
+						</div>
 					</div>
+					<p className="mt-4 text-sm text-gray-600 italic">
+						Your savings include bundle discounts and any applied coupons.
+					</p>
 				</div>
 			)}
 		</>

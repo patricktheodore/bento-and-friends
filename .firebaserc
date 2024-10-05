@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "bento-and-friends"
-  }
+    "default": "bento-and-friends",
+    "dev": "bento-and-friends"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
 }

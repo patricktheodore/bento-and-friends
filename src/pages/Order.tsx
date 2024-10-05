@@ -88,7 +88,6 @@ const OrderPage: React.FC = () => {
 
 		setSelectedMain(null);
 		setSelectedAddons([]);
-		setSelectedChild(null);
 		setSelectedDate(undefined);
 		setStep(1);
 	};
