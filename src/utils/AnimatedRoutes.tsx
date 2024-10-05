@@ -15,6 +15,7 @@ import SchoolsPage from '../pages/Schools';
 import { AdminRoute } from './RouteGuard';
 import CheckoutPage from '@/pages/Checkout';
 import OrderSuccessPage from '@/pages/OrderSuccess';
+import RunSheet from '@/pages/RunSheet';
 
 const AnimatedRoutes: React.FC = () => {
   const location = useLocation();
@@ -41,6 +42,14 @@ const AnimatedRoutes: React.FC = () => {
               <AdminDashboardPage />
             </PageTransition>
           </AdminRoute>} 
+        />
+
+        <Route path='/run-sheet' element={
+          <AdminRoute>
+            <PageTransition>
+              <RunSheet />
+            </PageTransition>
+          </AdminRoute>}
         />
         
       </Routes>

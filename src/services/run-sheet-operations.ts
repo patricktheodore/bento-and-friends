@@ -13,7 +13,7 @@ export const getMealsBetweenDates = async (startDate: Date, endDate: Date, schoo
   );
 
   if (schoolId) {
-    q = query(q, where('schoolId', '==', schoolId));
+    q = query(q, where('school.id', '==', schoolId));
   }
 
   const querySnapshot = await getDocs(q);

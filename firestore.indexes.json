@@ -1,13 +1,1 @@
-{
-  "indexes": [
-    {
-      "collectionGroup": "meals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "deliveryDate", "order": "ASCENDING" }
-      ]
-    }
-  ],
-  "fieldOverrides": []
-}
+
