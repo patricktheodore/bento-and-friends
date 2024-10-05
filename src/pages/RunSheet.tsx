@@ -7,9 +7,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Timestamp } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 const RunSheet: React.FC = () => {
 	const { state } = useAppContext();
@@ -28,7 +29,7 @@ const RunSheet: React.FC = () => {
 
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
-		let newRange: DateRange;
+		let newRange: DateRange | undefined;
 
 		switch (option) {
 			case 'today':
@@ -49,14 +50,24 @@ const RunSheet: React.FC = () => {
 				newRange = { from: startOfMonth(today), to: endOfMonth(today) };
 				break;
 			case 'custom':
-				return; // Don't update the date range for custom option
+				setQuickSelect(option);
+				return;
 			default:
 				newRange = { from: today, to: today };
 		}
 
-		setDateRange(newRange);
-		setQuickSelect(option);
-		handleSearch(newRange);
+		if (newRange) {
+			setDateRange(newRange);
+			setQuickSelect(option);
+			handleSearch(newRange);
+		}
+	};
+
+	const handleCustomDateChange = (newRange: DateRange | undefined) => {
+		if (newRange?.from) {
+			setDateRange(newRange);
+			handleSearch(newRange);
+		}
 	};
 
 	const handleSchoolSelect = (schoolId: string) => {
@@ -76,7 +87,10 @@ const RunSheet: React.FC = () => {
 			setMeals(fetchedMeals);
 		} catch (error) {
 			console.error('Error fetching meals:', error);
-			// You might want to show an error message to the user here
+
+      // Show error toast
+      toast.error('There was an error loading the run sheet for selected dates. Please refresh and try again.');
+
 		} finally {
 			setIsLoading(false);
 		}
@@ -115,6 +129,7 @@ const RunSheet: React.FC = () => {
 				<Select
 					value={quickSelect}
 					onValueChange={handleQuickSelect}
+					disabled={isLoading}
 				>
 					<SelectTrigger className="w-full bg-white sm:w-[200px]">
 						<SelectValue placeholder="Select date range" />
@@ -129,53 +144,49 @@ const RunSheet: React.FC = () => {
 					</SelectContent>
 				</Select>
 
-				{quickSelect === 'custom' && (
-					<Popover>
-						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								className="w-full sm:w-[300px] bg-white justify-start text-left font-normal"
-							>
-								<CalendarIcon className="mr-2 h-4 w-4" />
-								{dateRange?.from ? (
-									dateRange.to ? (
-										<>
-											{format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
-										</>
-									) : (
-										format(dateRange.from, 'LLL dd, y')
-									)
-								) : (
-									<span>Pick a date</span>
-								)}
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent
-							className="w-auto p-0"
-							align="start"
+				<Popover>
+					<PopoverTrigger asChild>
+						<Button
+							variant="outline"
+							className={`w-full sm:w-[300px] bg-white justify-start text-left font-normal ${
+								quickSelect !== 'custom' || isLoading ? 'opacity-50 cursor-not-allowed' : ''
+							}`}
+							disabled={quickSelect !== 'custom' || isLoading}
 						>
-							<Calendar
-								initialFocus
-								mode="range"
-								defaultMonth={dateRange?.from}
-								selected={dateRange}
-								onSelect={(newRange) => {
-									if (newRange) {
-										setDateRange(newRange);
-										handleSearch(newRange);
-									}
-								}}
-								numberOfMonths={2}
-							/>
-						</PopoverContent>
-					</Popover>
-				)}
+							<CalendarIcon className="mr-2 h-4 w-4" />
+							{dateRange?.from ? (
+								dateRange.to ? (
+									<>
+										{format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
+									</>
+								) : (
+									format(dateRange.from, 'LLL dd, y')
+								)
+							) : (
+								<span>Pick a date</span>
+							)}
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						className="w-auto p-0"
+						align="start"
+					>
+						<Calendar
+							initialFocus
+							mode="range"
+							defaultMonth={dateRange?.from}
+							selected={dateRange}
+							onSelect={handleCustomDateChange}
+							numberOfMonths={2}
+							disabled={isLoading}
+						/>
+					</PopoverContent>
+				</Popover>
 
 				<Select
 					value={selectedSchool}
-					onValueChange={(school) => {
-						handleSchoolSelect(school);
-					}}
+					onValueChange={handleSchoolSelect}
+					disabled={isLoading}
 				>
 					<SelectTrigger className="w-full bg-white sm:w-[200px]">
 						<SelectValue placeholder="Select school" />
@@ -195,39 +206,45 @@ const RunSheet: React.FC = () => {
 			</div>
 
 			<div className="rounded-md border bg-white">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Date</TableHead>
-							<TableHead>Child</TableHead>
-							<TableHead>School</TableHead>
-							<TableHead>Main Dish</TableHead>
-							<TableHead>Add-ons</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{meals.length === 0 ? (
+				{isLoading ? (
+					<div className="flex justify-center items-center h-40">
+						<Loader2 className="h-8 w-8 animate-spin text-brand-dark-green" />
+					</div>
+				) : (
+					<Table>
+						<TableHeader>
 							<TableRow>
-								<TableCell
-									colSpan={5}
-									className="text-center"
-								>
-									No meals found
-								</TableCell>
+								<TableHead>Date</TableHead>
+								<TableHead>Child</TableHead>
+								<TableHead>School</TableHead>
+								<TableHead>Main Dish</TableHead>
+								<TableHead>Add-ons</TableHead>
 							</TableRow>
-						) : (
-							meals.map((meal) => (
-								<TableRow key={meal.id}>
-									<TableCell>{formatDate(meal.deliveryDate)}</TableCell>
-									<TableCell>{meal.child.name || 'N/A'}</TableCell>
-									<TableCell>{meal.school.name || 'N/A'}</TableCell>
-									<TableCell>{meal.main.display || 'N/A'}</TableCell>
-									<TableCell>{formatAddOns(meal.addOns)}</TableCell>
+						</TableHeader>
+						<TableBody>
+							{meals.length === 0 ? (
+								<TableRow>
+									<TableCell
+										colSpan={5}
+										className="text-center"
+									>
+										No meals found
+									</TableCell>
 								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
+							) : (
+								meals.map((meal) => (
+									<TableRow key={meal.id}>
+										<TableCell>{formatDate(meal.deliveryDate)}</TableCell>
+										<TableCell>{meal.child.name || 'N/A'}</TableCell>
+										<TableCell>{meal.school.name || 'N/A'}</TableCell>
+										<TableCell>{meal.main.display || 'N/A'}</TableCell>
+										<TableCell>{formatAddOns(meal.addOns)}</TableCell>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				)}
 			</div>
 		</div>
 	);
