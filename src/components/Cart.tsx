@@ -18,6 +18,7 @@ import DiscountMessage from './DiscountMessage';
 import { Coupon } from '@/models/user.model';
 import { Input } from './ui/input';
 import { validateCoupon } from '../services/coupon-service';
+import { formatDate } from '@/utils/utils';
 
 const stripePromise = loadStripe(
 	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
@@ -252,7 +253,7 @@ const Cart: React.FC = () => {
 									{meal.addOns.map((addon) => addon.display).join(', ')}
 								</p>
 								<p className="text-sm">
-									{meal.child.name} - {new Date(meal.orderDate).toLocaleDateString()}
+									{meal.child.name} - {formatDate(meal.orderDate)}
 								</p>
 
 								{bundleDiscountPercentage > 0 ? (

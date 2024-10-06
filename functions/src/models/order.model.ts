@@ -4,6 +4,8 @@ interface Child {
   id: string;
   name: string;
   allergens?: string;
+  className: string;
+  year: string;
 }
 
 interface School {
@@ -42,7 +44,7 @@ export interface MealDocument {
   status: string;
   userId: string;
   userEmail: string;
-  child: { id: string; name: string };
+  child: { id: string; name: string, className: string, year: string };
   school: { id: string; name: string };
   allergens?: string;
   main: { id: string; display: string };

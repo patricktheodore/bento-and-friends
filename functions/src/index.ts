@@ -216,7 +216,12 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         status: "scheduled",
         userId: userId,
         userEmail: order.userEmail,
-        child: {id: meal.child.id, name: meal.child.name},
+        child: {
+          id: meal.child.id,
+          name: meal.child.name,
+          className: meal.child.className,
+          year: meal.child.year,
+        },
         school: {id: meal.school.id, name: meal.school.name},
         allergens: meal.child.allergens ?? "",
         main: {id: meal.main.id, display: meal.main.display},

@@ -142,7 +142,7 @@ const OrderSuccessPage: React.FC = () => {
 						<p className="font-bold">Thank you so much for your order!</p>
 						<p>We've received your order details!</p>
 					</div>
-					<h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+					<h2 className="text-xl font-semibold mb-4">Order Summary <span> - #{orderSummary.customOrderNumber}</span></h2>
 					<div className="space-y-4">
 						{mealSummary &&
 							mealSummary.map((meal, index) => (
