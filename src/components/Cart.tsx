@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { X, Trash2, Edit2 } from 'lucide-react';
+import { X, Trash2, Edit2, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ import { Coupon } from '@/models/user.model';
 import { Input } from './ui/input';
 import { validateCoupon } from '../services/coupon-service';
 import { formatDate } from '@/utils/utils';
+import { Alert, AlertDescription } from './ui/alert';
 
 const stripePromise = loadStripe(
 	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
@@ -36,6 +37,36 @@ const Cart: React.FC = () => {
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [couponCode, setCouponCode] = useState('');
 	const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+	const [duplicateOrders, setDuplicateOrders] = useState<{ childName: string; date: string }[]>([]);
+	const [couponError, setCouponError] = useState<string | null>(null);
+
+	const checkDuplicateOrders = useMemo(() => {
+		if (!cart) return [];
+
+		const orderMap = new Map<string, Set<string>>();
+		const duplicates: { childName: string; date: string }[] = [];
+
+		cart.meals.forEach((meal) => {
+			const key = `${meal.child.id}-${meal.orderDate}`;
+			if (!orderMap.has(key)) {
+				orderMap.set(key, new Set());
+			}
+			orderMap.get(key)!.add(meal.id);
+
+			if (orderMap.get(key)!.size > 1) {
+				duplicates.push({
+					childName: meal.child.name,
+					date: formatDate(meal.orderDate),
+				});
+			}
+		});
+
+		return duplicates;
+	}, [cart]);
+
+	useEffect(() => {
+		setDuplicateOrders(checkDuplicateOrders);
+	}, [checkDuplicateOrders]);
 
 	const calculateDiscount = (mealCount: number) => {
 		if (mealCount >= 5) return 0.2;
@@ -77,17 +108,23 @@ const Cart: React.FC = () => {
 				setAppliedCoupon(couponResult.data);
 				toast.success('Coupon applied successfully!');
 				setCouponCode('');
+				setCouponError(null);
 			} else {
-				toast.error(couponResult.error || 'Invalid coupon code');
+				const errorMessage = couponResult.error || 'Invalid coupon code';
+				toast.error(errorMessage);
+				setCouponError(errorMessage);
 			}
 		} catch (error) {
 			console.error('Error applying coupon:', error);
-			toast.error('Error applying coupon');
+			const errorMessage = 'Error applying coupon';
+			toast.error(errorMessage);
+			setCouponError(errorMessage);
 		}
 	};
 
 	const handleRemoveCoupon = () => {
 		setAppliedCoupon(null);
+		setCouponError(null);
 		toast.success('Coupon removed');
 	};
 
@@ -131,12 +168,11 @@ const Cart: React.FC = () => {
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
-		
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
 		const isPast = date <= today;
 		const isBlocked = state.blockedDates.some(
-			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
+			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
 		);
 
 		return isWeekend || isPast || isBlocked;
@@ -144,57 +180,57 @@ const Cart: React.FC = () => {
 
 	const handleCheckout = async () => {
 		if (!cart) return;
-	  
+
 		setIsProcessing(true);
 		const functions = getFunctions();
 		const createCheckoutSession = httpsCallable<
-		  {
-			cart: Order;
-			bundleDiscount: number;
-			couponDiscount: number;
-			couponCode?: string;
-			successUrl: string;
-			cancelUrl: string;
-		  },
-		  { sessionId: string }
+			{
+				cart: Order;
+				bundleDiscount: number;
+				couponDiscount: number;
+				couponCode?: string;
+				successUrl: string;
+				cancelUrl: string;
+			},
+			{ sessionId: string }
 		>(functions, 'createCheckoutSession');
-	  
+
 		try {
-		  const bundleDiscount = cart.total - bundleDiscountedTotal;
-		  const couponDiscount = appliedCoupon
-			? (appliedCoupon.discountType === 'percentage'
-			  ? bundleDiscountedTotal * (appliedCoupon.discountAmount / 100)
-			  : appliedCoupon.discountAmount)
-			: 0;
-	  
-		  const result = await createCheckoutSession({
-			cart,
-			bundleDiscount,
-			couponDiscount,
-			couponCode: appliedCoupon?.code,
-			successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-			cancelUrl: `${window.location.origin}/checkout`,
-		  });
-	  
-		  const { sessionId } = result.data;
-	  
-		  if (sessionId) {
-			const stripe = await stripePromise;
-			const { error } = await stripe!.redirectToCheckout({ sessionId });
-	  
-			if (error) {
-			  toast.error(error.message || 'An error occurred during checkout');
+			const bundleDiscount = cart.total - bundleDiscountedTotal;
+			const couponDiscount = appliedCoupon
+				? appliedCoupon.discountType === 'percentage'
+					? bundleDiscountedTotal * (appliedCoupon.discountAmount / 100)
+					: appliedCoupon.discountAmount
+				: 0;
+
+			const result = await createCheckoutSession({
+				cart,
+				bundleDiscount,
+				couponDiscount,
+				couponCode: appliedCoupon?.code,
+				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+				cancelUrl: `${window.location.origin}/checkout`,
+			});
+
+			const { sessionId } = result.data;
+
+			if (sessionId) {
+				const stripe = await stripePromise;
+				const { error } = await stripe!.redirectToCheckout({ sessionId });
+
+				if (error) {
+					toast.error(error.message || 'An error occurred during checkout');
+				}
+			} else {
+				throw new Error('Failed to create checkout session');
 			}
-		  } else {
-			throw new Error('Failed to create checkout session');
-		  }
 		} catch (error) {
-		  console.error('Error:', error);
-		  toast.error('An error occurred during checkout');
+			console.error('Error:', error);
+			toast.error('An error occurred during checkout');
 		} finally {
-		  setIsProcessing(false);
+			setIsProcessing(false);
 		}
-	  };
+	};
 
 	const handleAddOnToggle = (addonId: string) => {
 		if (editingMeal) {
@@ -241,7 +277,27 @@ const Cart: React.FC = () => {
 						/>
 					)}
 				</SheetHeader>
-				<ScrollArea className="h-[calc(100vh-22rem)] mt-4">
+
+				<ScrollArea className="h-[calc(100vh-22rem)] mt-2">
+					{duplicateOrders.length > 0 && (
+						<Alert
+							variant="destructive"
+							className="mt-4"
+						>
+							<AlertTriangle className="h-4 w-4" />
+							<AlertDescription>
+								Warning: You have ordered multiple meals for the same child on the same day:
+								<ul className="list-disc list-inside">
+									{duplicateOrders.map((order, index) => (
+										<li key={index}>
+											{order.childName} on {order.date}
+										</li>
+									))}
+								</ul>
+							</AlertDescription>
+						</Alert>
+					)}
+
 					{cart && cart.meals.length > 0 ? (
 						cart.meals.map((meal) => (
 							<div
@@ -434,13 +490,19 @@ const Cart: React.FC = () => {
 								</Button>
 							</div>
 						) : (
-							<div className="flex space-x-2 mt-2">
-								<Input
-									placeholder="Enter coupon code"
-									value={couponCode}
-									onChange={(e) => setCouponCode(e.target.value)}
-								/>
-								<Button onClick={() => handleApplyCoupon(couponCode)}>Apply</Button>
+							<div className="space-y-2 mt-2">
+								<div className="flex space-x-2">
+									<Input
+										placeholder="Enter coupon code"
+										value={couponCode}
+										onChange={(e) => {
+											setCouponCode(e.target.value);
+											setCouponError(null); // Clear error when input changes
+										}}
+									/>
+									<Button onClick={() => handleApplyCoupon(couponCode)}>Apply</Button>
+								</div>
+								{couponError && <p className="text-red-600 text-sm">{couponError}</p>}
 							</div>
 						)}
 						<Button

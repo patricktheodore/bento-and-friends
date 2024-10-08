@@ -6,6 +6,12 @@ import {InputMeal, MealDocument} from "./models/order.model";
 
 admin.initializeApp();
 
+interface UpdateMealDateRequest {
+  orderId: string;
+  mealId: string;
+  newDeliveryDate: string;
+}
+
 const stripe = new Stripe(functions.config().stripe.secret_key, {
   apiVersion: "2024-06-20",
 });
@@ -133,12 +139,10 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    const bundleDiscount =
-      parseFloat(session.metadata?.bundleDiscount || "0");
-    const couponDiscount =
-      parseFloat(session.metadata?.couponDiscount || "0");
-    const finalTotal =
-      parseFloat(session.metadata?.finalTotal || order.total.toString());
+    const bundleDiscount = parseFloat(session.metadata?.bundleDiscount || "0");
+    const couponDiscount = parseFloat(session.metadata?.couponDiscount || "0");
+    const finalTotal = parseFloat(session.metadata?.finalTotal ||
+      order.total.toString());
 
     // Start a new transaction
     const result = await db.runTransaction(async (transaction) => {
@@ -163,6 +167,12 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       const userData = userDoc.data();
       const orderHistory = userData?.orderHistory || [];
 
+      // Generate meal IDs beforehand
+      const mealsWithIds = order.meals.map((meal: InputMeal) => ({
+        ...meal,
+        id: db.collection("meals").doc().id, // Generate a new ID for each meal
+      }));
+
       // Now perform all writes
       const now = admin.firestore.Timestamp.now();
       const orderRef = db.collection("orders").doc();
@@ -178,6 +188,7 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         couponDiscount,
         originalTotal: order.total,
         finalTotal: finalTotal,
+        meals: mealsWithIds, // Use the meals with generated IDs
       };
 
       const newOrderHistoryEntry = {
@@ -186,7 +197,7 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         createdAt: now.toDate().toISOString(),
         originalTotal: order.total,
         total: finalTotal,
-        items: order.meals.length,
+        items: mealsWithIds.length,
       };
 
       // Update the counter
@@ -200,62 +211,129 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         orderHistory: [...orderHistory, newOrderHistoryEntry],
       });
 
-      return {orderId: orderRef.id, customOrderNumber, finalTotal};
-    });
+      // Create meal documents within the transaction
+      mealsWithIds.forEach((meal: InputMeal & { id: string }) => {
+        const mealRef = db.collection("meals").doc(meal.id);
+        const deliveryDate = new Date(meal.orderDate);
 
-    // After the transaction, add meals to the "meals" collection
-    const mealWrites = order.meals.map((meal: InputMeal) => {
-      const mealRef = db.collection("meals").doc();
-      const deliveryDate = new Date(meal.orderDate);
-
-      const mealData: MealDocument = {
-        id: mealRef.id,
-        orderId: result.orderId,
-        customOrderNumber: result.customOrderNumber,
-        deliveryDate: Timestamp.fromDate(deliveryDate),
-        status: "scheduled",
-        userId: userId,
-        userEmail: order.userEmail,
-        child: {
-          id: meal.child.id,
-          name: meal.child.name,
-          className: meal.child.className,
-          year: meal.child.year,
-        },
-        school: {id: meal.school.id, name: meal.school.name},
-        allergens: meal.child.allergens ?? "",
-        main: {id: meal.main.id, display: meal.main.display},
-        probiotic: {
-          id: meal.probiotic?.id ?? "",
-          display: meal.probiotic?.display ?? "",
-        },
-        fruit: {
-          id: meal.fruit?.id ?? "",
-          display: meal.fruit?.display ?? "",
-        },
-        drink: {
-          id: meal.drink?.id ?? "",
-          display: meal.drink?.display ?? "",
-        },
-        addOns:
-          meal.addOns?.map((addOn) => ({
+        const mealData: MealDocument = {
+          id: meal.id,
+          orderId: orderRef.id,
+          customOrderNumber,
+          deliveryDate: Timestamp.fromDate(deliveryDate),
+          status: "scheduled",
+          userId,
+          userEmail: order.userEmail,
+          child: {
+            id: meal.child.id,
+            name: meal.child.name,
+            className: meal.child.className,
+            year: meal.child.year,
+          },
+          school: {id: meal.school.id, name: meal.school.name},
+          allergens: meal.child.allergens ?? "",
+          main: {id: meal.main.id, display: meal.main.display},
+          probiotic: {
+            id: meal.probiotic?.id ?? "",
+            display: meal.probiotic?.display ?? "",
+          },
+          fruit: {
+            id: meal.fruit?.id ?? "",
+            display: meal.fruit?.display ?? "",
+          },
+          drink: {
+            id: meal.drink?.id ?? "",
+            display: meal.drink?.display ?? "",
+          },
+          addOns: meal.addOns?.map((addOn) => ({
             id: addOn.id,
             display: addOn.display,
-          })) ?? []
-        ,
-      };
+          })) ?? [],
+        };
 
-      return mealRef.set(mealData);
+        transaction.set(mealRef, mealData);
+      });
+
+      return {orderId: orderRef.id, customOrderNumber, finalTotal};
     });
-
-    await Promise.all(mealWrites);
 
     console.log(`Order saved with ID: ${result.customOrderNumber}`);
     return result;
   } catch (error) {
     console.error("Error saving order:", error);
     throw new functions.https.HttpsError(
-      "internal", "Unable to save order: " + (error as Error).message
+      "internal",
+      "Unable to save order: " + (error as Error).message
     );
   }
 });
+
+export const updateMealDeliveryDate =
+  functions.https.onCall(async (data: UpdateMealDateRequest, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to update a meal delivery date."
+      );
+    }
+
+    const {orderId, mealId, newDeliveryDate} = data;
+    const db = admin.firestore();
+
+    try {
+      // Start a new transaction
+      const result = await db.runTransaction(async (transaction) => {
+        const orderRef = db.collection("orders").doc(orderId);
+        const mealRef = db.collection("meals").doc(mealId);
+
+        const orderDoc = await transaction.get(orderRef);
+        const mealDoc = await transaction.get(mealRef);
+
+        if (!orderDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Order not found");
+        }
+
+        if (!mealDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Meal not found");
+        }
+
+        const orderData = orderDoc.data();
+        const mealData = mealDoc.data();
+
+        if (!orderData || !mealData) {
+          throw new functions.https.HttpsError(
+            "internal", "Error retrieving order or meal data"
+          );
+        }
+
+        // Update the meal in the order document
+        const updatedMeals = orderData.meals.map((meal: any) => {
+          if (meal.id === mealId) {
+            return {...meal, orderDate: newDeliveryDate};
+          }
+          return meal;
+        });
+
+        // Update the order document
+        transaction.update(orderRef, {meals: updatedMeals});
+
+        // Update the meal document
+        transaction.update(mealRef, {
+          deliveryDate: Timestamp.fromDate(new Date(newDeliveryDate)),
+        });
+
+        return {success: true};
+      });
+
+      console.log(
+        `Meal delivery date updated for order ${orderId}, meal ${mealId}`
+      );
+      return result;
+    } catch (error) {
+      console.error("Error updating meal delivery date:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Unable to update meal delivery date: " + (error as Error).message
+      );
+    }
+  });

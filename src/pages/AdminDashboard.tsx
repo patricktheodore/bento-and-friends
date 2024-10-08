@@ -10,9 +10,10 @@ import Schools from '../components/Schools';
 import ItemController from '../components/ItemController';
 import CouponController from '@/components/CouponController';
 import DeliveryDates from '@/components/DeliveryDates';
+import OrdersComponent from '@/components/Orders';
 
 const tabs = [
-  { name: 'Orders', component: null },
+  { name: 'Orders', component: OrdersComponent },
   { name: 'Users', component: null },
   { name: 'Delivery Dates', component: DeliveryDates },
   { name: 'Menu Items', component: ItemController },

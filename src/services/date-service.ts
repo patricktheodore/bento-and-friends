@@ -1,32 +1,31 @@
-
 import { db } from '../firebase';
-import { collection, addDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 const BLOCKED_DATES_COLLECTION = 'blockedDates';
 
-export const addBlockedDate = async (date: Date) => {
+export const updateBlockedDates = async (dates: Date[]) => {
   try {
-    await addDoc(collection(db, BLOCKED_DATES_COLLECTION), {
-      date: date.toISOString(),
-    });
-  } catch (error) {
-    console.error('Error adding blocked date:', error);
-    throw error;
-  }
-};
+    const batch = writeBatch(db);
+    const collectionRef = collection(db, BLOCKED_DATES_COLLECTION);
 
-export const removeBlockedDate = async (date: Date) => {
-  try {
-    const q = query(
-      collection(db, BLOCKED_DATES_COLLECTION),
-      where('date', '==', date.toISOString())
-    );
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach(async (doc) => {
-      await deleteDoc(doc.ref);
+    // First, get all existing documents
+    const snapshot = await getDocs(collectionRef);
+
+    // Delete all existing documents
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
     });
+
+    // Add new documents for each date
+    dates.forEach((date) => {
+      const newDocRef = doc(collectionRef);
+      batch.set(newDocRef, { date: date.toISOString() });
+    });
+
+    // Commit the batch
+    await batch.commit();
   } catch (error) {
-    console.error('Error removing blocked date:', error);
+    console.error('Error updating blocked dates:', error);
     throw error;
   }
 };

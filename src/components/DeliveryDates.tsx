@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Calendar } from '../components/ui/calendar';
 import { Button } from '../components/ui/button';
-import { addBlockedDate, removeBlockedDate, getBlockedDates } from '../services/date-service';
+import { updateBlockedDates, getBlockedDates } from '../services/date-service';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import toast from 'react-hot-toast';
 
@@ -36,22 +36,8 @@ const DeliveryDateController: React.FC = () => {
 	const handleSaveDates = async () => {
 		setIsLoading(true);
 		try {
-			const currentBlockedDates = state.blockedDates || [];
 			const uniqueSelectedDates = removeDuplicateDates(selectedDates);
-
-			const datesToAdd = uniqueSelectedDates.filter(
-				(date) => !currentBlockedDates.find((d) => new Date(d).toDateString() === date.toDateString())
-			);
-			const datesToRemove = currentBlockedDates.filter(
-				(date) => !uniqueSelectedDates.find((d) => d.toDateString() === new Date(date).toDateString())
-			);
-
-			for (let date of datesToAdd) {
-				await addBlockedDate(date);
-			}
-			for (let date of datesToRemove) {
-				await removeBlockedDate(new Date(date));
-			}
+			await updateBlockedDates(uniqueSelectedDates);
 
 			const updatedBlockedDates = uniqueSelectedDates.map((d) => d.toISOString());
 			dispatch({ type: 'SET_BLOCKED_DATES', payload: updatedBlockedDates });
