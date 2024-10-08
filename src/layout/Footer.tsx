@@ -22,7 +22,6 @@ const Footer: React.FC = () => {
 			title: 'About Us',
 			links: [
 				{ to: '/about', label: 'Our Story' },
-				{ to: '/how-it-works', label: 'How It Works' },
 				{ to: '/contact', label: 'Contact Us' },
 			],
 		},
@@ -30,18 +29,13 @@ const Footer: React.FC = () => {
 			title: 'Our Menu',
 			links: [
 				{ to: '/menu', label: 'Full Menu' },
-				{ to: '/nutritional-info', label: 'Nutritional Information' },
-				{ to: '/dietary-options', label: 'Dietary Options' },
-				{ to: '/alergy-information', label: 'Alergy Information' },
 			],
 		},
 		{
 			title: 'Customer Service',
 			links: [
-				{ to: '/faq', label: 'FAQ' },
-				{ to: '/ordering-help', label: 'Ordering Help' },
+				{ to: '/contact', label: 'FAQ' },
 				{ to: '/account', label: 'My Account' },
-				{ to: '/feedback', label: 'Give Feedback' },
 			],
 		},
 	];

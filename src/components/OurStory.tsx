@@ -20,10 +20,10 @@ const OurStoryComponent: React.FC = () => {
         
         <div className="grid grid-cols-2 gap-4">
           <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden">
-            <img src="/api/placeholder/400/400" alt="Placeholder" className="w-full h-full object-cover" />
+            <img src="src/assets/BentoFriendsImage.jpg" alt="Placeholder" className="w-full h-full object-cover" />
           </div>
           <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden mt-8">
-            <img src="/api/placeholder/400/400" alt="Placeholder" className="w-full h-full object-cover" />
+            <img src="src/assets/1000029387.jpg" alt="Placeholder" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>

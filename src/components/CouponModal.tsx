@@ -168,7 +168,7 @@ const CouponModal: React.FC<CouponModalProps> = ({ isOpen, onClose, onSubmit, co
 							htmlFor="isSingleUse"
 							className="text-right"
 						>
-							Single Use
+							Usage Type
 						</Label>
 						<div className="col-span-3 flex items-center space-x-2">
 							<Checkbox

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import ChildrenManagement from '../components/ChildrenManagement';
 import { Child } from '../models/user.model';
@@ -12,46 +12,57 @@ const AccountPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 
 	const handleAddChild = (childData: Omit<Child, 'id'>) => {
-		if (state.user) {
-			const newChild = new Child(childData.name, childData.year, childData.school, childData.className);
-			const updatedUser = {
-				...state.user,
-				children: [...state.user.children, newChild],
-			};
-			dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-			updateUserInFirebase(updatedUser);
-		}
-	};
+        if (state.user) {
+            const newChild = new Child(
+                childData.name,
+                childData.year,
+                childData.school,
+                childData.className,
+                childData.allergens
+            );
+            const updatedUser = {
+                ...state.user,
+                children: [...state.user.children, newChild],
+            };
+            dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+            updateUserInFirebase(updatedUser);
+        }
+    };
 
-	const handleRemoveChild = (childId: string) => {
-		if (state.user) {
-			const updatedChildren = state.user.children.filter((child) => child.id !== childId);
-			const updatedUser = {
-				...state.user,
-				children: updatedChildren,
-			};
-			dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-			updateUserInFirebase(updatedUser);
-		}
-	};
+    const handleRemoveChild = (childId: string) => {
+        if (state.user) {
+            const updatedChildren = state.user.children.filter((child) => child.id !== childId);
+            const updatedUser = {
+                ...state.user,
+                children: updatedChildren,
+            };
+            dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+            updateUserInFirebase(updatedUser);
+        }
+    };
 
-	const handleEditChild = (childId: string, updatedChildData: Omit<Child, 'id'>) => {
-		if (state.user) {
-			const updatedChildren = state.user.children.map((child) =>
-				child.id === childId ? { ...child, ...updatedChildData } : child
-			);
-			const updatedUser = {
-				...state.user,
-				children: updatedChildren,
-			};
-			dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-			updateUserInFirebase(updatedUser);
-		}
-	};
+    const handleEditChild = (childId: string, updatedChildData: Omit<Child, 'id'>) => {
+        if (state.user) {
+            const updatedChildren = state.user.children.map((child) =>
+                child.id === childId
+                    ? {
+                          ...child,
+                          ...updatedChildData,
+                      }
+                    : child
+            );
+            const updatedUser = {
+                ...state.user,
+                children: updatedChildren,
+            };
+            dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+            updateUserInFirebase(updatedUser);
+        }
+    };
 
 	const NoChildrenMessage = () => (
 		<Alert className="mb-4 bg-green-50">
-			<AlertTitle className='text-lg'>Welcome to Your Account!</AlertTitle>
+			<AlertTitle className="text-lg">Welcome to Your Account!</AlertTitle>
 			<AlertDescription>
 				Adding your children's details makes the ordering process easier and faster. We recommend setting this
 				up now to streamline your future orders.
@@ -61,9 +72,9 @@ const AccountPage: React.FC = () => {
 
 	const StartOrderMessage = () => (
 		<Alert className="mt-4 bg-green-50">
-			<AlertTitle className='text-lg'>You're ready to start an order!</AlertTitle>
+			<AlertTitle className="text-lg">You're ready to start an order!</AlertTitle>
 			<AlertDescription>
-				Navigate to the <a className='underline' href='/order'>Order</a> screen to start the ordering process.
+				Navigate to the <a className="underline" href="/order">Order</a> screen to start the ordering process.
 			</AlertDescription>
 		</Alert>
 	);
@@ -79,7 +90,7 @@ const AccountPage: React.FC = () => {
 							<TabsTrigger value="order-history">Order History</TabsTrigger>
 						</TabsList>
 					</div>
-					
+
 					<TabsContent value="profile">
 						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
 							{state.user.children.length === 0 && <NoChildrenMessage />}
@@ -92,17 +103,15 @@ const AccountPage: React.FC = () => {
 							{state.user.children.length > 0 && <StartOrderMessage />}
 						</div>
 					</TabsContent>
-					
+
 					<TabsContent value="order-history">
 						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
 							<OrderHistory />
 						</div>
 					</TabsContent>
-					
-					<AccountSummary user={state.user} />
-					
-				</Tabs>
 
+					<AccountSummary user={state.user} />
+				</Tabs>
 			) : (
 				<div className="w-full flex flex-col justify-center items-center p-4">
 					<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>

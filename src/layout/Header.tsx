@@ -91,13 +91,15 @@ const Header: React.FC = () => {
                             <>
                                 <div className="hidden md:flex items-center space-x-4">
                                     {renderMenuItems()}
-                                    {state.user && (
+                                    {state.user && !state.user.isAdmin && (
                                         <CartIcon />
                                     )}
                                 </div>
 
                                 <div className='flex md:hidden justify-end items-center'>
-                                    <CartIcon />
+                                    {state.user && !state.user.isAdmin && (
+                                        <CartIcon />
+                                    )}
                                     <button
                                         className={`scale-75 mt-[8px] text-brand-dark-green hover:text-brand-gold hamburger hamburger--collapse ${isOpen ? 'is-active' : ''}`}
                                         type="button"
@@ -135,4 +137,4 @@ const Header: React.FC = () => {
     );
 };
 
-export default Header;
+export default Header;  
