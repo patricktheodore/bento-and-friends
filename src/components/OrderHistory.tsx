@@ -76,10 +76,17 @@ const OrderHistory: React.FC = () => {
 	const isValidDate = (date: Date) => {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
 		const isPast = date <= today;
-		return isWeekend || isPast;
+		const isBlocked = state.blockedDates.some(
+			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
+		);
+
+		return !(isWeekend || isPast || isBlocked);
 	};
 
 	const renderOrderAgainDialogContent = () => {
@@ -95,7 +102,7 @@ const OrderHistory: React.FC = () => {
 								mode="single"
 								selected={selectedDate}
 								onSelect={setSelectedDate}
-								disabled={isValidDate}
+								disabled={(date) => !isValidDate(date)}
 								className="rounded-md border"
 							/>
 						</div>

@@ -11,8 +11,10 @@ import ItemController from '../components/ItemController';
 import CouponController from '@/components/CouponController';
 import DeliveryDates from '@/components/DeliveryDates';
 import OrdersComponent from '@/components/Orders';
+import AdminOverview from '@/components/AdminOverview';
 
 const tabs = [
+  { name: 'Dashboard', component: AdminOverview },
   { name: 'Orders', component: OrdersComponent },
   { name: 'Users', component: null },
   { name: 'Delivery Dates', component: DeliveryDates },

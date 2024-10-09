@@ -27,6 +27,8 @@ const OrderSuccessPage: React.FC = () => {
 		const session_id = queryParams.get('session_id');
 
 		if (session_id && state.cart) {
+			dispatch({ type: 'CLEAR_CART' });
+
 			const saveOrderToDb = async () => {
 				const functions = getFunctions();
 				const saveOrder = httpsCallable<{ order: Order; sessionId: string }, SaveOrderResponse>(
@@ -63,9 +65,6 @@ const OrderSuccessPage: React.FC = () => {
 						payload: updatedOrder,
 					});
 
-					// Clear the cart
-					dispatch({ type: 'CLEAR_CART' });
-
 					setIsLoading(false);
 					toast.success('Order placed successfully!');
 				} catch (error) {
@@ -77,7 +76,6 @@ const OrderSuccessPage: React.FC = () => {
 
 			saveOrderToDb();
 		} else if (!session_id) {
-			// Redirect to home if there's no session_id
 			navigate('/');
 		}
 	}, [location, state.cart, dispatch, navigate]);

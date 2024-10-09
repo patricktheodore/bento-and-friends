@@ -14,6 +14,7 @@ import { Main } from '@/models/item.model';
 import { School } from '@/models/school.model';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/utils/utils';
 
 const OrderPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -333,7 +334,7 @@ const OrderPage: React.FC = () => {
 							<h3 className="text-sm font-semibold mb-2">Delivery Details:</h3>
 							<p>For: {state.user?.children.find((child) => child.id === selectedChild)?.name}</p>
 							<p>At: {state.user?.children.find((child) => child.id === selectedChild)?.school}</p>
-							<p>On: {selectedDate?.toLocaleDateString()}</p>
+							<p>On: {selectedDate && formatDate(selectedDate.toISOString())}</p>
 						</div>
 					</div>
 				);
