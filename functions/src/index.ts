@@ -151,6 +151,14 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       const counterDoc = await transaction.get(counterRef);
       const userRef = db.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
+      const now = admin.firestore.Timestamp.now();
+      const dateString = now.toDate().toISOString().split("T")[0];
+      const dailyAnalyticsRef = db.collection("dailyAnalytics").doc(dateString);
+      const cumulativeAnalyticsRef =
+        db.collection("cumulativeAnalytics").doc("totals");
+      const dailyAnalyticsDoc = await transaction.get(dailyAnalyticsRef);
+      const cumulativeAnalyticsDoc =
+        await transaction.get(cumulativeAnalyticsRef);
 
       if (!counterDoc.exists) {
         throw new Error("Order number counter does not exist");
@@ -174,7 +182,6 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       }));
 
       // Now perform all writes
-      const now = admin.firestore.Timestamp.now();
       const orderRef = db.collection("orders").doc();
       const newOrder = {
         ...order,
@@ -254,6 +261,37 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         transaction.set(mealRef, mealData);
       });
 
+      const dailyData = dailyAnalyticsDoc.exists ? dailyAnalyticsDoc.data() : {
+        date: dateString,
+        orderCount: 0,
+        mealCount: 0,
+        revenue: 0,
+      };
+
+      const cumulativeData =
+        cumulativeAnalyticsDoc.exists ? cumulativeAnalyticsDoc.data() : {
+          orderCount: 0,
+          mealCount: 0,
+          revenue: 0,
+        };
+
+      // Update daily analytics
+      if (dailyData) {
+        dailyData.orderCount += 1;
+        dailyData.mealCount += order.meals.length;
+        dailyData.revenue += finalTotal;
+      }
+
+      // Update cumulative analytics
+      if (cumulativeData) {
+        cumulativeData.orderCount += 1;
+        cumulativeData.mealCount += order.meals.length;
+        cumulativeData.revenue += finalTotal;
+      }
+
+      transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
+      transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
+
       return {orderId: orderRef.id, customOrderNumber, finalTotal};
     });
 
@@ -307,7 +345,7 @@ export const updateMealDeliveryDate =
         }
 
         // Update the meal in the order document
-        const updatedMeals = orderData.meals.map((meal: any) => {
+        const updatedMeals = orderData.meals.map((meal: MealDocument) => {
           if (meal.id === mealId) {
             return {...meal, orderDate: newDeliveryDate};
           }
@@ -335,5 +373,56 @@ export const updateMealDeliveryDate =
         "internal",
         "Unable to update meal delivery date: " + (error as Error).message
       );
+    }
+  });
+
+export const updateAnalytics =
+  functions.pubsub.schedule("every 24 hours").onRun(async (context) => {
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+    const dateString = now.toDate().toISOString().split("T")[0];
+
+    try {
+      // Update cumulative analytics
+      const cumulativeAnalyticsRef =
+        db.collection("cumulativeAnalytics").doc("totals");
+      const dailyAnalyticsRef = db.collection("dailyAnalytics").doc(dateString);
+
+      await db.runTransaction(async (transaction) => {
+        try {
+          const cumulativeDoc = await transaction.get(cumulativeAnalyticsRef);
+          const cumulativeData = cumulativeDoc.data() || {
+            orderCount: 0,
+            mealCount: 0,
+            revenue: 0,
+            userCount: 0,
+            schoolCount: 0,
+          };
+
+          // Update cumulative analytics
+          transaction.set(
+            cumulativeAnalyticsRef, cumulativeData, {merge: true});
+
+          // Prepare daily analytics for the new day
+          const newDailyData = {
+            date: dateString,
+            orderCount: 0,
+            mealCount: 0,
+            revenue: 0,
+          };
+
+          transaction.set(dailyAnalyticsRef, newDailyData);
+
+          console.log(`Analytics updated successfully for ${dateString}`);
+        } catch (transactionError) {
+          console.error(`Transaction failed: ${transactionError}`);
+          throw transactionError; // Re-throw to roll back the transaction
+        }
+      });
+
+      return null;
+    } catch (error) {
+      console.error(`Error updating analytics for ${dateString}:`, error);
+      return null;
     }
   });
