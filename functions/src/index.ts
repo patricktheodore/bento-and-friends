@@ -3,8 +3,10 @@ import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import {Timestamp} from "firebase-admin/firestore";
 import {InputMeal, MealDocument} from "./models/order.model";
+import * as sgMail from "@sendgrid/mail";
 
 admin.initializeApp();
+sgMail.setApiKey(functions.config().sendgrid.api_key);
 
 interface UpdateMealDateRequest {
   orderId: string;
@@ -28,6 +30,21 @@ interface Cart {
   userEmail: string;
   meals: Meal[];
   total: number;
+}
+
+interface OrderConfirmationEmailData {
+  to: string;
+  customerName: string;
+  customOrderNumber: string;
+  orderDate: string;
+  meals: Array<{
+    mainDisplay: string;
+    childName: string;
+    orderDate: string;
+    total: number;
+  }>;
+  originalTotal: number;
+  finalTotal: number;
 }
 
 export const createCheckoutSession = functions.https.onCall(
@@ -213,7 +230,7 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       // Set the new order
       transaction.set(orderRef, newOrder);
 
-      // Update user's order history
+      // Update user"s order history
       transaction.update(userRef, {
         orderHistory: [...orderHistory, newOrderHistoryEntry],
       });
@@ -291,6 +308,19 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
 
       transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
       transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
+
+      await sendOrderConfirmationEmail({
+        to: order.userEmail,
+        customOrderNumber,
+        meals: mealsWithIds.map((meal: Meal) => ({
+          mainDisplay: meal.main.display,
+          childName: meal.child.name,
+          orderDate: meal.orderDate,
+          total: meal.total,
+        })),
+        originalTotal: order.total,
+        finalTotal: finalTotal,
+      } as OrderConfirmationEmailData);
 
       return {orderId: orderRef.id, customOrderNumber, finalTotal};
     });
@@ -377,7 +407,7 @@ export const updateMealDeliveryDate =
   });
 
 export const updateAnalytics =
-  functions.pubsub.schedule("every 24 hours").onRun(async (context) => {
+  functions.pubsub.schedule("every 24 hours").onRun(async () => {
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
     const dateString = now.toDate().toISOString().split("T")[0];
@@ -426,3 +456,80 @@ export const updateAnalytics =
       return null;
     }
   });
+
+export const sendWelcomeEmail = functions.auth.user().onCreate(async (user) => {
+  console.log("Welcome email triggered for", user.email);
+
+  const msg = {
+    to: user.email,
+    from: {
+      email: "bentoandfriends@outlook.com.au",
+      name: "Bento & Friends",
+    },
+    subject: "Welcome to Bento & Friends!",
+    templateId: "d-d9bfd477a18c46a591a144ccf33a4a5a",
+    dynamicTemplateData: {
+      displayName: user.displayName || "there",
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log("Welcome email sent successfully");
+  } catch (error) {
+    console.error("Error sending welcome email", error);
+    throw new functions.https.HttpsError("internal",
+      "Failed to send welcome email"
+    );
+  }
+});
+
+export const sendOrderConfirmationEmail = async (
+  data: OrderConfirmationEmailData
+) => {
+  const {
+    to,
+    customerName,
+    customOrderNumber,
+    orderDate,
+    meals,
+    originalTotal,
+    finalTotal,
+  } = data;
+
+  const savings = originalTotal - finalTotal;
+
+  const msg = {
+    to,
+    from: {
+      email: "bentoandfriends@outlook.com.au",
+      name: "Bento & Friends",
+    },
+    subject: `Order Confirmation: ${customOrderNumber}`,
+    templateId: "d-3dc5c0e2fb2643279bf93a8a0efea205",
+    dynamicTemplateData: {
+      customerName,
+      customOrderNumber,
+      orderDate: new Date(orderDate).toLocaleDateString(),
+      meals: meals.map((meal) => ({
+        ...meal,
+        orderDate: new Date(meal.orderDate).toLocaleDateString(),
+        total: meal.total.toFixed(2),
+      })),
+      originalTotal: originalTotal.toFixed(2),
+      finalTotal: finalTotal.toFixed(2),
+      savings: savings > 0 ? savings.toFixed(2) : null,
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Order confirmation email sent for order ${customOrderNumber}`);
+  } catch (error) {
+    console.error("Error sending order confirmation email", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to send order confirmation email"
+    );
+  }
+};
