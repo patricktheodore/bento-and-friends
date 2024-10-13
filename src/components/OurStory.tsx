@@ -1,4 +1,6 @@
 import React from 'react';
+import image1 from '@/assets/BentoFriendsImage.jpg';
+import image2 from '@/assets/1000029387.jpg';
 
 const OurStoryComponent: React.FC = () => {
   return (
@@ -20,10 +22,10 @@ const OurStoryComponent: React.FC = () => {
         
         <div className="grid grid-cols-2 gap-4">
           <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden">
-            <img src="src/assets/BentoFriendsImage.jpg" alt="Placeholder" className="w-full h-full object-cover" />
+            <img src={image1} alt="Chef preparing bento boxes in large quantity" className="w-full h-full object-cover" />
           </div>
           <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden mt-8">
-            <img src="src/assets/1000029387.jpg" alt="Placeholder" className="w-full h-full object-cover" />
+            <img src={image2} alt="School child enjoying meal" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>

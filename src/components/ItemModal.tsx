@@ -69,14 +69,6 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
         throw new Error('Unknown item type');
     };
 
-    const handleClose = () => {
-        setSelectedType(null);
-        setFormData({});
-        setSelectedImage(null);
-        setImagePreviewUrl(null);
-        onClose();
-    };
-
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];

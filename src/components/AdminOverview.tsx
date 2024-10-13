@@ -5,7 +5,7 @@ import { getAllDailyAnalytics, getCumulativeAnalytics, calculateMetrics } from '
 import { useAppContext } from '@/context/AppContext';
 
 const AdminOverview: React.FC = () => {
-	const { state, dispatch } = useAppContext();
+	const { state } = useAppContext();
 	const [dailyAnalytics, setDailyAnalytics] = useState<any[]>([]);
 	const [metrics, setMetrics] = useState<any>(null);
 

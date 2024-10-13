@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { signUp, signIn, sendPasswordResetEmail } from '../services/auth';
 import { FirebaseError } from 'firebase/app';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const UserloginPage: React.FC = () => {
-	const { state, dispatch } = useAppContext();
+	const { dispatch } = useAppContext();
 	const [isNewUserSignup, setIsNewUserSignup] = useState(false);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');

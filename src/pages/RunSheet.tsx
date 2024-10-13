@@ -131,7 +131,7 @@ const RunSheet: React.FC = () => {
     const weekStart = startOfWeek(new Date());
     const weekEnd = endOfWeek(new Date());
     // Fetch data for the week and generate a summary
-    toast.success("Generating this week's summary...");
+    toast.success(`Generating this week's summary: ${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`);
   };
 
   const handlePrintTodayLabels = () => {
@@ -147,6 +147,7 @@ const RunSheet: React.FC = () => {
     // Fetch data for the week
     getMealsBetweenDates(weekStart, weekEnd).then(weeklyMeals => {
       // Process data for Excel
+	  console.log(weeklyMeals);
       const wsData = [
         ['Date', 'Main Course', 'Quantity', 'Add-ons', 'Total Meals'],
         // Add rows based on weeklyMeals data

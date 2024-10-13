@@ -6,6 +6,7 @@ import NutritionComponent from '../components/Nutrition';
 import OurStoryComponent from '../components/OurStory';
 import { useAppContext } from '../context/AppContext';
 import DiscountOptionsComponent from '@/components/DiscountOptions';
+import heroImage from '../assets/hero.jpg';
 
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
@@ -16,7 +17,7 @@ const HomePage: React.FC = () => {
 				<div
 					className="absolute inset-0 bg-cover bg-center z-0"
 					style={{
-						backgroundImage: "url('src/assets/hero.jpg')",
+						backgroundImage: `url(${heroImage})`,
 					}}
 				>
 					<div className="absolute inset-0 bg-black opacity-75"></div>

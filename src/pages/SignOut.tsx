@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { signOut } from '../services/auth';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const SignOut: React.FC = () => {
     const { state, dispatch } = useAppContext();
-    const navigate = useNavigate();
 
     const handleSignOut = async () => {
         try {

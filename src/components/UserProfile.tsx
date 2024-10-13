@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../models/user.model'; // Assuming you have a User model
-import { PencilIcon, CalendarIcon, CreditCardIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { CreditCardIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 interface ProfileProps {
 	user: User;

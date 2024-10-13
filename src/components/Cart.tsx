@@ -25,10 +25,6 @@ const stripePromise = loadStripe(
 	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
 );
 
-interface CheckoutSessionResponse {
-	sessionId: string;
-}
-
 const Cart: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 	const { cart, isCartOpen, user } = state;

@@ -9,7 +9,7 @@ import { useAppContext } from '@/context/AppContext';
 
 const FeaturedMenuItemsCarousel: React.FC = () => {
 	const sliderRef = useRef<Slider>(null);
-	const {state, dispatch} = useAppContext();
+	const {state } = useAppContext();
 
 	const featuredItems = state.mains.filter((item) => item.isFeatured);
 	
@@ -30,7 +30,7 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 	};
 
 	const settings = {
-		customPaging: function (i: number) {
+		customPaging: function () {
 			return (
 				<div className="mx-1 w-fit h-fit flex justify-center">
 					<div className="w-2 h-2 bg-slate-300 hover:bg-brand-dark-green rounded-full transition-all duration-300 ease-in-out" />

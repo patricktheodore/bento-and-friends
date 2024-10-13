@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import toast from 'react-hot-toast';
 
 const DeliveryDateController: React.FC = () => {
-	const { state, dispatch } = useAppContext();
+	const { dispatch } = useAppContext();
 	const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Meal, Order } from '../models/order.model';
+import { Meal } from '../models/order.model';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { formatDate } from '../utils/utils';
 import { fetchAllOrders } from '../services/user-service';
 import { Button } from './ui/button';
 import { PlusIcon } from 'lucide-react';

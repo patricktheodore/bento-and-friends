@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import CartIcon from '@/components/CartIcon';
 import Cart from '@/components/Cart';
+import logo from "@/assets/bento-logo.png";
 
 const Header: React.FC = () => {
     const { state } = useAppContext();
@@ -82,7 +83,7 @@ const Header: React.FC = () => {
                             className="flex items-center hover:scale-105 transition-transform duration-300 ease-in-out hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-gold"
                         >
                             <img
-                                src="src/assets/bento-logo.png"
+                                src={logo}
                                 alt="Bento&Friends Logo"
                                 className="h-16 w-auto"
                             />

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTwitter, faInstagram, faFacebook } from '@fortawesome/free-brands-svg-icons';
+import logo from '@/assets/logo-white.png';
 
 const FooterSection: React.FC<{ title: string; links: { to: string; label: string }[] }> = ({ title, links }) => (
 	<div className="mb-8">
@@ -46,7 +47,7 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="col-span-1 lg:col-span-1">
             <Link to="/" className="flex items-center mb-4">
-              <img src="src/assets/logo-white.png" alt="Bento&Friends Logo" className="h-16 w-auto" />
+              <img src={logo} alt="Bento&Friends Logo" className="h-16 w-auto" />
             </Link>
           </div>
 

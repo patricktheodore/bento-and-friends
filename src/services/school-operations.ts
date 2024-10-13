@@ -12,15 +12,6 @@ interface ApiResponse<T> {
 	error?: string;
 }
 
-class ApiError extends Error {
-	code: string;
-
-	constructor(message: string, code: string) {
-		super(message);
-		this.code = code;
-		this.name = 'ApiError';
-	}
-}
 
 const handleApiError = (error: unknown): string => {
 	if (error instanceof FirebaseError) {

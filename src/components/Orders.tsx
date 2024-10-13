@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, startAfter, getDocs, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';

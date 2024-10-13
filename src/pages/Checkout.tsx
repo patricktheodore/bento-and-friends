@@ -52,7 +52,7 @@ const CheckoutPage: React.FC = () => {
 		};
 	}, [cart]);
 
-	const { finalTotal, couponDiscountAmount, totalDiscountPercentage } = useMemo(() => {
+	const { finalTotal, totalDiscountPercentage } = useMemo(() => {
 		if (!cart) return { finalTotal: 0, couponDiscountAmount: 0, totalDiscountPercentage: 0 };
 	
 		let subtotalAfterBundleDiscount = bundleDiscountedTotal;

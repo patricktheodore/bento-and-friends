@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, doc, getDoc, getDocs, query, where, orderBy, limit, getCountFromServer } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, orderBy, getCountFromServer } from 'firebase/firestore';
 
 interface DailyAnalytics {
   date: string;
