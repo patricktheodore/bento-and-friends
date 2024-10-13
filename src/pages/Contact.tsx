@@ -43,9 +43,11 @@ const ContactPage = () => {
 
 	return (
 		<div className="container mx-auto p-4 py-8">
-			<h1 className="text-4xl font-bold mb-6">Contact Us</h1>
+			<h1 className="text-5xl md:text-6xl font-bold leading-tight">
+				Contact Us
+			</h1>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
 				<Card className="bg-brand-dark-green text-brand-cream">
 					<CardHeader>
 						<CardTitle className="text-lg">Our Contact Information</CardTitle>
@@ -53,15 +55,15 @@ const ContactPage = () => {
 					<CardContent className="space-y-4">
 						<div className="flex items-center space-x-2">
 							<MapPin size={20} />
-							<span>123 Food Street, Cuisine City, FC 12345</span>
+							<span>Perth, WA</span>
 						</div>
 						<div className="flex items-center space-x-2">
 							<Phone size={20} />
-							<span>(123) 456-7890</span>
+							<span>0405 787 777</span>
 						</div>
 						<div className="flex items-center space-x-2">
 							<Mail size={20} />
-							<span>support@fooddelivery.com</span>
+							<span>bentoandfriends@outlook.com.au</span>
 						</div>
 						<div className="flex items-center space-x-2">
 							<Clock size={20} />
@@ -166,7 +168,7 @@ const ContactPage = () => {
 				</div>
 
 				<div className="col-span-full space-y-4 mt-12">
-					<h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+					<h2 className="text-5xl md:text-6xl font-bold leading-tight">Frequently Asked Questions</h2>
 					<Accordion
 						type="single"
 						collapsible

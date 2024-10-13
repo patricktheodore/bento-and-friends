@@ -12,27 +12,30 @@ const DiscountOptionsComponent: React.FC = () => {
 	return (
 		<div className="w-full bg-brand-cream py-12 px-4 md:px-8 mb-8">
 			<div className="max-w-screen-xl mx-auto flex flex-col gap-8">
-				<h2 className="text-4xl text-primary">Save More, Eat Better</h2>
+			<h2 className="text-5xl md:text-6xl font-bold leading-tight">
+			Save More,<br />Eat Better
+          	</h2>
+				{/* <h2 className="text-4xl text-primary">Save More, Eat Better</h2> */}
 
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 					{discountOptions.map((option, index) => (
 						<div
 							key={index}
-							className="bg-white border-2 border-primary rounded-lg p-6"
+							className="bg-brand-dark-green border-2 border-primary rounded-lg p-6"
 						>
 							<div className="flex items-center justify-between mb-4">
 								<ShoppingBag
 									size={32}
-									className="text-primary"
+									className="text-brand-cream"
 								/>
 								<div className="flex items-center">
-									<span className="text-3xl font-bold text-primary">{option.discount}%</span>
+									<span className="text-3xl font-bold text-brand-cream">{option.discount}%</span>
 								</div>
 							</div>
-							<h3 className="text-xl font-semibold text-primary mb-2">
+							<h3 className="text-xl font-semibold text-brand-cream mb-2">
 								Order {option.lunches} Bento Boxes
 							</h3>
-							<p className="text-gray-600">{option.description}</p>
+							<p className="text-gray-300">{option.description}</p>
 						</div>
 					))}
 				</div>

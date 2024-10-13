@@ -432,9 +432,10 @@ const OrderPage: React.FC = () => {
 
 	return (
 		<div className="container mx-auto p-4 py-8">
-			<h1 className="text-4xl font-bold">Order</h1>
-			<h2 className="text-lg mb-2">Start by selecting a main dish</h2>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+			<h1 className="text-5xl md:text-6xl font-bold leading-tight">
+				Order
+			</h1>
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
 				{state.mains.map((item) => (
 					<MenuItemCard
 						key={item.id}

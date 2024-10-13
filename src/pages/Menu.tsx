@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 const MenuPage: React.FC = () => {
 	const { state } = useAppContext();
@@ -117,7 +117,7 @@ const MenuPage: React.FC = () => {
 		<div className="container mx-auto p-4 py-8">
 			<Tabs defaultValue="mains">
 				<div className="w-full flex justify-between items-center">
-					<h1 className="text-4xl font-bold">Our Menu</h1>
+					<h1 className="text-5xl md:text-6xl font-bold leading-tight mb-4">Our Menu</h1>
 					<TabsList>
 						<TabsTrigger value="mains">Main Dishes</TabsTrigger>
 						<TabsTrigger value="addons">Add-ons</TabsTrigger>
@@ -134,7 +134,14 @@ const MenuPage: React.FC = () => {
 
 				<div className="flex justify-center w-full mt-12 mb-8 gap-2">
 					{state.user ? (
-						<Button variant="default">Start an Order Now</Button>
+						<div className="text-center">
+							<Link
+								to="/order"
+								className="inline-block bg-brand-cream text-brand-dark-green hover:brightness-110 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:shadow-lg ring-2 ring-transparent hover:ring-brand-cream ring-offset-2 ring-offset-brand-dark-green"
+							>
+								Start an Order Now &rarr;
+							</Link>
+						</div>
 					) : (
 						<>
 							<Button

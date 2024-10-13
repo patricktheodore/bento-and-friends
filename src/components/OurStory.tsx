@@ -2,7 +2,7 @@ import React from 'react';
 
 const OurStoryComponent: React.FC = () => {
   return (
-    <div className='w-full bg-brand-cream text-primary py-16 px-4 md:px-8'>
+    <div className='w-full bg-brand-cream text-primary py-12 lg:py-24 px-4 md:px-8'>
       <div className="max-w-screen-xl mx-auto grid md:grid-cols-2 gap-8 items-start">
         <div className="flex flex-col gap-6">
           <h2 className="text-5xl md:text-6xl font-bold leading-tight">
