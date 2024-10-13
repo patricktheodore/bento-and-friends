@@ -115,12 +115,13 @@ const OrderPage: React.FC = () => {
 		})
 	
 		toast.success('Added to cart!');
-	
+		
 		setSelectedMain(null);
 		setSelectedAddons([]);
 		setSelectedChild(null);
 		setSelectedDate(undefined);
 		setStep(1);
+		setIsAdding(false);
 	};
 
 	const handleAddOnToggle = (addonId: string) => {

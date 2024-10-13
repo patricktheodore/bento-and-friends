@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { User, Child } from '../models/user.model';
 import { Order } from '@/models/order.model';
@@ -37,4 +37,17 @@ export const fetchOrderDetails = async (orderId: string): Promise<Order> => {
   } else {
     throw new Error('Order not found');
   }
+};
+
+export const fetchAllOrders = async (userId: string): Promise<Order[]> => {
+  const ordersRef = collection(db, 'orders');
+  const q = query(ordersRef, where("userId", "==", userId));
+  const querySnapshot = await getDocs(q);
+  
+  const orders: Order[] = [];
+  querySnapshot.forEach((doc) => {
+    orders.push({ id: doc.id, ...doc.data() } as Order);
+  });
+  
+  return orders;
 };

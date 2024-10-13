@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import OrderHistory from '@/components/OrderHistory';
 import AccountSummary from '@/components/AccountSummary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import MealCalendar from '@/components/MealCalendar';
 
 const AccountPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -89,6 +90,7 @@ const AccountPage: React.FC = () => {
 						<TabsList>
 							<TabsTrigger value="profile">Profile</TabsTrigger>
 							<TabsTrigger value="order-history">Order History</TabsTrigger>
+							<TabsTrigger value="meal-calendar">Meal Calendar</TabsTrigger>
 						</TabsList>
 					</div>
 
@@ -102,6 +104,7 @@ const AccountPage: React.FC = () => {
 								onEditChild={handleEditChild}
 							/>
 							{state.user.children.length > 0 && <StartOrderMessage />}
+							<AccountSummary user={state.user} />
 						</div>
 					</TabsContent>
 
@@ -111,7 +114,12 @@ const AccountPage: React.FC = () => {
 						</div>
 					</TabsContent>
 
-					<AccountSummary user={state.user} />
+					<TabsContent value="meal-calendar">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							<MealCalendar />
+						</div>
+					</TabsContent>
+
 				</Tabs>
 			) : (
 				<div className="w-full flex flex-col justify-center items-center p-4">
