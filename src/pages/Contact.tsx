@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import toast from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Loader2 } from 'lucide-react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 type FormData = {
 	name: string;
@@ -19,14 +20,16 @@ type FormData = {
 
 const ContactPage = () => {
 	const { state } = useAppContext();
-	const { control, handleSubmit, reset, setValue } = useForm<FormData>({
-		defaultValues: {
-			name: '',
-			email: '',
-			phone: '',
-			message: '',
-		},
-	});
+	const [isSubmitting, setIsSubmitting] = useState(false);
+    const { control, handleSubmit, reset, setValue, formState: { errors, isValid } } = useForm<FormData>({
+        defaultValues: {
+            name: '',
+            email: '',
+            phone: '',
+            message: '',
+        },
+        mode: 'onChange', // This will make the form validate on change
+    });
 
 	useEffect(() => {
 		if (state.user) {
@@ -35,17 +38,26 @@ const ContactPage = () => {
 		}
 	}, [state.user, setValue]);
 
-	const onSubmit = (data: FormData) => {
-		console.log('Form submitted:', data);
-		toast("We've received your message and will get back to you soon.");
-		reset();
-	};
+	const onSubmit = async (data: FormData) => {
+        setIsSubmitting(true);
+        try {
+            const functions = getFunctions();
+            const sendContactEmail = httpsCallable(functions, 'sendContactEmail');
+            const result = await sendContactEmail(data);
+            console.log('Email sent:', result);
+            toast.success("We've received your message and will get back to you soon.");
+            reset();
+        } catch (error) {
+            console.error('Error sending email:', error);
+            toast.error('Failed to send your message. Please try again later.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
 	return (
 		<div className="container mx-auto p-4 py-8">
-			<h1 className="text-5xl md:text-6xl font-bold leading-tight">
-				Contact Us
-			</h1>
+			<h1 className="text-5xl md:text-6xl font-bold leading-tight">Contact Us</h1>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
 				<Card className="bg-brand-dark-green text-brand-cream">
@@ -73,99 +85,97 @@ const ContactPage = () => {
 				</Card>
 
 				<div>
-					<form
-						onSubmit={handleSubmit(onSubmit)}
-						className="space-y-4"
-					>
-						<div className="space-y-2">
-							<Label htmlFor="name">Name*</Label>
-							<Controller
-								name="name"
-								control={control}
-								rules={{ required: 'Name is required' }}
-								render={({ field, fieldState: { error } }) => (
-									<>
-										<Input
-											{...field}
-											id="name"
-											className="bg-white"
-										/>
-										{error && <p className="text-red-500 text-sm">{error.message}</p>}
-									</>
-								)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="email">Email*</Label>
-							<Controller
-								name="email"
-								control={control}
-								rules={{
-									required: 'Email is required',
-									pattern: {
-										value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-										message: 'Invalid email address',
-									},
-								}}
-								render={({ field, fieldState: { error } }) => (
-									<>
-										<Input
-											{...field}
-											className="bg-white"
-											id="email"
-											type="email"
-										/>
-										{error && <p className="text-red-500 text-sm">{error.message}</p>}
-									</>
-								)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="phone">Phone*</Label>
-							<Controller
-								name="phone"
-								control={control}
-								rules={{
-									required: 'Phone number is required',
-									pattern: {
-										value: /^[0-9]{10}$/,
-										message: 'Invalid phone number (10 digits required)',
-									},
-								}}
-								render={({ field, fieldState: { error } }) => (
-									<>
-										<Input
-											{...field}
-											className="bg-white"
-											id="phone"
-											type="tel"
-										/>
-										{error && <p className="text-red-500 text-sm">{error.message}</p>}
-									</>
-								)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="message">Message*</Label>
-							<Controller
-								name="message"
-								control={control}
-								rules={{ required: 'Message is required' }}
-								render={({ field, fieldState: { error } }) => (
-									<>
-										<Textarea
-											className="bg-white"
-											{...field}
-											id="message"
-										/>
-										{error && <p className="text-red-500 text-sm">{error.message}</p>}
-									</>
-								)}
-							/>
-						</div>
-						<Button type="submit">Send Message</Button>
-					</form>
-				</div>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name*</Label>
+                            <Controller
+                                name="name"
+                                control={control}
+                                rules={{ required: 'Name is required', minLength: { value: 2, message: 'Name must be at least 2 characters' } }}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        id="name"
+                                        className="bg-white"
+                                    />
+                                )}
+                            />
+                            {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email*</Label>
+                            <Controller
+                                name="email"
+                                control={control}
+                                rules={{
+                                    required: 'Email is required',
+                                    pattern: {
+                                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                        message: 'Invalid email address',
+                                    },
+                                }}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        className="bg-white"
+                                        id="email"
+                                        type="email"
+                                    />
+                                )}
+                            />
+                            {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Phone*</Label>
+                            <Controller
+                                name="phone"
+                                control={control}
+                                rules={{
+                                    required: 'Phone number is required',
+                                    pattern: {
+                                        value: /^[0-9]{10}$/,
+                                        message: 'Invalid phone number (10 digits required)',
+                                    },
+                                }}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        className="bg-white"
+                                        id="phone"
+                                        type="tel"
+                                    />
+                                )}
+                            />
+                            {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="message">Message*</Label>
+                            <Controller
+                                name="message"
+                                control={control}
+                                rules={{ required: 'Message is required', minLength: { value: 10, message: 'Message must be at least 10 characters' } }}
+                                render={({ field }) => (
+                                    <Textarea
+                                        className="bg-white"
+                                        {...field}
+                                        id="message"
+                                    />
+                                )}
+                            />
+                            {errors.message && <p className="text-red-500 text-sm">{errors.message.message}</p>}
+                        </div>
+                        <Button type="submit" disabled={!isValid || isSubmitting}>
+                            {isSubmitting ? (
+                                <>
+                                    Sending...
+                                    <Loader2 className="mx-2 h-4 w-4 animate-spin" />
+                                </>
+                            ) : (
+                                'Send Message'
+                            )}
+                        </Button>
+                    </form>
+                </div>
 
 				<div className="col-span-full space-y-4 mt-12">
 					<h2 className="text-5xl md:text-6xl font-bold leading-tight">Frequently Asked Questions</h2>
