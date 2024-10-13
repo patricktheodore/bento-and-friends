@@ -17,7 +17,8 @@ const serializeChild = (child: Child): Record<string, any> => {
     year: child.year,
     school: child.school,
     className: child.className,
-    allergens: child.allergens ?? ''
+    allergens: child.allergens ?? '',
+    isTeacher: child.isTeacher
   };
 };
 

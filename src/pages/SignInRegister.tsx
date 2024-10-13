@@ -15,6 +15,7 @@ const UserloginPage: React.FC = () => {
 	const [working, setWorking] = useState(false);
 	const [error, setError] = useState<string | null>(null);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+	const [passwordsMatch, setPasswordsMatch] = useState(true);
 
 	const navigate = useNavigate();
 
@@ -25,6 +26,10 @@ const UserloginPage: React.FC = () => {
 			setIsNewUserSignup(true);
 		}
 	}, [location]);
+
+	const checkPasswordsMatch = (password: string, confirmPassword: string) => {
+		setPasswordsMatch(password === confirmPassword);
+	};
 
 	const handleToggleSignup = () => {
 		setIsNewUserSignup(!isNewUserSignup);
@@ -54,7 +59,14 @@ const UserloginPage: React.FC = () => {
 		if (isNewUserSignup) {
 			const validationError = validatePassword(newPassword);
 			setPasswordError(validationError);
+			checkPasswordsMatch(newPassword, confirmPassword);
 		}
+	};
+	
+	const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const newConfirmPassword = e.target.value;
+		setConfirmPassword(newConfirmPassword);
+		checkPasswordsMatch(password, newConfirmPassword);
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -233,16 +245,18 @@ const UserloginPage: React.FC = () => {
 									className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green focus:z-10 sm:text-sm"
 									placeholder="Confirm Password"
 									value={confirmPassword}
-									onChange={(e) => setConfirmPassword(e.target.value)}
+									onChange={handleConfirmPasswordChange}
 								/>
+
 							</div>
 						)}
 					</div>
+					{isNewUserSignup && !passwordsMatch && (<div className="text-sm text-red-600">Passwords do not match</div>)}
 					{isNewUserSignup && passwordError && <div className="text-sm text-red-600">{passwordError}</div>}
 					<div>
 						<button
 							type="submit"
-							disabled={working || (isNewUserSignup && !!passwordError)}
+							disabled={working || (isNewUserSignup && (!!passwordError || !passwordsMatch))}
 							className={`group relative w-full flex justify-center items-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-dark-green hover:brightness-75 focus:outline-none transform transition-all duration-150 hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-brand-dark-green ${
 								working || (isNewUserSignup && !!passwordError) ? 'opacity-50 cursor-not-allowed' : ''
 							}`}

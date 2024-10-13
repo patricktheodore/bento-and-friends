@@ -16,6 +16,7 @@ const AccountPage: React.FC = () => {
             const newChild = new Child(
                 childData.name,
                 childData.year,
+				childData.isTeacher,
                 childData.school,
                 childData.className,
                 childData.allergens

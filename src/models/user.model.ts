@@ -40,18 +40,20 @@ export class OrderHistorySummary {
 export class Child {
     id: string;
     name: string;
-    year: string;
     school: string;
-    className: string;
     allergens: string;
+    isTeacher: boolean;
+    year?: string;
+    className?: string;
 
-    constructor(name: string = '', year: string = '', school: string = '', className: string = '', allergens: string = '') {
+    constructor(name: string = '', year: string = '', isTeacher: boolean = false, school: string = '', className: string = '', allergens: string = '') {
         this.id = uuidv4(); // Generate a unique ID
         this.name = name;
         this.year = year;
         this.school = school;
         this.className = className;
         this.allergens = allergens;
+        this.isTeacher = isTeacher;
     }
 }
 

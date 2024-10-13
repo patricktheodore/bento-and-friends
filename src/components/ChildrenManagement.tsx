@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Link } from 'react-router-dom';
+import { Checkbox } from './ui/checkbox';
 
 interface ChildrenManagementProps {
 	user: User;
@@ -20,7 +21,7 @@ interface ChildrenManagementProps {
 	onEditChild: (childId: string, child: Omit<Child, 'id'>) => void;
 }
 
-const allergenOptions = ['Dairy', 'Gluten', 'Soy', 'Eggs', 'Other'];
+const allergenOptions = ['Celiac', 'Dairy', 'Gluten', 'Soy', 'Eggs', 'Lactose', 'Other'];
 
 const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChild, onRemoveChild, onEditChild }) => {
 	const { state } = useAppContext();
@@ -30,6 +31,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 	const [isLoading, setIsLoading] = useState(false);
 	const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
 	const [otherAllergen, setOtherAllergen] = useState('');
+	const [isTeacher, setIsTeacher] = useState(false);
 
 	useEffect(() => {
 		if (editingChild) {
@@ -44,9 +46,11 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 			} else {
 				setOtherAllergen('');
 			}
+			setIsTeacher(editingChild.isTeacher || false);
 		} else {
 			setSelectedAllergens([]);
 			setOtherAllergen('');
+			setIsTeacher(false);
 		}
 	}, [editingChild]);
 
@@ -83,26 +87,26 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 		try {
 			const allergens = getAllergenString();
 
+			const childData = {
+				...(editingChild || newChild),
+				allergens,
+				isTeacher,
+				year: isTeacher ? '' : (editingChild?.year || newChild.year),
+				className: isTeacher ? '' : (editingChild?.className || newChild.className),
+			};
+
 			if (editingChild) {
-				const updatedChild = {
-					...editingChild,
-					allergens,
-				};
-				await onEditChild(editingChild.id, updatedChild);
+				await onEditChild(editingChild.id, childData);
 				setEditingChild(null);
-				toast.success('Child updated successfully');
+				toast.success('Member updated successfully');
 			} else {
-				const newChildWithAllergens = {
-					...newChild,
-					allergens,
-				};
-				await onAddChild(newChildWithAllergens);
+				await onAddChild(childData);
 				setNewChild(new Child());
-				toast.success('Child added successfully');
+				toast.success('Member added successfully');
 			}
 			setIsChildModalOpen(false);
 		} catch (error) {
-			toast.error('An error occurred while managing the child');
+			toast.error('An error occurred while managing the member');
 		} finally {
 			setIsLoading(false);
 		}
@@ -112,6 +116,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 		setEditingChild(child);
 		setSelectedAllergens(child.allergens ? child.allergens.split(', ') : []);
 		setOtherAllergen('');
+		setIsTeacher(child.isTeacher || false);
 		setIsChildModalOpen(true);
 	};
 
@@ -122,9 +127,9 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 				await onRemoveChild(editingChild.id);
 				setEditingChild(null);
 				setIsChildModalOpen(false);
-				toast.success('Child removed successfully');
+				toast.success('Member removed successfully');
 			} catch (error) {
-				toast.error('An error occurred while removing the child');
+				toast.error('An error occurred while removing the member');
 			} finally {
 				setIsLoading(false);
 			}
@@ -141,6 +146,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 						setNewChild(new Child());
 						setSelectedAllergens([]);
 						setOtherAllergen('');
+						setIsTeacher(false);
 						setIsChildModalOpen(true);
 					}}
 					className="bg-brand-dark-green text-brand-cream"
@@ -159,6 +165,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							<TableHead>Year</TableHead>
 							<TableHead>Class</TableHead>
 							<TableHead>Allergens</TableHead>
+							<TableHead>Role</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -171,9 +178,10 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 								>
 									<TableCell className="font-medium">{child.name}</TableCell>
 									<TableCell>{child.school}</TableCell>
-									<TableCell>{child.year}</TableCell>
-									<TableCell>{child.className}</TableCell>
+									<TableCell>{child.isTeacher ? '-' : child.year}</TableCell>
+									<TableCell>{child.isTeacher ? '-' : child.className}</TableCell>
 									<TableCell>{child.allergens || 'None'}</TableCell>
+									<TableCell>{child.isTeacher ? 'Teacher' : 'Student'}</TableCell>
 								</TableRow>
 							))}
 					</TableBody>
@@ -188,7 +196,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 			>
 				<DialogContent className={`sm:max-w-[425px] ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}>
 					<DialogHeader>
-						<DialogTitle>{editingChild ? 'Edit' : 'Add New'}</DialogTitle>
+						<DialogTitle>{editingChild ? 'Edit' : 'Add New'} Member</DialogTitle>
 					</DialogHeader>
 					<form
 						onSubmit={handleSubmit}
@@ -201,7 +209,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 								name="name"
 								value={editingChild ? editingChild.name : newChild.name}
 								onChange={handleInputChange}
-								placeholder="Enter child's name"
+								placeholder="Enter member's name"
 								required
 								disabled={isLoading}
 							/>
@@ -235,36 +243,46 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							<Link
 								to="/contact"
 								className="text-brand-dark-green text-xs hover:underline"
-								>
+							>
 								School not listed here?
 							</Link>
 						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label htmlFor="year">Year</Label>
-								<Input
-									id="year"
-									name="year"
-									value={editingChild ? editingChild.year : newChild.year}
-									onChange={handleInputChange}
-									placeholder="Enter year"
-									required
-									disabled={isLoading}
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="className">Class</Label>
-								<Input
-									id="className"
-									name="className"
-									value={editingChild ? editingChild.className : newChild.className}
-									onChange={handleInputChange}
-									placeholder="Enter class"
-									required
-									disabled={isLoading}
-								/>
-							</div>
+						<div className="flex items-center space-x-2">
+							<Checkbox
+								id="isTeacher"
+								checked={isTeacher}
+								onCheckedChange={(checked) => setIsTeacher(checked as boolean)}
+							/>
+							<Label htmlFor="isTeacher">Is this member a teacher?</Label>
 						</div>
+						{!isTeacher && (
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="year">Year</Label>
+									<Input
+										id="year"
+										name="year"
+										value={editingChild ? editingChild.year : newChild.year}
+										onChange={handleInputChange}
+										placeholder="Enter year"
+										required
+										disabled={isLoading}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="className">Class</Label>
+									<Input
+										id="className"
+										name="className"
+										value={editingChild ? editingChild.className : newChild.className}
+										onChange={handleInputChange}
+										placeholder="Enter class"
+										required
+										disabled={isLoading}
+									/>
+								</div>
+							</div>
+						)}
 						<div className="space-y-2">
 							<Label htmlFor="allergens">Allergens / Dietaries</Label>
 							<Select onValueChange={handleAllergenChange}>

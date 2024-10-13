@@ -15,17 +15,25 @@ import { School } from '@/models/school.model';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/utils/utils';
+import { Badge } from '@/components/ui/badge';
+import { updateUserInFirebase } from '@/services/user-service';
 
 const OrderPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
+	const [isAdding, setIsAdding] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [selectedMain, setSelectedMain] = useState<string | null>(null);
 	const [selectedChild, setSelectedChild] = useState<string | null>(null);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 	const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+	const [newChild, setNewChild] = useState<Omit<Child, 'id'>>(new Child());
+	const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+	const [otherAllergen, setOtherAllergen] = useState('');
 	const [step, setStep] = useState(1);
 	const [isAddingChild, setIsAddingChild] = useState(false);
-	const [newChild, setNewChild] = useState<Child>(new Child());
+	const [isTeacher, setIsTeacher] = useState(false);
+
+	const allergenOptions = ['Celiac', 'Dairy', 'Gluten', 'Soy', 'Eggs', 'Lactose', 'Other'];
 
 	useEffect(() => {
 		if (state.user?.children.length === 1) {
@@ -50,6 +58,24 @@ const OrderPage: React.FC = () => {
 		return typeof price === 'number' ? price.toFixed(2) : 'N/A';
 	};
 
+	const handleAllergenChange = (value: string) => {
+		setSelectedAllergens((prev) => {
+			if (prev.includes(value)) {
+				return prev.filter((a) => a !== value);
+			} else {
+				return [...prev, value];
+			}
+		});
+	};
+
+	const getAllergenString = () => {
+		const allergens = [...selectedAllergens.filter((a) => a !== 'Other')];
+		if (selectedAllergens.includes('Other') && otherAllergen) {
+			allergens.push(otherAllergen);
+		}
+		return allergens.join(', ');
+	};
+
 	const handleOrderNow = (itemId: string) => {
 		setSelectedMain(itemId);
 		setIsModalOpen(true);
@@ -65,8 +91,11 @@ const OrderPage: React.FC = () => {
 	};
 
 	const handleAddToCart = () => {
+		setIsAdding(true);
 		setIsModalOpen(false);
-
+	
+		const selectedChildData = state.user?.children.find((child) => child.id === selectedChild);
+	
 		const payload: Meal = {
 			id: uuidv4(),
 			main: state.mains.find((main) => main.id === selectedMain) as Main,
@@ -74,21 +103,22 @@ const OrderPage: React.FC = () => {
 			probiotic: undefined,
 			fruit: undefined,
 			drink: undefined,
-			school: state.schools.find((school) => school.name === state.user?.children.find((child) => child.id === selectedChild)?.school) as School,
+			school: state.schools.find((school) => school.name === selectedChildData?.school) as School,
 			orderDate: new Date(selectedDate as Date).toISOString(),
-			child: state.user?.children.find((child) => child.id === selectedChild) as Child,
+			child: selectedChildData as Child,
 			total: totalPrice,
 		}
-
+	
 		dispatch({
 			type: 'ADD_TO_CART',
 			payload: payload
 		})
-
+	
 		toast.success('Added to cart!');
-
+	
 		setSelectedMain(null);
 		setSelectedAddons([]);
+		setSelectedChild(null);
 		setSelectedDate(undefined);
 		setStep(1);
 	};
@@ -101,15 +131,26 @@ const OrderPage: React.FC = () => {
 
 	const handleAddChild = () => {
 		if (state.user) {
-			const newChildObject = new Child(newChild.name, newChild.allergens, newChild.year, newChild.school, newChild.className);
+			const allergens = getAllergenString();
+			const newChildObject = new Child(
+				newChild.name,
+				newChild.year,
+				isTeacher,
+				newChild.school,
+				newChild.className,
+				allergens,
+			);
 			const updatedUser = {
 				...state.user,
 				children: [...state.user.children, newChildObject],
 			};
 			dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+			updateUserInFirebase(updatedUser);
 			setSelectedChild(newChildObject.id);
 			setIsAddingChild(false);
 			setNewChild(new Child());
+			setSelectedAllergens([]);
+			setOtherAllergen('');
 		}
 	};
 
@@ -171,92 +212,136 @@ const OrderPage: React.FC = () => {
 		if (isAddingChild) {
 			return (
 				<div className="space-y-4">
-					<h2 className="text-lg font-semibold mb-4">Add a New Child</h2>
-					<div className="space-y-2">
-						<Label htmlFor="childName">Name*</Label>
-						<Input
-							id="childName"
-							value={newChild.name}
-							onChange={(e) => setNewChild({ ...newChild, name: e.target.value })}
-							required
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="childName">Allergens</Label>
-						<Input
-							id="allergens"
-							value={newChild.allergens}
-							onChange={(e) => setNewChild({ ...newChild, name: e.target.value })}
-							required
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="childSchool">School*</Label>
-						<Select
-							value={newChild.school}
-							onValueChange={(value) => setNewChild({ ...newChild, school: value })}
-							required
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Select a school" />
-							</SelectTrigger>
-							<SelectContent>
-								{state.schools.map((school) => (
-									<SelectItem
-										key={school.id}
-										value={school.name}
-									>
-										{school.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="childYear">Year*</Label>
-						<Input
-							id="childYear"
-							value={newChild.year}
-							onChange={(e) => setNewChild({ ...newChild, year: e.target.value })}
-							required
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="childClass">Class*</Label>
-						<Input
-							id="childClass"
-							value={newChild.className}
-							onChange={(e) => setNewChild({ ...newChild, className: e.target.value })}
-							required
-						/>
-					</div>
-					<div className="w-full justify-end flex gap-2">
-						<Button
-							variant="outline"
-							onClick={() => setIsAddingChild(false)}
-						>
-							Cancel
-						</Button>
-						<Button
-							disabled={!newChild.name || !newChild.className || !newChild.school || !newChild.year}
-						 	onClick={handleAddChild}>Save Child for future use</Button>
-					</div>
+                <h2 className="text-lg font-semibold mb-4">Add a New Child</h2>
+                <div className="space-y-2">
+                    <Label htmlFor="childName">Name*</Label>
+                    <Input
+                        id="childName"
+                        value={newChild.name}
+                        onChange={(e) => setNewChild({ ...newChild, name: e.target.value })}
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="childSchool">School*</Label>
+                    <Select
+                        value={newChild.school}
+                        onValueChange={(value) => setNewChild({ ...newChild, school: value })}
+                        required
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a school" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {state.schools.map((school) => (
+                                <SelectItem
+                                    key={school.id}
+                                    value={school.name}
+                                >
+                                    {school.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+				<div className="flex items-center space-x-2">
+					<Checkbox
+						id="isTeacher"
+						checked={isTeacher}
+						onCheckedChange={(checked) => setIsTeacher(checked as boolean)}
+					/>
+					<Label htmlFor="isTeacher">Is this member a teacher?</Label>
 				</div>
+				{!isTeacher && (							
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="childYear">Year*</Label>
+							<Input
+								id="childYear"
+								value={newChild.year}
+								onChange={(e) => setNewChild({ ...newChild, year: e.target.value })}
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="childClass">Class*</Label>
+							<Input
+								id="childClass"
+								value={newChild.className}
+								onChange={(e) => setNewChild({ ...newChild, className: e.target.value })}
+								required
+							/>
+						</div>
+					</div>
+				)}
+				<div className="space-y-2">
+                    <Label htmlFor="allergens">Allergens / Dietaries</Label>
+                    <Select onValueChange={handleAllergenChange}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Allergens" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {allergenOptions.map((allergen) => (
+                                <SelectItem
+                                    key={allergen}
+                                    value={allergen}
+                                >
+                                    {allergen}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedAllergens.map((allergen) => (
+                            <Badge
+                                key={allergen}
+                                variant="secondary"
+                                className="cursor-pointer"
+                                onClick={() => handleAllergenChange(allergen)}
+                            >
+                                {allergen} ✕
+                            </Badge>
+                        ))}
+                    </div>
+                    {selectedAllergens.includes('Other') && (
+                        <Input
+                            placeholder="Enter other allergen"
+                            value={otherAllergen}
+                            onChange={(e) => setOtherAllergen(e.target.value)}
+                            className="mt-2"
+                        />
+                    )}
+                </div>
+                <div className="w-full justify-end flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => setIsAddingChild(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={!newChild.name|| !newChild.school || (!isTeacher && (!newChild.year || !newChild.className))}
+                        onClick={handleAddChild}
+                    >
+                        Save for future use
+                    </Button>
+                </div>
+            </div>
 			);
 		}
 
 		return (
 			<div className="space-y-4">
-				<h2 className="text-md font-semibold">Select a Child</h2>
+				<h2 className="text-md font-semibold">Select Recipient</h2>
 				{state.user?.children.length === 0 ? (
-					<p>No children added yet. Please add a child to continue.</p>
+					<p>No children/members added yet. Please add one to continue.</p>
 				) : (
 					<Select
 						value={selectedChild || undefined}
 						onValueChange={setSelectedChild}
 					>
 						<SelectTrigger className="w-full">
-							<SelectValue placeholder="Select a child" />
+							<SelectValue placeholder="Select recipient..." />
 						</SelectTrigger>
 						<SelectContent>
 							{state.user?.children.map((child) => (
@@ -274,7 +359,7 @@ const OrderPage: React.FC = () => {
 					variant={'outline'}
 					onClick={() => setIsAddingChild(true)}
 				>
-					Add Child
+					Add Child/Member
 				</Button>
 			</div>
 		);
@@ -327,13 +412,14 @@ const OrderPage: React.FC = () => {
 					</>
 				);
 			case 4:
+				const selectedChildData = state.user?.children.find((child) => child.id === selectedChild);
 				return (
 					<div className="space-y-4">
 						{renderSelectionSummary()}
 						<div className="bg-gray-100 p-3 rounded-md">
 							<h3 className="text-sm font-semibold mb-2">Delivery Details:</h3>
-							<p>For: {state.user?.children.find((child) => child.id === selectedChild)?.name}</p>
-							<p>At: {state.user?.children.find((child) => child.id === selectedChild)?.school}</p>
+							<p>For: {selectedChildData?.name}</p>
+							<p>At: {selectedChildData?.school}</p>
 							<p>On: {selectedDate && formatDate(selectedDate.toISOString())}</p>
 						</div>
 					</div>
@@ -385,7 +471,7 @@ const OrderPage: React.FC = () => {
 									Next
 								</Button>
 							) : (
-								<Button onClick={handleAddToCart}>Add to Cart</Button>
+								<Button disabled={isAdding} onClick={handleAddToCart}>Add to Cart</Button>
 							)}
 						</div>
 					</div>
