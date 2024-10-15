@@ -81,7 +81,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, alle
 						</Button>
 
 					) : (
-						<>
+						<div className='w-full flex flex-col md:flex-row justify-center items-center gap-2'>
 							<Button
 								onClick={createAccount}
 								variant="outline"
@@ -94,7 +94,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, alle
 							>
 								Login to Order
 							</Button>
-						</>
+						</div>
 					)}
 
 				</CardFooter>

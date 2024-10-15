@@ -20,12 +20,6 @@ time constraints & challenges of preparing engaging lunches everyday for our chi
 assist busy parents whilst alleviating any existing canteen workload/ volunteer issues to directly benefit
 schoolchildren with our all-in-one bento school lunches.
           </p>
-          
-          <p className="text-lg text-justify max-w-xl">
-          Here at Bento & Friends, our company motto is to grow and build long term relationships with select schools and P+C
-Committees based on personalized service, 'quality over quantity', by no means of mass production/ processing and
-are solely dedicated in the school lunch catering market, satisfying hungry tummies one bento meal at a time!
-          </p>
         </div>
         
         <div className="grid grid-cols-2 gap-4">

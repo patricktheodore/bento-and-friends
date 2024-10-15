@@ -83,48 +83,55 @@ const AccountPage: React.FC = () => {
 
 	return (
 		<div className="container mx-auto p-4 py-8">
-			{state.user ? (
-				<Tabs defaultValue="profile">
-					<div className="w-full flex justify-between items-center">
-						<h1 className="text-4xl font-bold">My Account</h1>
-						<TabsList>
-							<TabsTrigger value="profile">Profile</TabsTrigger>
-							<TabsTrigger value="order-history">Order History</TabsTrigger>
-							<TabsTrigger value="meal-calendar">Meal Calendar</TabsTrigger>
-						</TabsList>
-					</div>
-
-					<TabsContent value="profile">
-						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
-							{state.user.children.length === 0 && <NoChildrenMessage />}
-							<ChildrenManagement
-								user={state.user}
-								onAddChild={handleAddChild}
-								onRemoveChild={handleRemoveChild}
-								onEditChild={handleEditChild}
-							/>
-							{state.user.children.length > 0 && <StartOrderMessage />}
-							<AccountSummary user={state.user} />
-						</div>
-					</TabsContent>
-
-					<TabsContent value="order-history">
-						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
-							<OrderHistory />
-						</div>
-					</TabsContent>
-
-					<TabsContent value="meal-calendar">
-						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
-							<MealCalendar />
-						</div>
-					</TabsContent>
-
-				</Tabs>
-			) : (
+			{state.isLoading ? (
 				<div className="w-full flex flex-col justify-center items-center p-4">
-					<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>
+					<h1 className="text-2xl font-semibold mb-4">Loading...</h1>
 				</div>
+			) : (
+				state.user ? (
+					<Tabs defaultValue="profile">
+						<div className="w-full flex justify-between items-center">
+							<h1 className="text-4xl font-bold">My Account</h1>
+							<TabsList>
+								<TabsTrigger value="profile">Profile</TabsTrigger>
+								<TabsTrigger value="order-history">Order History</TabsTrigger>
+								<TabsTrigger value="meal-calendar">Meal Calendar</TabsTrigger>
+							</TabsList>
+						</div>
+	
+						<TabsContent value="profile">
+							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+								{state.user.children.length === 0 && <NoChildrenMessage />}
+								<ChildrenManagement
+									user={state.user}
+									onAddChild={handleAddChild}
+									onRemoveChild={handleRemoveChild}
+									onEditChild={handleEditChild}
+								/>
+								{state.user.children.length > 0 && <StartOrderMessage />}
+								<AccountSummary user={state.user} />
+							</div>
+						</TabsContent>
+	
+						<TabsContent value="order-history">
+							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+								<OrderHistory />
+							</div>
+						</TabsContent>
+	
+						<TabsContent value="meal-calendar">
+							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+								<MealCalendar />
+							</div>
+						</TabsContent>
+	
+					</Tabs>
+				) : (
+					<div className="w-full flex flex-col justify-center items-center p-4">
+						<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>
+					</div>
+				)
+
 			)}
 		</div>
 	);

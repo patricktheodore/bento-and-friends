@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import { formatDate } from '@/utils/utils';
 import { Badge } from '@/components/ui/badge';
 import { updateUserInFirebase } from '@/services/user-service';
+import { Info } from 'lucide-react';
 
 const OrderPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -39,7 +40,13 @@ const OrderPage: React.FC = () => {
 		if (state.user?.children.length === 1) {
 			setSelectedChild(state.user.children[0].id);
 		}
-	}, [state.user?.children]);
+
+		if (state.schools.length === 1) {
+            setNewChild(prev => ({ ...prev, school: state.schools[0].name }));
+        } else if (state.user && state.user?.children && state.user?.children.length > 0) {
+            setNewChild(prev => ({ ...prev, school: state.user ? state.user.children[0].school : '' }));
+        }
+	}, [state.user?.children, state.schools]);
 
 	const totalPrice = useMemo(() => {
 		let total = 0;
@@ -117,7 +124,16 @@ const OrderPage: React.FC = () => {
             if (glutenFreeAddon && !selectedAddons.includes(glutenFreeAddon.id)) {
                 updatedAddOns.push(glutenFreeAddon);
                 updatedTotal += glutenFreeAddon.price;
-                toast.success(`Gluten-free option automatically added due to dietary requirements.`);
+                toast.success(
+                    'Gluten-free option automatically added due to dietary requirements.',
+                    {
+                        duration: 5000,
+                        style: {
+                            background: '#004777',
+                            color: '#F7F4F0',
+                        }
+                    }
+                );
             }
         }
     
@@ -139,7 +155,7 @@ const OrderPage: React.FC = () => {
             payload: payload
         })
     
-        toast.success('Added to cart!');
+        toast.success('Added to cart!', { duration: 5000 });
         
         setSelectedMain(null);
         setSelectedAddons([]);
@@ -179,6 +195,39 @@ const OrderPage: React.FC = () => {
 			setOtherAllergen('');
 		}
 	};
+
+	const renderSchoolSelection = () => {
+        if (state.schools.length === 1) {
+            return (
+                <Input
+                    value={state.schools[0].name}
+                    disabled
+                />
+            );
+        }
+
+        return (
+            <Select
+                value={newChild.school}
+                onValueChange={(value) => setNewChild({ ...newChild, school: value })}
+                required
+            >
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a school" />
+                </SelectTrigger>
+                <SelectContent>
+                    {state.schools.map((school) => (
+                        <SelectItem
+                            key={school.id}
+                            value={school.name}
+                        >
+                            {school.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    };
 
 	const renderSelectionSummary = () => {
 		const selectedMainItem = state.mains.find((main) => main.id === selectedMain);
@@ -249,27 +298,9 @@ const OrderPage: React.FC = () => {
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="childSchool">School*</Label>
-                    <Select
-                        value={newChild.school}
-                        onValueChange={(value) => setNewChild({ ...newChild, school: value })}
-                        required
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a school" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {state.schools.map((school) => (
-                                <SelectItem
-                                    key={school.id}
-                                    value={school.name}
-                                >
-                                    {school.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+					<Label htmlFor="childSchool">School*</Label>
+					{renderSchoolSelection()}
+				</div>
 				<div className="flex items-center space-x-2">
 					<Checkbox
 						id="isTeacher"

@@ -17,7 +17,7 @@ const HowItWorksSummaryComponent: React.FC = () => {
     {
       icon: <Truck size={32} />,
       title: 'We Deliver',
-      description: "Sit back and relax as we deliver fresh meals to your child's school.",
+      description: "Sit back and relax as we deliver straight to your school.",
     },
   ];
 

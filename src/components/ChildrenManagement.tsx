@@ -39,6 +39,12 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 			const standardAllergens = allergens.filter((a) => allergenOptions.includes(a));
 			const otherAllergens = allergens.filter((a) => !allergenOptions.includes(a));
 
+            if (state.schools.length === 1) {
+                setNewChild(prev => ({ ...prev, school: state.schools[0].name }));
+            } else if (user.children.length > 0) {
+                setNewChild(prev => ({ ...prev, school: user.children[0].school }));
+            }
+
 			setSelectedAllergens(standardAllergens);
 			if (otherAllergens.length > 0) {
 				setSelectedAllergens((prev) => [...prev, 'Other']);
@@ -52,7 +58,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 			setOtherAllergen('');
 			setIsTeacher(false);
 		}
-	}, [editingChild]);
+	}, [editingChild, state.schools, user.children]);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -136,6 +142,44 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 		}
 	};
 
+	const renderSchoolSelection = () => {
+        if (state.schools.length === 1) {
+            return (
+                <Input
+                    value={state.schools[0].name}
+                    disabled
+                />
+            );
+        }
+
+        return (
+            <Select
+                onValueChange={(value) => {
+                    if (editingChild) {
+                        setEditingChild({ ...editingChild, school: value });
+                    } else {
+                        setNewChild((prev) => ({ ...prev, school: value }));
+                    }
+                }}
+                value={editingChild ? editingChild.school : newChild.school}
+            >
+                <SelectTrigger>
+                    <SelectValue placeholder="Select School" />
+                </SelectTrigger>
+                <SelectContent>
+                    {state.schools.map((school) => (
+                        <SelectItem
+                            key={school.id}
+                            value={school.name}
+                        >
+                            {school.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    };
+
 	return (
 		<div className="w-full space-y-4">
 			<div className="flex justify-between items-center">
@@ -215,38 +259,15 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="school">School</Label>
-							<Select
-								onValueChange={(value) => {
-									if (editingChild) {
-										setEditingChild({ ...editingChild, school: value });
-									} else {
-										setNewChild((prev) => ({ ...prev, school: value }));
-									}
-								}}
-								value={editingChild ? editingChild.school : newChild.school}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Select School" />
-								</SelectTrigger>
-								<SelectContent>
-									{state.schools.map((school) => (
-										<SelectItem
-											key={school.id}
-											value={school.name}
-										>
-											{school.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Link
-								to="/contact"
-								className="text-brand-dark-green text-xs hover:underline"
-							>
-								School not listed here?
-							</Link>
-						</div>
+                            <Label htmlFor="school">School</Label>
+                            {renderSchoolSelection()}
+                            <Link
+                                to="/contact"
+                                className="text-brand-dark-green text-xs hover:underline"
+                            >
+                                School not listed here?
+                            </Link>
+                        </div>
 						<div className="flex items-center space-x-2">
 							<Checkbox
 								id="isTeacher"
@@ -342,7 +363,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							</Button>
 							<Button
 								type="submit"
-								disabled={isLoading}
+								disabled={isLoading || !newChild.name|| !newChild.school || (!isTeacher && (!newChild.year || !newChild.className))}
 							>
 								{isLoading ? (
 									<>
