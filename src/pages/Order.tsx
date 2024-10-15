@@ -83,46 +83,71 @@ const OrderPage: React.FC = () => {
 	};
 
 	const handleNextStep = () => {
-		if (step < 4) setStep(step + 1);
-	};
+        if (step < 4) {
+            // If we're on step 1 (add-ons) and there's only one child, skip step 2
+            if (step === 1 && state.user?.children.length === 1) {
+                setStep(3);
+            } else {
+                setStep(step + 1);
+            }
+        }
+    };
 
 	const handlePrevStep = () => {
 		if (step > 1) setStep(step - 1);
 	};
 
 	const handleAddToCart = () => {
-		setIsAdding(true);
-		setIsModalOpen(false);
-	
-		const selectedChildData = state.user?.children.find((child) => child.id === selectedChild);
-	
-		const payload: Meal = {
-			id: uuidv4(),
-			main: state.mains.find((main) => main.id === selectedMain) as Main,
-			addOns: state.addOns.filter((addon) => selectedAddons.includes(addon.id)),
-			probiotic: undefined,
-			fruit: undefined,
-			drink: undefined,
-			school: state.schools.find((school) => school.name === selectedChildData?.school) as School,
-			orderDate: new Date(selectedDate as Date).toISOString(),
-			child: selectedChildData as Child,
-			total: totalPrice,
-		}
-	
-		dispatch({
-			type: 'ADD_TO_CART',
-			payload: payload
-		})
-	
-		toast.success('Added to cart!');
-		
-		setSelectedMain(null);
-		setSelectedAddons([]);
-		setSelectedChild(null);
-		setSelectedDate(undefined);
-		setStep(1);
-		setIsAdding(false);
-	};
+        setIsAdding(true);
+        setIsModalOpen(false);
+    
+        const selectedChildData = state.user?.children.find((child) => child.id === selectedChild);
+    
+        let updatedAddOns = state.addOns.filter((addon) => selectedAddons.includes(addon.id));
+        let updatedTotal = totalPrice;
+    
+        // Check for gluten allergy
+        const hasGlutenAllergy = selectedChildData?.allergens?.toLowerCase().includes('gluten') ||
+                                 selectedChildData?.allergens?.toLowerCase().includes('celiac');
+    
+        if (hasGlutenAllergy) {
+            const glutenFreeAddon = state.addOns.find(addon => 
+                addon.display.toLowerCase().includes('gluten free'));
+            
+            if (glutenFreeAddon && !selectedAddons.includes(glutenFreeAddon.id)) {
+                updatedAddOns.push(glutenFreeAddon);
+                updatedTotal += glutenFreeAddon.price;
+                toast.success(`Gluten-free option automatically added due to dietary requirements.`);
+            }
+        }
+    
+        const payload: Meal = {
+            id: uuidv4(),
+            main: state.mains.find((main) => main.id === selectedMain) as Main,
+            addOns: updatedAddOns,
+            probiotic: undefined,
+            fruit: undefined,
+            drink: undefined,
+            school: state.schools.find((school) => school.name === selectedChildData?.school) as School,
+            orderDate: new Date(selectedDate as Date).toISOString(),
+            child: selectedChildData as Child,
+            total: updatedTotal,
+        }
+    
+        dispatch({
+            type: 'ADD_TO_CART',
+            payload: payload
+        })
+    
+        toast.success('Added to cart!');
+        
+        setSelectedMain(null);
+        setSelectedAddons([]);
+        setSelectedChild(selectedChildData ? selectedChildData.id : null);
+        setSelectedDate(undefined);
+        setStep(1);
+        setIsAdding(false);
+    };
 
 	const handleAddOnToggle = (addonId: string) => {
 		setSelectedAddons((prev) =>
@@ -213,9 +238,9 @@ const OrderPage: React.FC = () => {
 		if (isAddingChild) {
 			return (
 				<div className="space-y-4">
-                <h2 className="text-lg font-semibold mb-4">Add a New Child</h2>
+                <h2 className="text-lg font-semibold mb-4">Add a New Child / Member</h2>
                 <div className="space-y-2">
-                    <Label htmlFor="childName">Name*</Label>
+                    <Label htmlFor="childName">Full Name*</Label>
                     <Input
                         id="childName"
                         value={newChild.name}
@@ -423,6 +448,16 @@ const OrderPage: React.FC = () => {
 							<p>At: {selectedChildData?.school}</p>
 							<p>On: {selectedDate && formatDate(selectedDate.toISOString())}</p>
 						</div>
+
+						{selectedChildData?.allergens && (
+							<div className='bg-orange-100 p-3 rounded-md'>
+								<h3 className='text-sm font-semibold mb-2'>Dietary Requirements:</h3>
+								<p>{selectedChildData.allergens}</p>
+								<span className='mt-2 italic'>Note: If you have listed specific allergen(s) added to any members in your profile, all meals ordered will be custom cooked
+								to be free of those ingredients.</span>
+							</div>
+
+						)}
 					</div>
 				);
 			default:

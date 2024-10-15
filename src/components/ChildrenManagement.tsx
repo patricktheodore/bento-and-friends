@@ -203,7 +203,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 						className="space-y-4"
 					>
 						<div className="space-y-2">
-							<Label htmlFor="name">Name</Label>
+							<Label htmlFor="name">Full Name</Label>
 							<Input
 								id="name"
 								name="name"

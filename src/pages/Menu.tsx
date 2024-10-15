@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const MenuPage: React.FC = () => {
 	const { state } = useAppContext();
@@ -115,16 +116,18 @@ const MenuPage: React.FC = () => {
 
 	return (
 		<div className="container mx-auto p-4 py-8">
-			<Tabs defaultValue="mains">
-				<div className="w-full flex justify-between items-center">
-					<h1 className="text-5xl md:text-6xl font-bold leading-tight mb-4">Our Menu</h1>
-					<TabsList>
-						<TabsTrigger value="mains">Main Dishes</TabsTrigger>
-						<TabsTrigger value="addons">Add-ons</TabsTrigger>
-						<TabsTrigger value="probiotics">Probiotics</TabsTrigger>
-						<TabsTrigger value="fruits">Fruits</TabsTrigger>
-						{/* <TabsTrigger value="drinks">Drinks</TabsTrigger> */}
-					</TabsList>
+			<Tabs defaultValue="mains" className="space-y-4">
+				<div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:justify-between md:items-center">
+					<h1 className="text-3xl md:text-5xl font-bold leading-tight">Our Menu</h1>
+					<ScrollArea className="w-full md:w-auto">
+						<TabsList className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground w-full md:w-auto">
+							<TabsTrigger value="mains" className="whitespace-nowrap">Main Dishes</TabsTrigger>
+							<TabsTrigger value="addons" className="whitespace-nowrap">Add-ons</TabsTrigger>
+							<TabsTrigger value="probiotics" className="whitespace-nowrap">Probiotics</TabsTrigger>
+							<TabsTrigger value="fruits" className="whitespace-nowrap">Fruits</TabsTrigger>
+							{/* <TabsTrigger value="drinks" className="whitespace-nowrap">Drinks</TabsTrigger> */}
+						</TabsList>
+					</ScrollArea>
 				</div>
 				<TabsContent value="mains">{renderMainItems()}</TabsContent>
 				<TabsContent value="addons">{renderAddOns()}</TabsContent>

@@ -359,6 +359,16 @@ const ContactPage = () => {
 								administrators alike!
 							</AccordionContent>
 						</AccordionItem>
+						<AccordionItem value="item-15">
+							<AccordionTrigger className="text-lg">
+								What if I didn’t receive any welcome confirmation upon sign up/ order confirmation emails?
+							</AccordionTrigger>
+							<AccordionContent>
+							What if I didn’t receive any welcome confirmation upon sign up/ order confirmation emails?
+Please check through and refresh all email inboxes, including your Junk/Spam folder. For all orders, they are all
+accessible under your Account information with order history and upcoming meal calendar.
+							</AccordionContent>
+						</AccordionItem>
 					</Accordion>
 				</div>
 			</div>

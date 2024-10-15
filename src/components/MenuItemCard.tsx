@@ -3,6 +3,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Wheat, Egg, Milk, Bean } from 'lucide-react';
+import { useAppContext } from '@/context/AppContext';
+import { useNavigate } from 'react-router-dom';
 
 export interface MenuItemProps {
 	image?: string;
@@ -20,7 +22,19 @@ const allergenIcons: { [key: string]: React.ReactNode } = {
 	soy: <Bean size={18} />,
 };
 
+
+
 const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, allergens, onOrderNow }) => {
+	const { state } = useAppContext();
+    const navigate = useNavigate();
+
+	const createAccount = () => {
+		navigate('/signin');
+	};
+	
+	const login = () => {
+		navigate('/signin');
+	};
 	return (
 		<Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg flex flex-col h-full">
 			<div className="overflow-hidden h-48 relative">
@@ -57,13 +71,32 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, alle
 				<CardContent className="flex-grow">
 					<p className="text-brand-taupe text-sm">{description}</p>
 				</CardContent>
-				<CardFooter className="mt-auto">
-					<Button
-						className="w-full bg-brand-cream text-brand-dark-green hover:bg-brand-dark-green hover:text-brand-cream"
-						onClick={onOrderNow}
-					>
-						Order now
-					</Button>
+				<CardFooter className="mt-auto flex justify-center items-center gap-2">
+					{state.user ? (
+						<Button
+							className="w-full bg-brand-cream text-brand-dark-green hover:bg-brand-dark-green hover:text-brand-cream"
+							onClick={onOrderNow}
+						>
+							Order now
+						</Button>
+
+					) : (
+						<>
+							<Button
+								onClick={createAccount}
+								variant="outline"
+							>
+								Create an Account
+							</Button>
+							<Button
+								onClick={login}
+								variant="default"
+							>
+								Login to Order
+							</Button>
+						</>
+					)}
+
 				</CardFooter>
 			</div>
 		</Card>

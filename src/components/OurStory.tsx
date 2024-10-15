@@ -8,24 +8,32 @@ const OurStoryComponent: React.FC = () => {
       <div className="max-w-screen-xl mx-auto grid md:grid-cols-2 gap-8 items-start">
         <div className="flex flex-col gap-6">
           <h2 className="text-5xl md:text-6xl font-bold leading-tight">
-            Our<br />Story
+          Bento & Friends
+          <br/>School Vision
+
           </h2>
           
-          <p className="text-lg max-w-xl">
-            Bento & Friends was born from the struggle of a single father who strived every day to give their child the nutrition that they deserved. Our single father, Alvin, would have to spend much of his limited and precious time with his daughter traveling to supermarkets, buying ingredients, cooking and packaging.
+          <p className="text-lg text-justify max-w-xl">
+          As busy parents & hospitality professionals ourselves, Bento & Friends are passionately looking to advance the
+school lunch environment by providing nutritious & yummy all-in-one complete bento set meals. We understand the
+time constraints & challenges of preparing engaging lunches everyday for our children, therefore our services aim to
+assist busy parents whilst alleviating any existing canteen workload/ volunteer issues to directly benefit
+schoolchildren with our all-in-one bento school lunches.
           </p>
           
-          <p className="text-lg max-w-xl">
-            This led to the inception of Bento and Friends, a simple way for parents to ensure their kids get a delicious meal that fuels them the right way and enables them to spend their time with their kids how they want to.
+          <p className="text-lg text-justify max-w-xl">
+          Here at Bento & Friends, our company motto is to grow and build long term relationships with select schools and P+C
+Committees based on personalized service, 'quality over quantity', by no means of mass production/ processing and
+are solely dedicated in the school lunch catering market, satisfying hungry tummies one bento meal at a time!
           </p>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
-          <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden">
-            <img src={image1} alt="Chef preparing bento boxes in large quantity" className="w-full h-full object-cover" />
+          <div className="aspect-auto overflow-hidden pb-24">
+            <img src={image1} alt="Chef preparing bento boxes in large quantity" className="w-full h-full rounded-lg object-cover" />
           </div>
-          <div className="aspect-square bg-gray-300 rounded-lg overflow-hidden mt-8">
-            <img src={image2} alt="School child enjoying meal" className="w-full h-full object-cover" />
+          <div className="aspect-auto overflow-hidden pt-24">
+            <img src={image2} alt="School child enjoying meal" className="w-full h-full rounded-lg object-cover" />
           </div>
         </div>
       </div>

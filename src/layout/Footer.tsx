@@ -1,7 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTwitter, faInstagram, faFacebook } from '@fortawesome/free-brands-svg-icons';
 import logo from '@/assets/logo-white.png';
 
 const FooterSection: React.FC<{ title: string; links: { to: string; label: string }[] }> = ({ title, links }) => (
@@ -22,7 +20,7 @@ const Footer: React.FC = () => {
 		{
 			title: 'About Us',
 			links: [
-				{ to: '/about', label: 'Our Story' },
+				{ to: '/', label: 'Our Vision' },
 				{ to: '/contact', label: 'Contact Us' },
 			],
 		},
@@ -60,13 +58,11 @@ const Footer: React.FC = () => {
           <div className="flex flex-wrap justify-center space-x-4 mb-6">
             <span>&copy; Bento&Friends {new Date().getFullYear()}</span>
           </div>
-          <div className="flex space-x-6 mb-6">
-            {[faTwitter, faInstagram, faFacebook].map((icon, index) => (
-              <a key={index} href="#" className="text-2xl hover:text-brand-gold transition-colors duration-300">
-                <FontAwesomeIcon icon={icon} />
-              </a>
-            ))}
-          </div>
+        </div>
+        <div className="text-brand-cream text-opacity-75 text-sm text-center">
+            <span>As we cook our meals fresh and deliver all our school lunches in accordance to current WA Food
+Act & Food Standards Australia NZ, any food items from our bento meals not consumed within a 4 hour period from
+production must be discarded/ deemed unfit for consumption.</span>
         </div>
       </div>
     </footer>
