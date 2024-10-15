@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,44 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Main } from '@/models/item.model';
+import { Meal } from '@/models/order.model';
+import OrderDialog from '@/components/OrderDialog';
 
 const MenuPage: React.FC = () => {
-	const { state } = useAppContext();
+	const { state, dispatch } = useAppContext();
     const navigate = useNavigate();
+    const [selectedMain, setSelectedMain] = useState<Main | null>(null);
+    const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
 
-	const renderMainItems = () => (
-		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{state.mains.map((item) => (
-				<Card key={item.id}>
-					<CardHeader>
-						<CardTitle>{item.display}</CardTitle>
-						<CardDescription>{item.description}</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<img
-							src={item.image}
-							alt={item.display}
-							className="w-full h-48 object-cover rounded-md mb-4"
-						/>
-						<div className="flex flex-wrap gap-2 mb-2">
-							{item.isNew && <Badge variant="default">New</Badge>}
-							{item.isVegetarian && <Badge variant="secondary">Vegetarian</Badge>}
-							{item.allergens?.map((allergen) => (
-								<Badge
-									key={allergen}
-									variant="outline"
-									className="uppercase"
-								>
-									{allergen}
-								</Badge>
-							))}
-						</div>
-						<p className='text-lg font-bold'>${item.price.toFixed(2)}</p>
-					</CardContent>
-				</Card>
-			))}
-		</div>
-	);
+	
 
 	const renderAddOns = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -114,6 +87,65 @@ const MenuPage: React.FC = () => {
 		</div>
 	);
 
+	const handleOrderNow = (item: Main) => {
+        setSelectedMain(item);
+        setIsOrderDialogOpen(true);
+    };
+
+    const handleAddToCart = (meals: Meal[]) => {
+        meals.forEach(meal => {
+            dispatch({ type: 'ADD_TO_CART', payload: meal });
+        });
+        setIsOrderDialogOpen(false);
+    };
+
+    const renderMainItems = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {state.mains.map((item) => (
+                <Card key={item.id}>
+                    <CardHeader>
+                        <CardTitle>{item.display}</CardTitle>
+                        <CardDescription>{item.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <img
+                            src={item.image}
+                            alt={item.display}
+                            className="w-full h-48 object-cover rounded-md mb-4"
+                        />
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {item.isNew && <Badge variant="default">New</Badge>}
+                            {item.isVegetarian && <Badge variant="secondary">Vegetarian</Badge>}
+                            {item.allergens?.map((allergen) => (
+                                <Badge
+                                    key={allergen}
+                                    variant="outline"
+                                    className="uppercase"
+                                >
+                                    {allergen}
+                                </Badge>
+                            ))}
+                        </div>
+                        <p className='text-lg font-bold'>${item.price.toFixed(2)}</p>
+                        {state.user ? (
+                            <Button
+                                className="w-full mt-2"
+                                onClick={() => handleOrderNow(item)}
+                            >
+                                Order Now
+                            </Button>
+                        ) : (
+                            <div className="flex justify-center mt-2 gap-2">
+                                <Button onClick={() => navigate('/signin')} variant="outline">Create Account</Button>
+                                <Button onClick={() => navigate('/signin')}>Login to Order</Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+
 	return (
 		<div className="container mx-auto p-4 py-8">
 			<Tabs defaultValue="mains" className="space-y-4">
@@ -163,6 +195,17 @@ const MenuPage: React.FC = () => {
 					)}
 				</div>
 			</Tabs>
+			{selectedMain && (
+                <OrderDialog
+                    isOpen={isOrderDialogOpen}
+                    onClose={() => setIsOrderDialogOpen(false)}
+                    selectedMain={selectedMain}
+                    addOns={state.addOns}
+                    children={state.user?.children || []}
+                    schools={state.schools}
+                    onAddToCart={handleAddToCart}
+                />
+            )}
 		</div>
 	);
 };

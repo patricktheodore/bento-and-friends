@@ -12,17 +12,16 @@ import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import OrderDialog from './OrderDialog';
 
 const OrderHistory: React.FC = () => {
 	const { state, dispatch } = useAppContext();
-	const navigate = useNavigate();
-	const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-	const [expandedOrderDetails, setExpandedOrderDetails] = useState<Order | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
-	const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
-	const [isOrderAgainDialogOpen, setIsOrderAgainDialogOpen] = useState(false);
-	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-	const [orderAgainStep, setOrderAgainStep] = useState(1);
+    const navigate = useNavigate();
+    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+    const [expandedOrderDetails, setExpandedOrderDetails] = useState<Order | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+    const [isOrderAgainDialogOpen, setIsOrderAgainDialogOpen] = useState(false);
 
 	const handleOrderClick = async (orderSummary: OrderHistorySummary) => {
 		if (expandedOrderId === orderSummary.orderId) {
@@ -43,6 +42,19 @@ const OrderHistory: React.FC = () => {
 		}
 	};
 
+	const handleOrderAgain = (meal: Meal) => {
+        setSelectedMeal(meal);
+        setIsOrderAgainDialogOpen(true);
+    };
+
+	const handleAddToCart = (meals: Meal[]) => {
+        meals.forEach(meal => {
+            dispatch({ type: 'ADD_TO_CART', payload: meal });
+        });
+        setIsOrderAgainDialogOpen(false);
+        toast.success('Added to cart!');
+    };
+
 	const formatDate = (dateString: string): string => {
 		const date = new Date(dateString);
 		const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -50,100 +62,6 @@ const OrderHistory: React.FC = () => {
 		return `${dayOfWeek}, ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 	};
 
-	const handleOrderAgain = (meal: Meal) => {
-		setSelectedMeal(meal);
-		setSelectedDate(undefined);
-		setOrderAgainStep(1);
-		setIsOrderAgainDialogOpen(true);
-	};
-
-	const handleAddToCart = () => {
-		if (selectedMeal && selectedDate) {
-			const newMeal: Meal = {
-				...selectedMeal,
-				id: uuidv4(),
-				orderDate: selectedDate.toISOString(),
-			};
-			dispatch({ type: 'ADD_TO_CART', payload: newMeal });
-			toast.success('Added to cart!');
-			setIsOrderAgainDialogOpen(false);
-			setSelectedMeal(null);
-			setSelectedDate(undefined);
-			setOrderAgainStep(1);
-		}
-	};
-
-	const isValidDate = (date: Date) => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
-
-		const day = date.getDay();
-		const isWeekend = day === 0 || day === 6;
-		const isPast = date <= today;
-		const isBlocked = state.blockedDates.some(
-			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
-		);
-
-		return !(isWeekend || isPast || isBlocked);
-	};
-
-	const renderOrderAgainDialogContent = () => {
-		switch (orderAgainStep) {
-			case 1:
-				return (
-					<>
-						<DialogHeader>
-							<DialogTitle>Select a Date</DialogTitle>
-						</DialogHeader>
-						<div className="w-full flex justify-center mt-4">
-							<Calendar
-								mode="single"
-								selected={selectedDate}
-								onSelect={setSelectedDate}
-								disabled={(date) => !isValidDate(date)}
-								className="rounded-md border"
-							/>
-						</div>
-						<div className="flex justify-end mt-4">
-							<Button onClick={() => setOrderAgainStep(2)} disabled={!selectedDate}>
-								Next
-							</Button>
-						</div>
-					</>
-				);
-			case 2:
-				return (
-					<>
-						<DialogHeader>
-							<DialogTitle>Confirm Your Order</DialogTitle>
-						</DialogHeader>
-						<div className="mt-4 space-y-4">
-							<div className="bg-gray-100 p-3 rounded-md">
-								<h3 className="text-sm font-semibold mb-2">Order Details:</h3>
-								<p><strong>Main:</strong> {selectedMeal?.main.display}</p>
-								<p><strong>Add-ons:</strong> {selectedMeal?.addOns.map(addon => addon.display).join(', ') || 'None'}</p>
-								<p><strong>For:</strong> {selectedMeal?.child.name}</p>
-								<p><strong>At:</strong> {selectedMeal?.school.name}</p>
-								<p><strong>On:</strong> {selectedDate && formatDate(selectedDate.toISOString())}</p>
-								<p><strong>Total:</strong> ${selectedMeal?.total.toFixed(2)}</p>
-							</div>
-						</div>
-						<div className="flex justify-between mt-4">
-							<Button variant="outline" onClick={() => setOrderAgainStep(1)}>
-								Back
-							</Button>
-							<Button onClick={handleAddToCart}>
-								Add to Cart
-							</Button>
-						</div>
-					</>
-				);
-			default:
-				return null;
-		}
-	};
 
 	const NoOrdersCallToAction = () => (
 		<Card className="mt-8">
@@ -241,11 +159,19 @@ const OrderHistory: React.FC = () => {
 			)}
 
 
-			<Dialog open={isOrderAgainDialogOpen} onOpenChange={setIsOrderAgainDialogOpen}>
-				<DialogContent className="sm:max-w-[425px]">
-					{renderOrderAgainDialogContent()}
-				</DialogContent>
-			</Dialog>
+{selectedMeal && (
+                <OrderDialog
+                    isOpen={isOrderAgainDialogOpen}
+                    onClose={() => setIsOrderAgainDialogOpen(false)}
+                    selectedMain={selectedMeal.main}
+                    addOns={state.addOns}
+                    children={state.user?.children || []}
+                    schools={state.schools}
+                    onAddToCart={handleAddToCart}
+                    initialSelectedAddons={selectedMeal.addOns.map(addon => addon.id)}
+                    initialSelectedChild={selectedMeal.child.id}
+                />
+            )}
 		</div>
 	);
 };
