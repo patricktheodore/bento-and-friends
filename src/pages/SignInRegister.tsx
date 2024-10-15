@@ -267,7 +267,7 @@ const UserloginPage: React.FC = () => {
 					</div>
 				</form>
 
-				{!isNewUserSignup && (
+				{!isNewUserSignup && email && (
 					<div className="text-sm text-center">
 						<button
 							onClick={handleForgotPassword}
