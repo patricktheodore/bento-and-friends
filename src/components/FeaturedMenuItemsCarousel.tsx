@@ -103,6 +103,7 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 								allergens={item.allergens}
 								description={item.description}
 								isVegetarian={item.isVegetarian}
+								item={item}
 								onOrderNow={() => handleOrderNow(item.id)}
 							/>
 						</div>

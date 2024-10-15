@@ -16,6 +16,7 @@ export interface MenuItemProps {
 	allergens?: string[];
 	isVegetarian?: boolean;
 	item: Main;
+	onOrderNow: () => void;
 }
 
 const allergenIcons: { [key: string]: React.ReactNode } = {

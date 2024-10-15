@@ -6,9 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from './ui/button';
 import { ChevronDown, ChevronUp, Loader2, Utensils } from 'lucide-react';
 import { fetchOrderDetails } from '../services/user-service';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar } from './ui/calendar';
-import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
@@ -52,7 +49,6 @@ const OrderHistory: React.FC = () => {
             dispatch({ type: 'ADD_TO_CART', payload: meal });
         });
         setIsOrderAgainDialogOpen(false);
-        toast.success('Added to cart!');
     };
 
 	const formatDate = (dateString: string): string => {

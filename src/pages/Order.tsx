@@ -1,5 +1,3 @@
-// src/pages/OrderPage.tsx
-
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MenuItemCard from '../components/MenuItemCard';
@@ -39,6 +37,7 @@ const OrderPage: React.FC = () => {
                         allergens={item.allergens}
                         isVegetarian={item.isVegetarian}
 						item={item}
+                        onOrderNow={() => handleOrderNow(item.id)}
                     />
                 ))}
             </div>

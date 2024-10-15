@@ -61,11 +61,12 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         if (!selectedMain) return;
 
         let meals: Meal[] = [];
+        var hasGlutenAllergy:boolean = false;
 
         selectedChildren.forEach(childId => {
             const selectedChildData = children.find((child) => child.id === childId);
             if (selectedChildData) {
-                const hasGlutenAllergy = selectedChildData.allergens?.toLowerCase().includes('gluten') ||
+                hasGlutenAllergy = selectedChildData.allergens?.toLowerCase().includes('gluten') ||
                                          selectedChildData.allergens?.toLowerCase().includes('celiac');
                 
                 let mealAddons = addOns.filter((addon) => selectedAddons.includes(addon.id));
@@ -94,7 +95,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         });
 
         onAddToCart(meals);
-        toast.success(`Added ${meals.length} meal${meals.length !== 1 ? 's' : ''} to cart!`, { duration: 5000 });
+        toast.success(`Added ${meals.length} meal${meals.length !== 1 ? 's' : ''} to cart! ${hasGlutenAllergy ? 'Gluten-free option has been automatically added.' : ''}`, { duration: 5000 });
         handleClose();
     };
 
