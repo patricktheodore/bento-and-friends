@@ -15,6 +15,7 @@ import { School } from '@/models/school.model';
 import { Meal } from '@/models/order.model';
 import { v4 as uuidv4 } from 'uuid';
 import { useAppContext } from '@/context/AppContext';
+import { X } from 'lucide-react';
 
 interface OrderDialogProps {
     isOpen: boolean;
@@ -139,7 +140,18 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="w-full sm:max-w-[425px] md:max-w-[600px] h-[90vh] sm:h-auto">
                 <DialogHeader>
-                    <DialogTitle>Customise Your Meal/s</DialogTitle>
+
+                <div className="flex flex-row justify-between items-center">
+                            <DialogTitle>Customise Your Meal/s</DialogTitle>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={handleClose}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						</div>
+
                 </DialogHeader>
                 <ScrollArea className="max-h-[calc(90vh-180px)] sm:max-h-[calc(100vh-240px)] pr-4">
                     {renderSummary()}

@@ -3,7 +3,7 @@ import { Child, User } from '../models/user.model';
 import { PlusIcon } from '@heroicons/react/16/solid';
 import toast from 'react-hot-toast';
 import { useAppContext } from '../context/AppContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Input } from './ui/input';
@@ -53,10 +53,12 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 				setOtherAllergen('');
 			}
 			setIsTeacher(editingChild.isTeacher || false);
+			setIsLoading(false);
 		} else {
 			setSelectedAllergens([]);
 			setOtherAllergen('');
 			setIsTeacher(false);
+			setIsLoading(false);
 		}
 	}, [editingChild, state.schools, user.children]);
 
@@ -240,7 +242,18 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 			>
 				<DialogContent className={`sm:max-w-[425px] ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}>
 					<DialogHeader>
-						<DialogTitle>{editingChild ? 'Edit' : 'Add New'} Member</DialogTitle>
+
+						<div className="flex flex-row justify-between items-center">
+							<DialogTitle>{editingChild ? 'Edit' : 'Add New'} Member</DialogTitle>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setIsChildModalOpen(false)}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						</div>
+
 					</DialogHeader>
 					<form
 						onSubmit={handleSubmit}
@@ -363,7 +376,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							</Button>
 							<Button
 								type="submit"
-								disabled={isLoading || !newChild.name|| !newChild.school || (!isTeacher && (!newChild.year || !newChild.className))}
+								disabled={isLoading || !newChild.name|| (!isTeacher && (!newChild.year || !newChild.className))}
 							>
 								{isLoading ? (
 									<>

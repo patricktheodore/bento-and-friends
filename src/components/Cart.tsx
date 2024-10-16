@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -63,6 +63,36 @@ const Cart: React.FC = () => {
 	useEffect(() => {
 		setDuplicateOrders(checkDuplicateOrders);
 	}, [checkDuplicateOrders]);
+
+	const resetProcessingState = useCallback(() => {
+		setIsProcessing(false);
+	}, []);
+
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			if (!document.hidden) {
+				resetProcessingState();
+			}
+		};
+
+		const handlePopState = () => {
+			resetProcessingState();
+		};
+
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		window.addEventListener('popstate', handlePopState);
+
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			window.removeEventListener('popstate', handlePopState);
+		};
+	}, [resetProcessingState]);
+
+	useEffect(() => {
+		if (!isCartOpen) {
+			resetProcessingState();
+		}
+	}, [isCartOpen, resetProcessingState]);
 
 	const calculateDiscount = (mealCount: number) => {
 		if (mealCount >= 5) return 0.2;
@@ -129,7 +159,10 @@ const Cart: React.FC = () => {
 		return mealPrice * (1 - discount);
 	};
 
-	const closeCart = () => dispatch({ type: 'TOGGLE_CART' });
+	const closeCart = () => {
+		resetProcessingState();
+		dispatch({ type: 'TOGGLE_CART' });
+	};
 
 	const removeMeal = (mealId: string) => {
 		dispatch({ type: 'REMOVE_FROM_CART', payload: mealId });
@@ -208,6 +241,11 @@ const Cart: React.FC = () => {
 				cancelUrl: `${window.location.origin}/checkout`,
 			});
 
+			if (!result || !result.data) {
+				resetProcessingState();
+				throw new Error('Failed to create checkout session');
+			}
+
 			const { sessionId } = result.data;
 
 			if (sessionId) {
@@ -215,16 +253,17 @@ const Cart: React.FC = () => {
 				const { error } = await stripe!.redirectToCheckout({ sessionId });
 
 				if (error) {
+					resetProcessingState();
 					toast.error(error.message || 'An error occurred during checkout');
 				}
 			} else {
+				resetProcessingState();
 				throw new Error('Failed to create checkout session');
 			}
 		} catch (error) {
 			console.error('Error:', error);
 			toast.error('An error occurred during checkout');
-		} finally {
-			setIsProcessing(false);
+			resetProcessingState();
 		}
 	};
 
@@ -253,32 +292,34 @@ const Cart: React.FC = () => {
 		>
 			<SheetContent
 				side="right"
-				className="w-full md:w-[400px] custom-sheet-header"
+				className="w-full md:w-[400px] flex flex-col h-full p-0 gap-0"
 			>
-				<SheetHeader className="space-y-0 gap-y-2">
-					<div className="flex flex-row justify-between items-center">
-						<SheetTitle>Your Cart</SheetTitle>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={closeCart}
-						>
-							<X className="h-4 w-4" />
-						</Button>
-					</div>
-					{cart && (
-						<DiscountMessage
-							mealCount={cart.meals.length}
-							currentDiscount={bundleDiscountPercentage}
-						/>
-					)}
-				</SheetHeader>
+				<div className="flex-shrink-0 p-6 pb-2 border-b">
+					<SheetHeader className="space-y-0 gap-y-2">
+						<div className="flex flex-row justify-between items-center">
+							<SheetTitle>Your Cart</SheetTitle>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={closeCart}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						</div>
+						{cart && (
+							<DiscountMessage
+								mealCount={cart.meals.length}
+								currentDiscount={bundleDiscountPercentage}
+							/>
+						)}
+					</SheetHeader>
+				</div>
 
-				<ScrollArea className="h-[calc(100vh-22rem)] mt-2">
+				<ScrollArea className="flex-grow px-6">
 					{duplicateOrders.length > 0 && (
 						<Alert
 							variant="destructive"
-							className="mt-4"
+							className="mb-4"
 						>
 							<AlertTriangle className="h-4 w-4" />
 							<AlertDescription>
@@ -459,7 +500,7 @@ const Cart: React.FC = () => {
 					)}
 				</ScrollArea>
 				{cart && cart.meals.length > 0 && (
-					<div className="mt-4">
+					<div className="flex-shrink-0 p-6 pt-2 bg-background border-t">
 						<span className="font-semibold text-lg flex justify-between items-center">
 							<p>Bundle Discount:</p>
 							<p>-${(cart.total - bundleDiscountedTotal).toFixed(2)}</p>
@@ -493,7 +534,7 @@ const Cart: React.FC = () => {
 										value={couponCode}
 										onChange={(e) => {
 											setCouponCode(e.target.value);
-											setCouponError(null); // Clear error when input changes
+											setCouponError(null);
 										}}
 									/>
 									<Button onClick={() => handleApplyCoupon(couponCode)}>Apply</Button>
@@ -503,7 +544,7 @@ const Cart: React.FC = () => {
 						)}
 						<Button
 							onClick={handleCheckout}
-							className="w-full mt-2"
+							className="w-full mt-4"
 							disabled={isProcessing}
 						>
 							{isProcessing ? 'Processing...' : 'Proceed to Checkout'}
