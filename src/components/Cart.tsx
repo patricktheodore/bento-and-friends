@@ -315,7 +315,7 @@ const Cart: React.FC = () => {
 					</SheetHeader>
 				</div>
 
-				<ScrollArea className="flex-grow px-6">
+				<ScrollArea className="flex-grow py-4 px-6">
 					{duplicateOrders.length > 0 && (
 						<Alert
 							variant="destructive"

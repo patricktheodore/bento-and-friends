@@ -56,10 +56,10 @@ const Footer: React.FC = () => {
 
         <div className="mt-8 pt-8 border-t border-brand-cream/30 flex flex-col items-center">
           <div className="flex flex-wrap justify-center space-x-4 mb-6">
-            <span>&copy; Bento&Friends {new Date().getFullYear()}</span>
+            <span>&copy; Bento & Friends 2024</span>
           </div>
         </div>
-        <div className="text-brand-cream text-opacity-75 text-sm text-center">
+        <div className="text-brand-cream text-opacity-75 text-sm text-center max-w-screen-md">
             <span>As we cook our meals fresh and deliver all our school lunches in accordance to current WA Food
 Act & Food Standards Australia NZ, any food items from our bento meals not consumed within a 4 hour period from
 production must be discarded/ deemed unfit for consumption.</span>

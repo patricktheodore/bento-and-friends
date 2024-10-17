@@ -288,44 +288,57 @@ const RunSheet: React.FC = () => {
 		  unit: 'mm',
 		  format: 'a4',
 		}) as jsPDFWithPlugin;
-	
-		const pageWidth = 210;  // A4 width in mm
-		const pageHeight = 297; // A4 height in mm
+	  
+		const pageHeight = 297;
+	  
+		// Label dimensions and layout
 		const labelWidth = 38.1;
 		const labelHeight = 21.2;
 		const labelsPerRow = 5;
 		const labelsPerCol = 13;
-		const marginLeft = (pageWidth - (labelsPerRow * labelWidth)) / 2;
-		const marginTop = (pageHeight - (labelsPerCol * labelHeight)) / 2;
-		const padding = 2; // Increased padding
-	
+	  
+		// Specified margins and gaps
+		const marginTop = 10.8;
+		const marginLeft = 4.6;
+		const gapHorizontal = 2.5;
+		const marginBottom = marginTop;
+	  
+		// Calculate vertical gap
+		const totalLabelHeight = labelsPerCol * labelHeight;
+		const availableVerticalSpace = pageHeight - marginTop - marginBottom;
+		const gapVertical = (availableVerticalSpace - totalLabelHeight) / (labelsPerCol - 1);
+	  
+		// Inner padding for text
+		const paddingLeft = 2;
+		const paddingTop = 2;
+	  
 		meals.forEach((meal, index) => {
-		  if (index > 0 && index % 65 === 0) {
+		  if (index > 0 && index % (labelsPerRow * labelsPerCol) === 0) {
 			pdf.addPage();
 		  }
-	
+	  
 		  const col = index % labelsPerRow;
-		  const row = Math.floor((index % 65) / labelsPerRow);
-	
-		  const x = marginLeft + (col * labelWidth) + padding;
-		  const y = marginTop + (row * labelHeight) + padding;
-	
+		  const row = Math.floor((index % (labelsPerRow * labelsPerCol)) / labelsPerRow);
+	  
+		  const x = marginLeft + col * (labelWidth + gapHorizontal);
+		  const y = marginTop + row * (labelHeight + gapVertical);
+	  
 		  // Student Name (Bold)
 		  pdf.setFont('helvetica', 'bold');
 		  pdf.setFontSize(8);
-		  pdf.text(meal.child.name, x, y + 5, { maxWidth: labelWidth - (padding * 2) });
+		  pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
 		  
 		  // School, Year, and Class (Normal)
 		  pdf.setFont('helvetica', 'normal');
 		  pdf.setFontSize(6);
 		  const schoolYearClass = `${meal.school.name} Year ${meal.child.year} Class ${meal.child.className}`;
-		  pdf.text(schoolYearClass, x, y + 10, { maxWidth: labelWidth - (padding * 2) });
+		  pdf.text(schoolYearClass, x + paddingLeft, y + paddingTop + 7, { maxWidth: labelWidth - 2 * paddingLeft });
 		  
 		  // Meal and Add-ons (Normal)
 		  const mealText = `${meal.main.display}${meal.addOns.length > 0 ? ` + ${formatAddOns(meal.addOns)}` : ''}`;
-		  pdf.text(mealText, x, y + 15, { maxWidth: labelWidth - (padding * 2) });
+		  pdf.text(mealText, x + paddingLeft, y + paddingTop + 13, { maxWidth: labelWidth - 2 * paddingLeft });
 		});
-	
+	  
 		pdf.save('meal-labels.pdf');
 		toast.success("Meal labels PDF generated and downloaded.");
 	  };
