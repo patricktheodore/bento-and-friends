@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableRow } from '@/components/ui/table';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks } from 'date-fns';
 import { CalendarIcon, Loader2, PrinterIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -26,16 +26,6 @@ interface jsPDFWithPlugin extends jsPDF {
 	autoTable: (options: UserOptions) => jsPDF;
 }
 
-interface MealVariation {
-	count: number;
-	allergens: string[];
-	addOns: string[];
-	hasAllergens: boolean;
-}
-
-type VariationEntry = [string, MealVariation];
-type MainDishEntry = [string, VariationEntry[], number];
-
 const RunSheet: React.FC = () => {
 	const { state } = useAppContext();
 	const [meals, setMeals] = useState<any[]>([]);
@@ -46,10 +36,48 @@ const RunSheet: React.FC = () => {
 	const [selectedSchool, setSelectedSchool] = useState<string | undefined>('all');
 	const [isLoading, setIsLoading] = useState(false);
 	const [quickSelect, setQuickSelect] = useState('today');
+	const [sortedMeals, setSortedMeals] = useState<any[]>([]);
+	const groupMealsByDateAndSchool = (meals: any[]) => {
+		return meals.reduce((acc, meal) => {
+			const date = formatDate(meal.deliveryDate);
+			const school = meal.school.name;
+			if (!acc[date]) acc[date] = {};
+			if (!acc[date][school]) acc[date][school] = [];
+			acc[date][school].push(meal);
+			return acc;
+		}, {});
+	};
+
+	// In your component:
+	const [groupedMeals, setGroupedMeals] = useState<Record<string, Record<string, any[]>>>({});
+
+	useEffect(() => {
+		const grouped = groupMealsByDateAndSchool(sortedMeals);
+		setGroupedMeals(grouped);
+	}, [sortedMeals]);
 
 	useEffect(() => {
 		handleQuickSelect('today');
 	}, []);
+
+	useEffect(() => {
+		if (sortedMeals.length > 0) {
+			console.log('Sorted meals:', sortedMeals);
+
+			// Group by date and school for easier verification
+			const groupedMeals = sortedMeals.reduce((acc, meal) => {
+				const date = formatDate(meal.deliveryDate);
+				const school = meal.school.name;
+				if (!acc[date]) acc[date] = {};
+				if (!acc[date][school]) acc[date][school] = [];
+				acc[date][school].push(meal);
+				return acc;
+			}, {});
+
+			setGroupedMeals(groupedMeals);
+			console.log('Grouped meals:', groupedMeals);
+		}
+	}, [sortedMeals]);
 
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
@@ -108,11 +136,11 @@ const RunSheet: React.FC = () => {
 
 		try {
 			const fetchedMeals = await getMealsBetweenDates(startDate, endDate, school === 'all' ? undefined : school);
+			const sorted = sortMenuData(fetchedMeals);
 			setMeals(fetchedMeals);
+			setSortedMeals(sorted);
 		} catch (error) {
 			console.error('Error fetching meals:', error);
-
-			// Show error toast
 			toast.error('There was an error loading the run sheet for selected dates. Please refresh and try again.');
 		} finally {
 			setIsLoading(false);
@@ -144,142 +172,114 @@ const RunSheet: React.FC = () => {
 
 	const handlePrintRunSheet = () => {
 		const pdf = new jsPDF({
-		  orientation: 'landscape',
-		  unit: 'mm',
-		  format: 'a4',
+			orientation: 'landscape',
+			unit: 'mm',
+			format: 'a4',
 		}) as jsPDFWithPlugin;
-	
+
 		const pageWidth = pdf.internal.pageSize.width;
 		let yOffset = 10;
-	
+
 		// Add title
 		pdf.setFontSize(18);
 		pdf.text('Run Sheet Summary', pageWidth / 2, yOffset, { align: 'center' });
 		yOffset += 10;
-	
+
 		// Add date range
 		pdf.setFontSize(12);
 		pdf.text(
-		  `Date Range: ${format(dateRange.from!, 'MMM d, yyyy')} - ${format(dateRange.to || dateRange.from!, 'MMM d, yyyy')}`,
-		  pageWidth / 2,
-		  yOffset,
-		  { align: 'center' }
+			`Date Range: ${format(dateRange.from!, 'MMM d, yyyy')} - ${format(
+				dateRange.to || dateRange.from!,
+				'MMM d, yyyy'
+			)}`,
+			pageWidth / 2,
+			yOffset,
+			{ align: 'center' }
 		);
 		yOffset += 15;
-	
-		// Process meals data
-		const sortedSummary = processMenuData(meals);
-	
-		// Create summary table
-		const summaryData = sortedSummary.map(([mainDish, variations, totalCount]) => {
-		  const variationDetails = variations.map(([_, variation]) => 
-			`${variation.count}x ${formatVariation(variation)}`
-		  ).join('\n');
-		  return [mainDish, totalCount.toString(), variationDetails];
+
+		Object.entries(groupedMeals).forEach(([date, schools]) => {
+			pdf.setFontSize(12);
+			pdf.setFont('helvetica', 'bold');
+			pdf.text(`Date: ${date}`, 10, yOffset);
+			yOffset += 7;
+
+			Object.entries(schools).forEach(([school, meals]) => {
+				pdf.setFont('helvetica', 'normal');
+				pdf.text(`School: ${school}`, 10, yOffset);
+				yOffset += 7;
+
+				const mealData = meals.map((meal) => [
+					meal.child.name || 'N/A',
+					meal.child.year || 'N/A',
+					meal.child.className || 'N/A',
+					meal.main.display || 'N/A',
+					meal.allergens || 'N/A',
+					formatAddOns(meal.addOns),
+				]);
+
+				pdf.autoTable({
+					startY: yOffset,
+					head: [['Child', 'Year', 'Class', 'Main Dish', 'Allergies', 'Add-ons']],
+					body: mealData,
+					headStyles: { fillColor: [5, 45, 42] },
+					styles: { cellPadding: 2, fontSize: 8 },
+				});
+
+				yOffset = (pdf as any).lastAutoTable.finalY + 10;
+
+				if (yOffset > pdf.internal.pageSize.height - 20) {
+					pdf.addPage();
+					yOffset = 10;
+				}
+			});
 		});
-	
-		pdf.autoTable({
-		  startY: yOffset,
-		  head: [['Main Dish', 'Total', 'Variations']],
-		  body: summaryData,
-		  headStyles: { fillColor: [5, 45, 42] },
-		  columnStyles: {
-			0: { cellWidth: 60 },
-			1: { cellWidth: 20 },
-			2: { cellWidth: 'auto' },
-		  },
-		  styles: { cellPadding: 2, fontSize: 10 },
-		  bodyStyles: { valign: 'top' },
-		});
-	
-		// Add detailed meal list
-		pdf.addPage();
-		pdf.setFontSize(14);
-		pdf.text('Detailed Meal List', pageWidth / 2, 10, { align: 'center' });
-	
-		const mealData = meals.map((meal) => [
-		  formatDate(meal.deliveryDate),
-		  meal.child.name || 'N/A',
-		  meal.child.year || 'N/A',
-		  meal.child.className || 'N/A',
-		  meal.school.name || 'N/A',
-		  meal.main.display || 'N/A',
-		  meal.allergens || 'N/A',
-		  formatAddOns(meal.addOns),
-		]);
-	
-		pdf.autoTable({
-		  startY: 20,
-		  head: [['Date', 'Child', 'Year', 'Class', 'School', 'Main Dish', 'Allergies', 'Add-ons']],
-		  body: mealData,
-		  headStyles: { fillColor: [5, 45, 42] },
-		  columnStyles: {
-			0: { cellWidth: 25 },
-			1: { cellWidth: 40 },
-			2: { cellWidth: 15 },
-			3: { cellWidth: 20 },
-			4: { cellWidth: 50 },
-			5: { cellWidth: 50 },
-			6: { cellWidth: 30 },
-			7: { cellWidth: 'auto' },
-		  },
-		});
-	
+
 		pdf.save('run-sheet.pdf');
 		toast.success('Run sheet PDF generated and downloaded.');
-	  };
-	
-	const processMenuData = (meals: any[]): MainDishEntry[] => {
-	const mealGroups: { [key: string]: { [key: string]: MealVariation } } = {};
-
-	meals.forEach((meal) => {
-		const mainDish = meal.main.display;
-		const allergens: string[] = meal.allergens ? [meal.allergens] : [];
-		const addOns: string[] = meal.addOns?.map((addOn: any) => addOn.display) || [];
-		const hasAllergens = allergens.length > 0;
-
-		const variationKey = [...allergens, ...addOns].sort().join(', ') || 'No changes';
-
-		if (!mealGroups[mainDish]) {
-		mealGroups[mainDish] = {};
-		}
-
-		if (!mealGroups[mainDish][variationKey]) {
-		mealGroups[mainDish][variationKey] = { count: 0, allergens, addOns, hasAllergens };
-		}
-
-		mealGroups[mainDish][variationKey].count++;
-	});
-
-	return Object.entries(mealGroups).map(([mainDish, variations]): MainDishEntry => {
-		const sortedVariations = Object.entries(variations).sort((a, b) => {
-		const [, varA] = a;
-		const [, varB] = b;
-
-		if (varA.allergens.length === 0 && varA.addOns.length === 0) return -1; // "No changes" always first
-		if (varB.allergens.length === 0 && varB.addOns.length === 0) return 1;
-
-		if (varA.hasAllergens && !varB.hasAllergens) return 1;
-		if (!varA.hasAllergens && varB.hasAllergens) return -1;
-
-		return 0;
-		});
-
-		const totalCount = Object.values(variations).reduce((sum, variation) => sum + variation.count, 0);
-
-		return [mainDish, sortedVariations, totalCount];
-	});
 	};
 
-	const formatVariation = (variation: MealVariation): string => {
-	const parts: string[] = [];
-	if (variation.allergens.length > 0) {
-		parts.push(`Allergens: ${variation.allergens.join(', ')}`);
-	}
-	if (variation.addOns.length > 0) {
-		parts.push(`Add-ons: ${variation.addOns.join(', ')}`);
-	}
-	return parts.join(' | ') || 'No changes';
+	const sortMenuData = (meals: any[]): any[] => {
+		return meals.sort((a, b) => {
+			// Sort by Date
+			const dateA =
+				a.deliveryDate instanceof Timestamp
+					? a.deliveryDate.toDate().getTime()
+					: new Date(a.deliveryDate).getTime();
+			const dateB =
+				b.deliveryDate instanceof Timestamp
+					? b.deliveryDate.toDate().getTime()
+					: new Date(b.deliveryDate).getTime();
+			if (dateA !== dateB) {
+				return dateA - dateB;
+			}
+
+			// Sort by School
+			const schoolA = a.school.name.toLowerCase();
+			const schoolB = b.school.name.toLowerCase();
+			if (schoolA !== schoolB) {
+				return schoolA.localeCompare(schoolB);
+			}
+
+			// Sort by Year
+			const yearA = parseInt(a.child.year);
+			const yearB = parseInt(b.child.year);
+			if (yearA !== yearB) {
+				return yearA - yearB;
+			}
+
+			// Sort by Class
+			const classA = a.child.className.toLowerCase();
+			const classB = b.child.className.toLowerCase();
+			if (classA !== classB) {
+				return classA.localeCompare(classB);
+			}
+
+			// Group by Meal (main dish)
+			const mealA = a.main.display.toLowerCase();
+			const mealB = b.main.display.toLowerCase();
+			return mealA.localeCompare(mealB);
+		});
 	};
 
 	const handlePrintLabels = () => {
@@ -298,7 +298,7 @@ const RunSheet: React.FC = () => {
 		const labelsPerCol = 13;
 	  
 		// Specified margins and gaps
-		const marginTop = 10.8;
+		const marginTop = 10.2;
 		const marginLeft = 4.6;
 		const gapHorizontal = 2.5;
 		const marginBottom = marginTop;
@@ -310,37 +310,60 @@ const RunSheet: React.FC = () => {
 	  
 		// Inner padding for text
 		const paddingLeft = 2;
-		const paddingTop = 2;
+		const paddingTop = 1;
 	  
-		meals.forEach((meal, index) => {
-		  if (index > 0 && index % (labelsPerRow * labelsPerCol) === 0) {
-			pdf.addPage();
-		  }
+		let labelIndex = 0;
 	  
-		  const col = index % labelsPerRow;
-		  const row = Math.floor((index % (labelsPerRow * labelsPerCol)) / labelsPerRow);
+		Object.entries(groupedMeals).forEach(([_, schools]) => {
+		  Object.entries(schools).forEach(([school, meals]) => {
+			meals.forEach((meal) => {
+			  if (labelIndex > 0 && labelIndex % (labelsPerRow * labelsPerCol) === 0) {
+				pdf.addPage();
+			  }
 	  
-		  const x = marginLeft + col * (labelWidth + gapHorizontal);
-		  const y = marginTop + row * (labelHeight + gapVertical);
+			  const col = labelIndex % labelsPerRow;
+			  const row = Math.floor((labelIndex % (labelsPerRow * labelsPerCol)) / labelsPerRow);
 	  
-		  // Student Name (Bold)
-		  pdf.setFont('helvetica', 'bold');
-		  pdf.setFontSize(8);
-		  pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
-		  
-		  // School, Year, and Class (Normal)
-		  pdf.setFont('helvetica', 'normal');
-		  pdf.setFontSize(6);
-		  const schoolYearClass = `${meal.school.name} Year ${meal.child.year} Class ${meal.child.className}`;
-		  pdf.text(schoolYearClass, x + paddingLeft, y + paddingTop + 7, { maxWidth: labelWidth - 2 * paddingLeft });
-		  
-		  // Meal and Add-ons (Normal)
-		  const mealText = `${meal.main.display}${meal.addOns.length > 0 ? ` + ${formatAddOns(meal.addOns)}` : ''}`;
-		  pdf.text(mealText, x + paddingLeft, y + paddingTop + 13, { maxWidth: labelWidth - 2 * paddingLeft });
+			  const x = marginLeft + col * (labelWidth + gapHorizontal);
+			  const y = marginTop + row * (labelHeight + gapVertical);
+	  
+			  // Student Name (Bold)
+			  pdf.setFont('helvetica', 'bold');
+			  pdf.setFontSize(8);
+			  pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
+	  
+			  // School (Normal, abbreviated if necessary)
+			  pdf.setFont('helvetica', 'normal');
+			  pdf.setFontSize(6);
+			  const schoolAbbr = school.length > 20 ? school.substring(0, 18) + '...' : school;
+			  pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
+	  
+			  // Year and Class
+			  pdf.text(`Year ${meal.child.year} Class ${meal.child.className}`, x + paddingLeft, y + paddingTop + 11);
+	  
+			  // Main Dish (truncate if too long)
+			  pdf.setFontSize(6);
+			  const mainDish = meal.main.display.length > 30 ? meal.main.display.substring(0, 28) + '...' : meal.main.display;
+			  pdf.text(mainDish, x + paddingLeft, y + paddingTop + 15);
+	  
+			  // Add-ons (if space allows)
+			  if (meal.addOns && meal.addOns.length > 0) {
+				pdf.setFontSize(6);
+				const addOnsText = formatAddOns(meal.addOns);
+				if (addOnsText.length <= 35) {
+				  pdf.text(addOnsText, x + paddingLeft, y + paddingTop + 19);
+				} else {
+				  pdf.text(addOnsText.substring(0, 33) + '...', x + paddingLeft, y + paddingTop + 19);
+				}
+			  }
+	  
+			  labelIndex++;
+			});
+		  });
 		});
 	  
 		pdf.save('meal-labels.pdf');
-		toast.success("Meal labels PDF generated and downloaded.");
+		toast.success('Meal labels PDF generated and downloaded.');
 	  };
 
 	const renderMealCard = (meal: any) => (
@@ -370,6 +393,17 @@ const RunSheet: React.FC = () => {
 				</div>
 			</div>
 		</div>
+	);
+
+	const TableHeaderRow = () => (
+		<TableRow>
+			<TableHead>Child</TableHead>
+			<TableHead className="text-center">Year</TableHead>
+			<TableHead className="text-center">Class</TableHead>
+			<TableHead>Main Dish</TableHead>
+			<TableHead>Allergies</TableHead>
+			<TableHead>Add-ons</TableHead>
+		</TableRow>
 	);
 
 	return (
@@ -494,30 +528,45 @@ const RunSheet: React.FC = () => {
 					{/* Desktop view */}
 					<div className="hidden md:block rounded-md border bg-white">
 						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Date</TableHead>
-									<TableHead>Child</TableHead>
-									<TableHead className="text-center">Year</TableHead>
-									<TableHead className="text-center">Class</TableHead>
-									<TableHead>School</TableHead>
-									<TableHead>Main Dish</TableHead>
-									<TableHead>Allergies / Dietaries</TableHead>
-									<TableHead>Add-ons</TableHead>
-								</TableRow>
-							</TableHeader>
 							<TableBody>
-								{meals.map((meal) => (
-									<TableRow key={meal.id}>
-										<TableCell>{formatDate(meal.deliveryDate)}</TableCell>
-										<TableCell>{meal.child.name || 'N/A'}</TableCell>
-										<TableCell className="text-center">{meal.child.year || 'N/A'}</TableCell>
-										<TableCell className="text-center">{meal.child.className || 'N/A'}</TableCell>
-										<TableCell>{meal.school.name || 'N/A'}</TableCell>
-										<TableCell>{meal.main.display || 'N/A'}</TableCell>
-										<TableCell>{meal.allergens}</TableCell>
-										<TableCell>{formatAddOns(meal.addOns)}</TableCell>
-									</TableRow>
+								{Object.entries(groupedMeals).map(([date, schools]) => (
+									<React.Fragment key={date}>
+										<TableRow>
+											<TableCell
+												colSpan={6}
+												className="font-bold bg-gray-100"
+											>
+												{date}
+											</TableCell>
+										</TableRow>
+										{Object.entries(schools).map(([school, meals]) => (
+											<React.Fragment key={school}>
+												<TableRow>
+													<TableCell
+														colSpan={6}
+														className="font-semibold bg-gray-50"
+													>
+														{school}
+													</TableCell>
+												</TableRow>
+												<TableHeaderRow />
+												{meals.map((meal) => (
+													<TableRow key={meal.id}>
+														<TableCell>{meal.child.name || 'N/A'}</TableCell>
+														<TableCell className="text-center">
+															{meal.child.year || 'N/A'}
+														</TableCell>
+														<TableCell className="text-center">
+															{meal.child.className || 'N/A'}
+														</TableCell>
+														<TableCell>{meal.main.display || 'N/A'}</TableCell>
+														<TableCell>{meal.allergens}</TableCell>
+														<TableCell>{formatAddOns(meal.addOns)}</TableCell>
+													</TableRow>
+												))}
+											</React.Fragment>
+										))}
+									</React.Fragment>
 								))}
 							</TableBody>
 						</Table>
