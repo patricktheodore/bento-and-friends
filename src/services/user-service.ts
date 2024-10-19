@@ -51,3 +51,23 @@ export const fetchAllOrders = async (userId: string): Promise<Order[]> => {
   
   return orders;
 };
+
+export const fetchUsers = async (): Promise<User[]> => {
+  const usersCollection = collection(db, 'users');
+  const userSnapshot = await getDocs(usersCollection);
+  return userSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+  } as User));
+};
+
+export const fetchUserDetails = async (userId: string): Promise<User> => {
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  if (!userDoc.exists()) {
+      throw new Error('User not found');
+  }
+  return {
+      id: userDoc.id,
+      ...userDoc.data()
+  } as User;
+};
