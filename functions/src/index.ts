@@ -406,48 +406,69 @@ export const updateMealDeliveryDate =
     }
   });
 
-export const updateAnalytics =
-  functions.pubsub.schedule("every 24 hours").onRun(async () => {
+export const updateAnalytics = functions.pubsub
+  .schedule("every 24 hours")
+  .onRun(async () => {
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
     const dateString = now.toDate().toISOString().split("T")[0];
+    const yesterdayDate = new Date(now.toDate());
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayString = yesterdayDate.toISOString().split("T")[0];
 
     try {
-      // Update cumulative analytics
       const cumulativeAnalyticsRef =
         db.collection("cumulativeAnalytics").doc("totals");
-      const dailyAnalyticsRef = db.collection("dailyAnalytics").doc(dateString);
+      const yesterdayAnalyticsRef =
+        db.collection("dailyAnalytics").doc(yesterdayString);
+      const todayAnalyticsRef =
+        db.collection("dailyAnalytics").doc(dateString);
 
       await db.runTransaction(async (transaction) => {
-        try {
-          const cumulativeDoc = await transaction.get(cumulativeAnalyticsRef);
-          const cumulativeData = cumulativeDoc.data() || {
-            orderCount: 0,
-            mealCount: 0,
-            revenue: 0,
-            userCount: 0,
-            schoolCount: 0,
-          };
+        // Fetch yesterday's data
+        const yesterdayDoc = await transaction.get(yesterdayAnalyticsRef);
+        const yesterdayData = yesterdayDoc.data() || {
+          orderCount: 0,
+          mealCount: 0,
+          revenue: 0,
+        };
 
-          // Update cumulative analytics
-          transaction.set(
-            cumulativeAnalyticsRef, cumulativeData, {merge: true});
+        // Fetch cumulative data
+        const cumulativeDoc = await transaction.get(cumulativeAnalyticsRef);
+        const cumulativeData = cumulativeDoc.data() || {
+          orderCount: 0,
+          mealCount: 0,
+          revenue: 0,
+          userCount: 0,
+          schoolCount: 0,
+        };
 
-          // Prepare daily analytics for the new day
-          const newDailyData = {
-            date: dateString,
-            orderCount: 0,
-            mealCount: 0,
-            revenue: 0,
-          };
+        // Update cumulative analytics with yesterday's data
+        const updatedCumulativeData = {
+          orderCount: cumulativeData.orderCount + yesterdayData.orderCount,
+          mealCount: cumulativeData.mealCount + yesterdayData.mealCount,
+          revenue: cumulativeData.revenue + yesterdayData.revenue,
+          userCount: cumulativeData.userCount,
+          schoolCount: cumulativeData.schoolCount,
+        };
 
-          transaction.set(dailyAnalyticsRef, newDailyData);
+        // Set updated cumulative data
+        transaction.set(
+          cumulativeAnalyticsRef, updatedCumulativeData, {merge: true}
+        );
 
-          console.log(`Analytics updated successfully for ${dateString}`);
-        } catch (transactionError) {
-          console.error(`Transaction failed: ${transactionError}`);
-          throw transactionError; // Re-throw to roll back the transaction
-        }
+        // Prepare new day's analytics
+        const newDayData = {
+          date: dateString,
+          orderCount: 0,
+          mealCount: 0,
+          revenue: 0,
+        };
+
+        // Set new day's analytics
+        transaction.set(todayAnalyticsRef, newDayData);
+
+        console.log(`Analytics updated successfully for ${dateString}`);
       });
 
       return null;
