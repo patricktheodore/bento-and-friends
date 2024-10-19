@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import DiscountMessage from '../components/DiscountMessage';
 
 const stripePromise = loadStripe(
-	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
+	'pk_live_51PzenCRuOSdR9YdWStFVzk83YT4PRIeDGCMRCylZObMEVE0Fp24AwPMp0gK91zLvZXNvfhSGNG7vKnetFkg1MWna00flH0J7XX'
 );
 
 const CheckoutPage: React.FC = () => {
