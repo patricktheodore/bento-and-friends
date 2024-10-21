@@ -2,34 +2,84 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getAllDailyAnalytics, getCumulativeAnalytics, calculateMetrics } from '../services/analytics';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/context/AppContext';
+
+type GroupingOption = 'daily' | 'weekly' | 'monthly';
 
 const AdminOverview: React.FC = () => {
 	const { state } = useAppContext();
 	const [dailyAnalytics, setDailyAnalytics] = useState<any[]>([]);
+	const [groupedAnalytics, setGroupedAnalytics] = useState<any[]>([]);
 	const [metrics, setMetrics] = useState<any>(null);
+	const [groupingOption, setGroupingOption] = useState<GroupingOption>('daily');
 
 	useEffect(() => {
 		const fetchData = async () => {
-			try {
-				const [dailyData, cumulativeData] = await Promise.all([
-					getAllDailyAnalytics(90),
-					getCumulativeAnalytics(),
-				]);
-
-				setDailyAnalytics(dailyData.reverse());
-				setMetrics(calculateMetrics(cumulativeData));
-			} catch (error) {
-				console.error('Error fetching analytics data:', error);
-			}
+		  try {
+			const [dailyData, cumulativeData] = await Promise.all([
+			  getAllDailyAnalytics(180),
+			  getCumulativeAnalytics(),
+			]);
+	
+			setDailyAnalytics(dailyData.reverse());
+			setMetrics(calculateMetrics(cumulativeData));
+		  } catch (error) {
+			console.error('Error fetching analytics data:', error);
+		  }
 		};
-
+	
 		fetchData();
-	}, []);
-
-	if (!metrics) {
+	  }, []);
+	
+	  useEffect(() => {
+		if (dailyAnalytics.length > 0) {
+		  setGroupedAnalytics(groupData(dailyAnalytics, groupingOption));
+		}
+	  }, [dailyAnalytics, groupingOption]);
+	
+	  const groupData = (data: any[], option: GroupingOption) => {
+		if (option === 'daily') return data;
+	
+		const groupedData: { [key: string]: any } = {};
+	
+		data.forEach((day) => {
+		  const date = new Date(day.date);
+		  let key: string;
+	
+		  if (option === 'weekly') {
+			const weekStart = new Date(date.setDate(date.getDate() - date.getDay()));
+			key = weekStart.toISOString().split('T')[0];
+		  } else {
+			key = date.toISOString().slice(0, 7); // YYYY-MM
+		  }
+	
+		  if (!groupedData[key]) {
+			groupedData[key] = { ...day, date: key };
+		  } else {
+			groupedData[key].orderCount += day.orderCount;
+			groupedData[key].mealCount += day.mealCount;
+			groupedData[key].revenue += day.revenue;
+		  }
+		});
+	
+		return Object.values(groupedData);
+	  };
+	
+	  const formatXAxis = (value: string) => {
+		const date = new Date(value);
+		if (groupingOption === 'daily') {
+		  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		} else if (groupingOption === 'weekly') {
+		  return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+		} else {
+		  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+		}
+	  };
+	
+	  if (!metrics) {
 		return <div>Loading...</div>;
-	}
+	  }
 
 	return (
 		<div className="space-y-4">
@@ -111,60 +161,59 @@ const AdminOverview: React.FC = () => {
 			</div>
 
 			<Card>
-				<CardHeader>
-					<CardTitle>Order Overview</CardTitle>
-					<CardDescription>Showing total daily orders (last 90 days)</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<ResponsiveContainer
-						width="100%"
-						height={300}
-					>
-						<BarChart data={dailyAnalytics}>
-							<CartesianGrid strokeDasharray="3 3" />
-							<XAxis
-								dataKey="date"
-								tickFormatter={(value) => {
-									const date = new Date(value);
-									return date.toLocaleDateString('en-US', {
-										month: 'short',
-										day: 'numeric',
-									});
-								}}
-								axisLine={true}
-								tickLine={true}
-								scale="auto"
-								padding={{ left: 10, right: 10 }}
-							/>
-							<YAxis
-								width={50}
-								tickFormatter={(value) => value.toLocaleString()}
-								axisLine={true}
-								tickLine={true}
-								scale="auto"
-								padding={{ top: 20, bottom: 20 }}
-							/>
-							<Tooltip
-								labelFormatter={(value) => {
-									return new Date(value).toLocaleDateString('en-US', {
-										month: 'short',
-										day: 'numeric',
-										year: 'numeric',
-									});
-								}}
-								formatter={(value: number) => [value.toLocaleString(), 'Orders']}
-							/>
-							<Bar
-								dataKey="orderCount"
-								fill="#052D2A"
-								animationBegin={0}
-								animationDuration={750}
-								animationEasing="ease"
-							/>
-						</BarChart>
-					</ResponsiveContainer>
-				</CardContent>
-			</Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Order Overview</CardTitle>
+              <CardDescription>Showing total orders since October 2024</CardDescription>
+            </div>
+            <Select value={groupingOption} onValueChange={(value) => setGroupingOption(value as GroupingOption)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select grouping" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={groupedAnalytics}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatXAxis}
+                axisLine={true}
+                tickLine={true}
+                scale="auto"
+                padding={{ left: 10, right: 10 }}
+              />
+              <YAxis
+                width={50}
+                tickFormatter={(value) => value.toLocaleString()}
+                axisLine={true}
+                tickLine={true}
+                scale="auto"
+                padding={{ top: 20, bottom: 20 }}
+              />
+              <Tooltip
+                labelFormatter={(value) => formatXAxis(value)}
+                formatter={(value: number) => [value.toLocaleString(), 'Orders']}
+              />
+              <Bar
+                dataKey="orderCount"
+                fill="#052D2A"
+                animationBegin={0}
+                animationDuration={750}
+                animationEasing="ease"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 		</div>
 	);
 };

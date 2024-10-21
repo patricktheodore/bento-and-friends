@@ -218,6 +218,7 @@ const Cart: React.FC = () => {
 				bundleDiscount: number;
 				couponDiscount: number;
 				couponCode?: string;
+				couponId?: string;
 				successUrl: string;
 				cancelUrl: string;
 			},
@@ -237,6 +238,7 @@ const Cart: React.FC = () => {
 				bundleDiscount,
 				couponDiscount,
 				couponCode: appliedCoupon?.code,
+				couponId: appliedCoupon?.id,
 				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
 				cancelUrl: `${window.location.origin}/checkout`,
 			});

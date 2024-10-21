@@ -15,7 +15,9 @@ import { School } from '@/models/school.model';
 import { Meal } from '@/models/order.model';
 import { v4 as uuidv4 } from 'uuid';
 import { useAppContext } from '@/context/AppContext';
-import { X } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
+import { Link } from 'react-router-dom';
 
 interface OrderDialogProps {
     isOpen: boolean;
@@ -135,6 +137,31 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 
 		return isWeekend || isPast || isBlocked;
 	};
+
+    if (children.length === 0) {
+        return (
+            <Dialog open={isOpen} onOpenChange={handleClose}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>No Children/Recipients Added Yet</DialogTitle>
+                    </DialogHeader>
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>You haven't added any children/recipients to your account yet</AlertTitle>
+                        <AlertDescription>
+                            To place an order, you need to add at least one recipient to your account.
+                        </AlertDescription>
+                    </Alert>
+                    <div className="mt-6 flex justify-between">
+                        <Button variant="outline" onClick={handleClose}>Close</Button>
+                        <Button asChild>
+                            <Link to="/account">Add</Link>
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        );
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>

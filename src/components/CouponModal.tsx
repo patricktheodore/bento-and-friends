@@ -57,6 +57,7 @@ const CouponModal: React.FC<CouponModalProps> = ({ isOpen, onClose, onSubmit, co
 			expiryDate: expiryDate!.toISOString(),
 			isSingleUse,
 			isActive,
+			useCount: 0,
 		};
 		onSubmit(newCoupon);
 	};

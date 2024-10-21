@@ -133,6 +133,7 @@ const CouponController: React.FC = () => {
               <TableHead className="w-1/6 hidden md:table-cell">Status</TableHead>
               <TableHead className="w-1/6 hidden md:table-cell">Expiry Date</TableHead>
               <TableHead className="w-1/6 hidden md:table-cell">Usage Type</TableHead>
+              <TableHead className="w-1/6 hidden md:table-cell">Use Count</TableHead>
               <TableHead className="w-1/6">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -153,6 +154,9 @@ const CouponController: React.FC = () => {
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {coupon.isSingleUse ? 'Single Use' : 'Multiple'}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {coupon.useCount ? coupon.useCount : '0'}
                 </TableCell>
                 <TableCell>
                   <div className="hidden md:flex space-x-2">

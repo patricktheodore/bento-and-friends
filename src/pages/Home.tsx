@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FeaturedMenuItemsCarousel from '../components/FeaturedMenuItemsCarousel';
 import HowItWorksSummaryComponent from '../components/HowItWorksSummary';
@@ -6,10 +6,29 @@ import NutritionComponent from '../components/Nutrition';
 import OurStoryComponent from '../components/OurStory';
 import { useAppContext } from '../context/AppContext';
 import DiscountOptionsComponent from '@/components/DiscountOptions';
-import heroImage from '../assets/hero.jpg';
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import placeholder from '@/assets/banner.png';
 
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
+
+	const [heroImage, setHeroImage] = useState('');
+
+	useEffect(() => {
+	  const fetchHeroImage = async () => {
+		const storage = getStorage();
+		const heroImageRef = ref(storage, 'images/hero.jpg');
+		try {
+		  const url = await getDownloadURL(heroImageRef);
+		  setHeroImage(url);
+		} catch (error) {
+		  console.error("Error fetching hero image:", error);
+		  setHeroImage(placeholder);
+		}
+	  };
+  
+	  fetchHeroImage();
+	}, []);
 
 	return (
 		<>

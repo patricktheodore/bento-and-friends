@@ -26,6 +26,7 @@ interface Order {
 	userEmail: string;
 	createdAt: Timestamp;
 	total: number;
+	finalTotal: number;
 	status: string;
 	meals: Meal[];
 }
@@ -178,11 +179,11 @@ const OrdersComponent: React.FC = () => {
 	const getStatusBadge = (status: string) => {
 		switch (status) {
 			case 'delivered':
-				return <Badge variant="secondary">Delivered</Badge>;
+				return <Badge variant="success">Delivered</Badge>;
 			case 'today':
-				return <Badge variant="default">Today</Badge>;
+				return <Badge variant="alert">Today</Badge>;
 			case 'upcoming':
-				return <Badge variant="outline">Upcoming</Badge>;
+				return <Badge variant="secondary">Upcoming</Badge>;
 			default:
 				return null;
 		}
@@ -200,6 +201,7 @@ const OrdersComponent: React.FC = () => {
 							<TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
 							<TableHead className="px-2 py-3 text-xs sm:text-sm">Meals</TableHead>
 							<TableHead className="px-2 py-3 text-xs sm:text-sm">Total</TableHead>
+							<TableHead className="px-2 py-3 text-xs sm:text-sm">After Discount</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -225,64 +227,65 @@ const OrdersComponent: React.FC = () => {
 									<TableCell className="px-2 py-3 text-xs sm:text-sm">
 										${order.total.toFixed(2)}
 									</TableCell>
+									<TableCell className="px-2 py-3 text-xs sm:text-sm">	
+										${order.finalTotal.toFixed(2)}
+									</TableCell>
 								</TableRow>
 								{expandedOrderId === order.id && (
 									<TableRow>
 										<TableCell
-											colSpan={5}
+											colSpan={6}
 											className="p-0"
 										>
 											<div className="p-2 sm:p-4 bg-gray-50 space-y-2 sm:space-y-4">
-												<div className="sm:hidden bg-white p-2 rounded-md shadow-sm">
-													<p className="text-sm">
-														<strong>Email:</strong> {order.userEmail}
-													</p>
-												</div>
-												{order.meals.map((meal) => {
-													const mealStatus = getMealStatus(meal.orderDate);
-													return (
-														<div
-															key={meal.id}
-															className="bg-white p-2 sm:p-3 rounded-md shadow-sm text-xs sm:text-sm relative"
-														>
-															<div className="absolute top-2 right-2">
-																{getStatusBadge(mealStatus)}
-															</div>
-															<p>
-																<strong>{meal.main.display}</strong> for{' '}
-																{meal.child.name}
-															</p>
-															<p>
-																Add-ons:{' '}
-																{meal.addOns.map((addon) => addon.display).join(', ')}
-															</p>
-															<div className="flex justify-between items-center mt-2">
-																<p>
-																	Date:{' '}
-																	{formatDate(
-																		Timestamp.fromDate(new Date(meal.orderDate))
-																	)}
+												<div className='w-full flex flex-wrap gap-2'>
+													{order.meals.map((meal) => {
+														const mealStatus = getMealStatus(meal.orderDate);
+														return (
+															<div
+																key={meal.id}
+																className="bg-white p-2 sm:p-3 rounded-md shadow-sm text-xs sm:text-sm relative"
+															>
+																<div className="absolute top-2 sm:top-3 right-2 sm:right-3">
+																	{getStatusBadge(mealStatus)}
+																</div>
+																<p className='pr-[120px]'>
+																	<strong>{meal.main.display}</strong> for{' '}
+																	{meal.child.name}
 																</p>
-																{mealStatus !== 'delivered' && (
-																	<Button
-																		variant="outline"
-																		size="sm"
-																		onClick={(e) => {
-																			e.stopPropagation();
-																			handleDateChange(order.id, meal.id);
-																		}}
-																	>
-																		<CalendarIcon className="h-4 w-4 mr-2" />
-																		Change Date
-																	</Button>
-																)}
+																<p>
+																	Add-ons:{' '}
+																	{meal.addOns.map((addon) => addon.display).join(', ')}
+																</p>
+																<div className="flex justify-between items-center mt-2">
+																	<p>
+																		Date:{' '}
+																		{formatDate(
+																			Timestamp.fromDate(new Date(meal.orderDate))
+																		)}
+																	</p>
+																	{mealStatus !== 'delivered' && (
+																		<Button
+																			variant="outline"
+																			size="sm"
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				handleDateChange(order.id, meal.id);
+																			}}
+																		>
+																			<CalendarIcon className="h-4 w-4 mr-2" />
+																			Change Date
+																		</Button>
+																	)}
+																</div>
+																<p className="font-medium mt-2">
+																	Price: ${meal.total.toFixed(2)}
+																</p>
 															</div>
-															<p className="font-medium mt-2">
-																Price: ${meal.total.toFixed(2)}
-															</p>
-														</div>
-													);
-												})}
+														);
+													})}
+
+												</div>
 											</div>
 										</TableCell>
 									</TableRow>

@@ -48,7 +48,7 @@ const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
           </p>
         </CardContent>
       </Card>
-      <Card>
+      {/* <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Meal Value</CardTitle>
         </CardHeader>
@@ -58,8 +58,8 @@ const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
             Before discounts
           </p>
         </CardContent>
-      </Card>
-      <Card>
+      </Card> */}
+      {/* <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
         </CardHeader>
@@ -69,7 +69,7 @@ const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
             After discounts
           </p>
         </CardContent>
-      </Card>
+      </Card> */}
       <Card className="bg-green-50">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
@@ -81,14 +81,14 @@ const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
           </p>
         </CardContent>
       </Card>
-      <Card>
+      {/* <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Average Meal Cost</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${stats.averageMealValue}</div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };

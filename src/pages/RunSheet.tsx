@@ -81,6 +81,7 @@ const RunSheet: React.FC = () => {
 
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
+		today.setHours(0, 0, 0, 0);
 		let newRange: DateRange | undefined;
 
 		switch (option) {
@@ -88,7 +89,8 @@ const RunSheet: React.FC = () => {
 				newRange = { from: today, to: today };
 				break;
 			case 'tomorrow':
-				const tomorrow = addDays(today, 1);
+				const tomorrow = new Date(today);
+				tomorrow.setDate(tomorrow.getDate() + 1);
 				newRange = { from: tomorrow, to: tomorrow };
 				break;
 			case 'this-week':
@@ -284,87 +286,95 @@ const RunSheet: React.FC = () => {
 
 	const handlePrintLabels = () => {
 		const pdf = new jsPDF({
-		  orientation: 'portrait',
-		  unit: 'mm',
-		  format: 'a4',
+			orientation: 'portrait',
+			unit: 'mm',
+			format: 'a4',
 		}) as jsPDFWithPlugin;
-	  
+
 		const pageHeight = 297;
-	  
+
 		// Label dimensions and layout
 		const labelWidth = 38.1;
 		const labelHeight = 21.2;
 		const labelsPerRow = 5;
 		const labelsPerCol = 13;
-	  
+
 		// Specified margins and gaps
 		const marginTop = 10.2;
 		const marginLeft = 4.6;
 		const gapHorizontal = 2.5;
 		const marginBottom = marginTop;
-	  
+
 		// Calculate vertical gap
 		const totalLabelHeight = labelsPerCol * labelHeight;
 		const availableVerticalSpace = pageHeight - marginTop - marginBottom;
 		const gapVertical = (availableVerticalSpace - totalLabelHeight) / (labelsPerCol - 1);
-	  
+
 		// Inner padding for text
 		const paddingLeft = 2;
 		const paddingTop = 1;
-	  
+
 		let labelIndex = 0;
-	  
+
 		Object.entries(groupedMeals).forEach(([_, schools]) => {
-		  Object.entries(schools).forEach(([school, meals]) => {
-			meals.forEach((meal) => {
-			  if (labelIndex > 0 && labelIndex % (labelsPerRow * labelsPerCol) === 0) {
-				pdf.addPage();
-			  }
-	  
-			  const col = labelIndex % labelsPerRow;
-			  const row = Math.floor((labelIndex % (labelsPerRow * labelsPerCol)) / labelsPerRow);
-	  
-			  const x = marginLeft + col * (labelWidth + gapHorizontal);
-			  const y = marginTop + row * (labelHeight + gapVertical);
-	  
-			  // Student Name (Bold)
-			  pdf.setFont('helvetica', 'bold');
-			  pdf.setFontSize(8);
-			  pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
-	  
-			  // School (Normal, abbreviated if necessary)
-			  pdf.setFont('helvetica', 'normal');
-			  pdf.setFontSize(6);
-			  const schoolAbbr = school.length > 20 ? school.substring(0, 18) + '...' : school;
-			  pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
-	  
-			  // Year and Class
-			  pdf.text(`Year ${meal.child.year} Class ${meal.child.className}`, x + paddingLeft, y + paddingTop + 11);
-	  
-			  // Main Dish (truncate if too long)
-			  pdf.setFontSize(6);
-			  const mainDish = meal.main.display.length > 30 ? meal.main.display.substring(0, 28) + '...' : meal.main.display;
-			  pdf.text(mainDish, x + paddingLeft, y + paddingTop + 15);
-	  
-			  // Add-ons (if space allows)
-			  if (meal.addOns && meal.addOns.length > 0) {
-				pdf.setFontSize(6);
-				const addOnsText = formatAddOns(meal.addOns);
-				if (addOnsText.length <= 35) {
-				  pdf.text(addOnsText, x + paddingLeft, y + paddingTop + 19);
-				} else {
-				  pdf.text(addOnsText.substring(0, 33) + '...', x + paddingLeft, y + paddingTop + 19);
-				}
-			  }
-	  
-			  labelIndex++;
+			Object.entries(schools).forEach(([school, meals]) => {
+				meals.forEach((meal) => {
+					if (labelIndex > 0 && labelIndex % (labelsPerRow * labelsPerCol) === 0) {
+						pdf.addPage();
+					}
+
+					const col = labelIndex % labelsPerRow;
+					const row = Math.floor((labelIndex % (labelsPerRow * labelsPerCol)) / labelsPerRow);
+
+					const x = marginLeft + col * (labelWidth + gapHorizontal);
+					const y = marginTop + row * (labelHeight + gapVertical);
+
+					// Student Name (Bold)
+					pdf.setFont('helvetica', 'bold');
+					pdf.setFontSize(8);
+					pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
+
+					// School (Normal, abbreviated if necessary)
+					pdf.setFont('helvetica', 'normal');
+					pdf.setFontSize(6);
+					const schoolAbbr = school.length > 20 ? school.substring(0, 18) + '...' : school;
+					pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
+
+					// Year and Class
+					pdf.text(
+						`Year ${meal.child.year} Class ${meal.child.className}`,
+						x + paddingLeft,
+						y + paddingTop + 11
+					);
+
+					// Main Dish (truncate if too long)
+					pdf.setFontSize(6);
+					const mainDish =
+						meal.main.display.length > 30 ? meal.main.display.substring(0, 28) + '...' : meal.main.display;
+					pdf.text(mainDish, x + paddingLeft, y + paddingTop + 15);
+
+					// Add-ons (if space allows)
+					if (meal.addOns && meal.addOns.length > 0) {
+						pdf.setFontSize(6);
+						const addOnsText = formatAddOns(meal.addOns);
+						if (addOnsText.length <= 35) {
+							pdf.text(addOnsText, x + paddingLeft, y + paddingTop + 19);
+						} else {
+							pdf.text(addOnsText.substring(0, 33) + '...', x + paddingLeft, y + paddingTop + 19);
+						}
+					}
+
+					labelIndex++;
+				});
 			});
-		  });
 		});
-	  
+
 		pdf.save('meal-labels.pdf');
 		toast.success('Meal labels PDF generated and downloaded.');
-	  };
+	};
+
+	const today = new Date();
+  	const tomorrow = addDays(today, 1);
 
 	const renderMealCard = (meal: any) => (
 		<div
@@ -410,6 +420,7 @@ const RunSheet: React.FC = () => {
 		<div className="w-full p-4 space-y-4">
 			<div className="flex justify-between items-center">
 				<h2 className="text-3xl font-bold">Run Sheet</h2>
+
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button variant="default">
@@ -440,8 +451,8 @@ const RunSheet: React.FC = () => {
 						<SelectValue placeholder="Select date range" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="today">Today</SelectItem>
-						<SelectItem value="tomorrow">Tomorrow</SelectItem>
+						<SelectItem value="today">Today ({format(today, 'MMM d')})</SelectItem>
+						<SelectItem value="tomorrow">Tomorrow ({format(tomorrow, 'MMM d')})</SelectItem>
 						<SelectItem value="this-week">This Week</SelectItem>
 						<SelectItem value="next-week">Next Week</SelectItem>
 						<SelectItem value="this-month">This Month</SelectItem>

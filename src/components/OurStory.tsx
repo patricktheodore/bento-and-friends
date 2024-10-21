@@ -1,8 +1,30 @@
-import React from 'react';
-import image1 from '@/assets/BentoFriendsImage.jpg';
-import image2 from '@/assets/1000029387.jpg';
+import React, { useEffect, useState } from 'react';
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import placeholder from '@/assets/banner.png';
 
 const OurStoryComponent: React.FC = () => {
+  const [image1, setImage1] = useState('');
+  const [image2, setImage2] = useState('');
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      const storage = getStorage();
+      try {
+        const url1 = await getDownloadURL(ref(storage, 'images/BentoFriendsImage (1).jpg'));
+        const url2 = await getDownloadURL(ref(storage, 'images/1000029387 (1).jpg'));
+        setImage1(url1);
+        setImage2(url2);
+      } catch (error) {
+        console.error("Error fetching images:", error);
+        setImage1(placeholder);
+        setImage2(placeholder);
+      }
+    };
+
+    fetchImages();
+  }, []);
+
+
   return (
     <div className='w-full bg-brand-cream text-primary py-12 lg:py-24 px-4 md:px-8'>
       <div className="max-w-screen-xl mx-auto grid md:grid-cols-2 gap-8 items-start">
