@@ -14,7 +14,7 @@ const AnimatedLoadingScreen: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{
             duration: 0.8,
-            delay: 0.5,
+            delay: 0.1,
             ease: [0, 0.71, 0.2, 1.01]
           }}
         />
@@ -22,7 +22,7 @@ const AnimatedLoadingScreen: React.FC = () => {
           className="loading-spinner"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
+          transition={{ delay: 0.25 }}
         >
           <div className="spinner"></div>
         </motion.div>

@@ -12,7 +12,7 @@ import placeholder from '@/assets/banner.png';
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
 
-	const [heroImage, setHeroImage] = useState('');
+	const [heroImage, setHeroImage] = useState(placeholder);
 
 	useEffect(() => {
 	  const fetchHeroImage = async () => {
