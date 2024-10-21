@@ -1,21 +1,23 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from '../layout/PageTransition';
-import HomePage from '../pages/Home';
-import AccountPage from '../pages/Account';
-import UserloginPage from '../pages/SignInRegister';
-import SignOut from '../pages/SignOut';
-import MenuPage from '../pages/Menu';
-import OrderPage from '../pages/Order';
-// import AboutPage from '../pages/About';
-import ContactPage from '../pages/Contact';
-import AdminDashboardPage from '../pages/AdminDashboard';
-import SchoolsPage from '../pages/Schools';
 import { AdminRoute } from './RouteGuard';
-import CheckoutPage from '@/pages/Checkout';
-import OrderSuccessPage from '@/pages/OrderSuccess';
-import RunSheet from '@/pages/RunSheet';
+import AnimatedLoadingScreen from '../utils/AnimatedLoadingScreen';
+
+// Lazy load components
+const HomePage = lazy(() => import('../pages/Home'));
+const AccountPage = lazy(() => import('../pages/Account'));
+const UserloginPage = lazy(() => import('../pages/SignInRegister'));
+const SignOut = lazy(() => import('../pages/SignOut'));
+const MenuPage = lazy(() => import('../pages/Menu'));
+const OrderPage = lazy(() => import('../pages/Order'));
+const ContactPage = lazy(() => import('../pages/Contact'));
+const AdminDashboardPage = lazy(() => import('../pages/AdminDashboard'));
+const SchoolsPage = lazy(() => import('../pages/Schools'));
+const CheckoutPage = lazy(() => import('@/pages/Checkout'));
+const OrderSuccessPage = lazy(() => import('@/pages/OrderSuccess'));
+const RunSheet = lazy(() => import('@/pages/RunSheet'));
 
 const AnimatedRoutes: React.FC = () => {
   const location = useLocation();
@@ -23,23 +25,25 @@ const AnimatedRoutes: React.FC = () => {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
-        <Route path="/menu" element={<PageTransition><MenuPage /></PageTransition>} />
-        <Route path="/order" element={<PageTransition><OrderPage /></PageTransition>} />
-        {/* <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} /> */}
-        <Route path="/contact" element={<PageTransition><ContactPage /></PageTransition>} />
-        <Route path="/account" element={<PageTransition><AccountPage /></PageTransition>} />
-        <Route path="/signin" element={<PageTransition><UserloginPage /></PageTransition>} />
-        <Route path="/signout" element={<PageTransition><SignOut /></PageTransition>} />
-        <Route path="/schools" element={<PageTransition><SchoolsPage /></PageTransition>} />
-        <Route path="/checkout" element={<PageTransition><CheckoutPage /></PageTransition>} />
-        <Route path="/order-success" element={<PageTransition><OrderSuccessPage /></PageTransition>} />
+        <Route path="/" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><HomePage /></Suspense></PageTransition>} />
+        <Route path="/menu" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><MenuPage /></Suspense></PageTransition>} />
+        <Route path="/order" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><OrderPage /></Suspense></PageTransition>} />
+        <Route path="/contact" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><ContactPage /></Suspense></PageTransition>} />
+        <Route path="/account" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><AccountPage /></Suspense></PageTransition>} />
+        <Route path="/signin" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><UserloginPage /></Suspense></PageTransition>} />
+        <Route path="/signout" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><SignOut /></Suspense></PageTransition>} />
+        <Route path="/schools" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><SchoolsPage /></Suspense></PageTransition>} />
+        <Route path="/checkout" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><CheckoutPage /></Suspense></PageTransition>} />
+        <Route path="/order-success" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><OrderSuccessPage /></Suspense></PageTransition>} />
+        <Route path='/loading' element={<AnimatedLoadingScreen />} />
 
         {/* admin routes */}
         <Route path='/admin' element={
           <AdminRoute>
             <PageTransition>
-              <AdminDashboardPage />
+              <Suspense fallback={<AnimatedLoadingScreen />}>
+                <AdminDashboardPage />
+              </Suspense>
             </PageTransition>
           </AdminRoute>} 
         />
@@ -47,7 +51,9 @@ const AnimatedRoutes: React.FC = () => {
         <Route path='/run-sheet' element={
           <AdminRoute>
             <PageTransition>
-              <RunSheet />
+              <Suspense fallback={<AnimatedLoadingScreen />}>
+                <RunSheet />
+              </Suspense>
             </PageTransition>
           </AdminRoute>}
         />

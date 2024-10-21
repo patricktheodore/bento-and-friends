@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import './App.css';
 import { AppProvider } from './context/AppContext';
 import Header from './layout/Header';
@@ -7,6 +8,7 @@ import AnimatedRoutes from './utils/AnimatedRoutes';
 import ScrollToTop from './utils/ScrollToTop';
 import { Toaster } from 'react-hot-toast';
 import RollingBanner from './components/RollingBanner';
+import AnimatedLoadingScreen from './utils/AnimatedLoadingScreen';
 
 const App: React.FC = () => {
 	return (
@@ -17,7 +19,9 @@ const App: React.FC = () => {
 					<Header />
 					<RollingBanner />
 					<main className="w-full min-h-[75vh] flex-grow bg-primary">
-						<AnimatedRoutes />
+						<Suspense fallback={<AnimatedLoadingScreen />}>
+							<AnimatedRoutes />
+						</Suspense>
 					</main>
 					<Footer />
 				</div>
