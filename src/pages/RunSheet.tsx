@@ -341,7 +341,7 @@ const RunSheet: React.FC = () => {
 					pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
 
 					var locationText = `Year ${meal.child.year} Class ${meal.child.className}`;
-					if (meal.child.isTeacher) {
+					if (!meal.child.year || !meal.child.className) {
 						locationText = 'Staff Room';
 					}
 

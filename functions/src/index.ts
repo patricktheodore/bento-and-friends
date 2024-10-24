@@ -534,7 +534,7 @@ export const sendOrderConfirmationEmail = async (
       orderDate: new Date(orderDate).toLocaleDateString(),
       meals: meals.map((meal) => ({
         ...meal,
-        orderDate: new Date(meal.orderDate).toLocaleDateString(),
+        deliveryDate: new Date(meal.orderDate).toLocaleDateString(),
         total: meal.total.toFixed(2),
       })),
       originalTotal: originalTotal.toFixed(2),
