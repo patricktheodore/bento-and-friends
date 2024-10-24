@@ -1,7 +1,13 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { User, Child } from '../models/user.model';
 import { Order } from '@/models/order.model';
+
+interface FetchUsersResponse {
+  users: User[];
+  lastVisible: any;
+  hasMore: boolean;
+}
 
 const serializeUser = (user: User): Record<string, any> => {
   return {
@@ -52,13 +58,34 @@ export const fetchAllOrders = async (userId: string): Promise<Order[]> => {
   return orders;
 };
 
-export const fetchUsers = async (): Promise<User[]> => {
-  const usersCollection = collection(db, 'users');
-  const userSnapshot = await getDocs(usersCollection);
-  return userSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-  } as User));
+export const fetchUsers = async (pageSize: number = 25, lastDoc?: any): Promise<FetchUsersResponse> => {
+  try {
+      const usersCollection = collection(db, 'users');
+      let usersQuery = query(
+          usersCollection,
+          orderBy('displayName'),
+          limit(pageSize)
+      );
+
+      if (lastDoc) {
+          usersQuery = query(usersQuery, startAfter(lastDoc));
+      }
+
+      const snapshot = await getDocs(usersQuery);
+      const users = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data() 
+      } as User));
+
+      return {
+          users,
+          lastVisible: snapshot.docs[snapshot.docs.length - 1],
+          hasMore: snapshot.docs.length === pageSize
+      };
+  } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+  }
 };
 
 export const fetchUserDetails = async (userId: string): Promise<User> => {

@@ -10,6 +10,10 @@ import toast from 'react-hot-toast';
 import { useAppContext } from '@/context/AppContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Search } from 'lucide-react';
+import debounce from 'lodash/debounce';
+import { where } from 'firebase/firestore';
 
 interface Meal {
 	id: string;
@@ -31,7 +35,7 @@ interface Order {
 	meals: Meal[];
 }
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 const OrdersComponent: React.FC = () => {
 	const { state } = useAppContext();
@@ -43,39 +47,68 @@ const OrdersComponent: React.FC = () => {
 	const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 	const [selectedMeal, setSelectedMeal] = useState<{ orderId: string; mealId: string } | null>(null);
+	const [searchTerm, setSearchTerm] = useState('');
 
-	const fetchOrders = async (lastDoc?: any) => {
-		setLoading(true);
-		try {
-			let ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
+const fetchOrders = async (lastDoc?: any) => {
+    setLoading(true);
+    try {
+        let ordersQuery;
+        
+        if (searchTerm) {
+            // Query for matching order numbers
+            ordersQuery = query(
+                collection(db, 'orders'),
+                where('customOrderNumber', '==', searchTerm.toUpperCase()),
+                limit(PAGE_SIZE)
+            );
+        } else {
+            // Default query
+            ordersQuery = query(
+                collection(db, 'orders'),
+                orderBy('createdAt', 'desc'),
+                limit(PAGE_SIZE)
+            );
+        }
 
-			if (lastDoc) {
-				ordersQuery = query(ordersQuery, startAfter(lastDoc));
-			}
+        if (lastDoc) {
+            ordersQuery = query(ordersQuery, startAfter(lastDoc));
+        }
 
-			const querySnapshot = await getDocs(ordersQuery);
-			const newOrders = querySnapshot.docs.map(
-				(doc) =>
-					({
-						id: doc.id,
-						...doc.data(),
-					} as Order)
-			);
+        const querySnapshot = await getDocs(ordersQuery);
+        const newOrders = querySnapshot.docs.map(
+            (doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            } as Order)
+        );
 
-			setOrders((prevOrders) => (lastDoc ? [...prevOrders, ...newOrders] : newOrders));
-			setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
-			setHasMore(querySnapshot.docs.length === PAGE_SIZE);
-		} catch (error) {
-			console.error('Error fetching orders: ', error);
-			toast.error('Failed to fetch orders');
-		} finally {
-			setLoading(false);
-		}
-	};
+        setOrders(lastDoc ? [...orders, ...newOrders] : newOrders);
+        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
+        setHasMore(querySnapshot.docs.length === PAGE_SIZE);
+    } catch (error) {
+        console.error('Error fetching orders: ', error);
+        toast.error('Failed to fetch orders');
+    } finally {
+        setLoading(false);
+    }
+};
 
-	useEffect(() => {
-		fetchOrders();
-	}, []);
+// Add the debounced search handler
+const debouncedSearch = debounce((term: string) => {
+    setSearchTerm(term);
+    setLastVisible(null); // Reset pagination when searching
+}, 300);
+
+const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setOrders([]); // Clear current results
+    debouncedSearch(value);
+};
+
+// Update useEffect to include searchTerm dependency
+useEffect(() => {
+    fetchOrders();
+}, [searchTerm]);
 
 	const loadMore = () => {
 		if (!loading && hasMore) {
@@ -193,7 +226,18 @@ const OrdersComponent: React.FC = () => {
 
 	return (
 		<div className="space-y-4">
-			<h2 className="text-2xl font-bold">Orders</h2>
+			<div className="flex justify-between items-center">
+				<h2 className="text-2xl font-bold">Orders</h2>
+				<div className="relative max-w-sm w-full">
+					<Input
+						type="text"
+						placeholder="Search by order number..."
+						onChange={handleSearch}
+						className="pl-10"
+					/>
+					<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
+				</div>
+			</div>
 			<div className="rounded-md border overflow-x-auto">
 				<Table>
 					<TableHeader>

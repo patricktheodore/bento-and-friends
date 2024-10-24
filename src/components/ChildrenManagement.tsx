@@ -260,7 +260,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 						className="space-y-4"
 					>
 						<div className="space-y-2">
-							<Label htmlFor="name">Full Name</Label>
+							<Label htmlFor="name">Full Name*</Label>
 							<Input
 								id="name"
 								name="name"
@@ -272,7 +272,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 							/>
 						</div>
 						<div className="space-y-2">
-                            <Label htmlFor="school">School</Label>
+                            <Label htmlFor="school">School*</Label>
                             {renderSchoolSelection()}
                             <Link
                                 to="/contact"
@@ -292,7 +292,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 						{!isTeacher && (
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label htmlFor="year">Year</Label>
+									<Label htmlFor="year">Year*</Label>
 									<Input
 										id="year"
 										name="year"
@@ -304,7 +304,7 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="className">Class</Label>
+									<Label htmlFor="className">Class*</Label>
 									<Input
 										id="className"
 										name="className"
