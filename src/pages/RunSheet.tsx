@@ -340,9 +340,13 @@ const RunSheet: React.FC = () => {
 					const schoolAbbr = school.length > 20 ? school.substring(0, 18) + '...' : school;
 					pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
 
-					// Year and Class
+					var locationText = `Year ${meal.child.year} Class ${meal.child.className}`;
+					if (meal.child.isTeacher) {
+						locationText = 'Staff Room';
+					}
+
 					pdf.text(
-						`Year ${meal.child.year} Class ${meal.child.className}`,
+						locationText,
 						x + paddingLeft,
 						y + paddingTop + 11
 					);

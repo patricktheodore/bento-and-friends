@@ -165,11 +165,13 @@ const OrdersComponent: React.FC = () => {
 
 	const getMealStatus = (orderDate: string) => {
 		const today = new Date();
+		const yesterday = new Date(today);
+		yesterday.setDate(yesterday.getDate() - 1);
 		const mealDate = new Date(orderDate);
 
-		if (mealDate < today) {
+		if (mealDate < yesterday) {
 			return 'delivered';
-		} else if (mealDate.toDateString() === today.toDateString()) {
+		} else if (mealDate.getDate() === today.getDate()) {
 			return 'today';
 		} else {
 			return 'upcoming';
