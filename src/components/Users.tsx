@@ -26,7 +26,7 @@ const UsersComponent: React.FC = () => {
 	const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 	const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
 
-	const handleEditChild = async (childId: string, userId: string) => {
+	const handleEditChild = async (childId: string) => {
 		const user = expandedUserDetails;
 		if (!user) return;
 
@@ -290,7 +290,7 @@ const UsersComponent: React.FC = () => {
 																			variant="ghost"
 																			size="sm"
 																			onClick={() =>
-																				handleEditChild(child.id, user.id)
+																				handleEditChild(child.id)
 																			}
 																		>
 																			<UserCog className="h-4 w-4" />
