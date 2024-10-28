@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default:
           "text-sm rounded-md py-2 px-4 bg-brand-dark-green text-brand-cream hover:bg-brand-dark-green/90 hover:ring-2 ring-offset-2 ring-brand-dark-green transition-all duration-300 ease-in-out",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:ring-2 ring-offset-2 hover:ring-destructive transition-all duration-300 ease-in-out",
         outline:
           "bg-transparent border border-brand-taupe text-brand-dark-green text-sm rounded-md py-2 px-4 hover:ring-2 ring-offset-2 hover:ring-brand-brown transition-all duration-300 ease-in-out",
         secondary:
