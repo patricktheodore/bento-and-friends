@@ -42,7 +42,7 @@ const UsersComponent: React.FC = () => {
 
 	const handlePhoneUpdate = async (userId: string, newPhone: string) => {
 		if (!expandedUserDetails) return;
-
+	
 		try {
 			// Basic validation
 			const cleanPhone = newPhone.replace(/\D/g, '');
@@ -50,14 +50,31 @@ const UsersComponent: React.FC = () => {
 				toast.error('Please enter a valid Australian phone number');
 				return;
 			}
-
+	
 			const updatedUser = {
 				...expandedUserDetails,
 				phone: cleanPhone || '', // Save empty string if no phone provided
 			};
-
+	
 			await updateUserInFirebase(updatedUser);
+			
+			// Update expandedUserDetails
 			setExpandedUserDetails(updatedUser);
+			
+			// Update the users array
+			setUsers(prevUsers => 
+				prevUsers.map(user => 
+					user.id === userId ? { ...user, phone: cleanPhone || '' } : user
+				)
+			);
+			
+			// Update the filtered users array
+			setFilteredUsers(prevUsers => 
+				prevUsers.map(user => 
+					user.id === userId ? { ...user, phone: cleanPhone || '' } : user
+				)
+			);
+	
 			setIsEditingPhone(false);
 			toast.success('Phone number updated successfully');
 		} catch (error) {
