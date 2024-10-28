@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail } from 'lucide-react';
 import { fetchUserDetails, updateUserInFirebase } from '../services/user-service';
 import { User as UserType, OrderHistorySummary, Child } from '../models/user.model';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import debounce from 'lodash/debounce';
 import ChildManagementDialog from './ChildManagementDialog';
+import { Label } from './ui/label';
 
 const PAGE_SIZE = 50;
 
@@ -25,6 +26,8 @@ const UsersComponent: React.FC = () => {
 	const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
 	const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 	const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
+	const [isEditingPhone, setIsEditingPhone] = useState(false);
+	const [editedPhone, setEditedPhone] = useState('');
 
 	const handleEditChild = async (childId: string) => {
 		const user = expandedUserDetails;
@@ -35,6 +38,46 @@ const UsersComponent: React.FC = () => {
 
 		setSelectedChild(child);
 		setIsChildDialogOpen(true);
+	};
+
+	const handlePhoneUpdate = async (userId: string, newPhone: string) => {
+		if (!expandedUserDetails) return;
+
+		try {
+			// Basic validation
+			const cleanPhone = newPhone.replace(/\D/g, '');
+			if (newPhone && (cleanPhone.length !== 10 || !cleanPhone.startsWith('0'))) {
+				toast.error('Please enter a valid Australian phone number');
+				return;
+			}
+
+			const updatedUser = {
+				...expandedUserDetails,
+				phone: cleanPhone || '', // Save empty string if no phone provided
+			};
+
+			await updateUserInFirebase(updatedUser);
+			setExpandedUserDetails(updatedUser);
+			setIsEditingPhone(false);
+			toast.success('Phone number updated successfully');
+		} catch (error) {
+			console.error('Error updating phone number:', error);
+			toast.error('Failed to update phone number');
+		}
+	};
+
+	// Add this to format phone numbers for display
+	const formatPhoneNumber = (phone: string): string => {
+		if (!phone) return 'Not provided';
+
+		const cleanPhone = phone.replace(/\D/g, '');
+		if (cleanPhone.startsWith('04')) {
+			// Mobile format: 04XX XXX XXX
+			return cleanPhone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
+		} else {
+			// Landline format: 0X XXXX XXXX
+			return cleanPhone.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
+		}
 	};
 
 	const fetchUsers = async (lastDoc?: any) => {
@@ -216,6 +259,7 @@ const UsersComponent: React.FC = () => {
 							<TableRow>
 								<TableHead className="w-[200px]">Name</TableHead>
 								<TableHead className="w-[200px]">Email</TableHead>
+								<TableHead className="w-[150px]">Phone</TableHead>
 								<TableHead className="w-[100px]">Total Orders</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -239,12 +283,88 @@ const UsersComponent: React.FC = () => {
 											{user.displayName}
 										</TableCell>
 										<TableCell>{user.email}</TableCell>
+										<TableCell>{user.phone ? formatPhoneNumber(user.phone) : '-'}</TableCell>
 										<TableCell>{user.orderHistory.length}</TableCell>
 									</TableRow>
 									{expandedUserId === user.id && expandedUserDetails && (
 										<TableRow>
 											<TableCell colSpan={4}>
 												<div className="p-4 bg-gray-50 space-y-4">
+													<div className="bg-white p-4 rounded-lg shadow-sm">
+														<div className="flex justify-between items-center mb-4">
+														<div className="flex items-center gap-2 mb-4">
+															<User className="h-5 w-5 text-gray-500" />
+															<h3 className="font-semibold">Contact Information</h3>
+														</div>
+														</div>
+														<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+															<div className="space-y-2">
+																<div className="flex items-center gap-2">
+																	<Mail className="h-4 w-4 text-gray-500" />
+																	<Label className="text-sm text-gray-500">
+																		Email
+																	</Label>
+																</div>
+																<p className="text-gray-700">{user.email}</p>
+															</div>
+
+															<div className="space-y-2">
+																<div className="flex items-center gap-2">
+																	<Phone className="h-4 w-4 text-gray-500" />
+																	<Label className="text-sm text-gray-500">
+																		Phone Number
+																	</Label>
+																</div>
+																{isEditingPhone ? (
+																	<div className="flex items-center gap-2">
+																		<Input
+																			value={editedPhone}
+																			onChange={(e) =>
+																				setEditedPhone(e.target.value)
+																			}
+																			placeholder="Enter phone number"
+																			className="max-w-[200px]"
+																		/>
+																		<Button
+																			size="sm"
+																			onClick={() =>
+																				handlePhoneUpdate(user.id, editedPhone)
+																			}
+																		>
+																			Save
+																		</Button>
+																		<Button
+																			size="sm"
+																			variant="outline"
+																			onClick={() => {
+																				setIsEditingPhone(false);
+																				setEditedPhone(user.phone || '');
+																			}}
+																		>
+																			Cancel
+																		</Button>
+																	</div>
+																) : (
+																	<div className="flex items-center gap-2">
+																		<p className="text-gray-700">
+																			{formatPhoneNumber(user.phone || '')}
+																		</p>
+																		<Button
+																			variant="ghost"
+																			size="sm"
+																			onClick={() => {
+																				setEditedPhone(user.phone || '');
+																				setIsEditingPhone(true);
+																			}}
+																		>
+																			Edit
+																		</Button>
+																	</div>
+																)}
+															</div>
+														</div>
+													</div>
+
 													<div className="flex justify-between items-center">
 														<h3 className="font-semibold">Members</h3>
 														<Button
@@ -257,81 +377,87 @@ const UsersComponent: React.FC = () => {
 															Add Member
 														</Button>
 													</div>
+													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
 
-													<Table>
-														<TableHeader>
-															<TableRow>
-																<TableHead>Name</TableHead>
-																<TableHead>School</TableHead>
-																<TableHead>Year</TableHead>
-																<TableHead>Class</TableHead>
-																<TableHead>Allergens</TableHead>
-																<TableHead>Role</TableHead>
-																<TableHead>Actions</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{expandedUserDetails.children.map((child) => (
-																<TableRow key={child.id}>
-																	<TableCell>{child.name}</TableCell>
-																	<TableCell>{child.school}</TableCell>
-																	<TableCell>
-																		{child.isTeacher ? '-' : child.year}
-																	</TableCell>
-																	<TableCell>
-																		{child.isTeacher ? '-' : child.className}
-																	</TableCell>
-																	<TableCell>{child.allergens || 'None'}</TableCell>
-																	<TableCell>
-																		{child.isTeacher ? 'Teacher' : 'Student'}
-																	</TableCell>
-																	<TableCell>
-																		<Button
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				handleEditChild(child.id)
-																			}
-																		>
-																			<UserCog className="h-4 w-4" />
-																		</Button>
-																	</TableCell>
-																</TableRow>
-															))}
-														</TableBody>
-													</Table>
-
-													<h4 className="font-semibold mt-4">Order History</h4>
-													{expandedUserDetails.orderHistory.length > 0 ? (
 														<Table>
 															<TableHeader>
 																<TableRow>
-																	<TableHead>Order ID</TableHead>
-																	<TableHead>Date</TableHead>
-																	<TableHead>Total</TableHead>
-																	<TableHead>Items</TableHead>
+																	<TableHead>Name</TableHead>
+																	<TableHead>School</TableHead>
+																	<TableHead>Year</TableHead>
+																	<TableHead>Class</TableHead>
+																	<TableHead>Allergens</TableHead>
+																	<TableHead>Role</TableHead>
+																	<TableHead>Actions</TableHead>
 																</TableRow>
 															</TableHeader>
 															<TableBody>
-																{expandedUserDetails.orderHistory.map(
-																	(order: OrderHistorySummary) => (
-																		<TableRow key={order.customOrderNumber}>
-																			<TableCell>{order.customOrderNumber}</TableCell>
-																			<TableCell>
-																				{formatDate(order.createdAt)}
-																			</TableCell>
-																			<TableCell>
-																				${order.total.toFixed(2)}
-																			</TableCell>
-																			<TableCell>{order.items}</TableCell>
-																		</TableRow>
-																	)
-																)}
+																{expandedUserDetails.children.map((child) => (
+																	<TableRow key={child.id}>
+																		<TableCell>{child.name}</TableCell>
+																		<TableCell>{child.school}</TableCell>
+																		<TableCell>
+																			{child.isTeacher ? '-' : child.year}
+																		</TableCell>
+																		<TableCell>
+																			{child.isTeacher ? '-' : child.className}
+																		</TableCell>
+																		<TableCell>{child.allergens || 'None'}</TableCell>
+																		<TableCell>
+																			{child.isTeacher ? 'Teacher' : 'Student'}
+																		</TableCell>
+																		<TableCell>
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				onClick={() => handleEditChild(child.id)}
+																			>
+																				<UserCog className="h-4 w-4" />
+																			</Button>
+																		</TableCell>
+																	</TableRow>
+																))}
 															</TableBody>
 														</Table>
-													) : (
-														<p>No order history</p>
-													)}
+
+													</div>
+
+													<h4 className="font-semibold mt-4">Order History</h4>
+													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
+														{expandedUserDetails.orderHistory.length > 0 ? (
+															<Table>
+																<TableHeader>
+																	<TableRow>
+																		<TableHead>Order ID</TableHead>
+																		<TableHead>Date</TableHead>
+																		<TableHead>Total</TableHead>
+																		<TableHead>Items</TableHead>
+																	</TableRow>
+																</TableHeader>
+																<TableBody>
+																	{expandedUserDetails.orderHistory.map(
+																		(order: OrderHistorySummary) => (
+																			<TableRow key={order.customOrderNumber}>
+																				<TableCell>
+																					{order.customOrderNumber}
+																				</TableCell>
+																				<TableCell>
+																					{formatDate(order.createdAt)}
+																				</TableCell>
+																				<TableCell>
+																					${order.total.toFixed(2)}
+																				</TableCell>
+																				<TableCell>{order.items}</TableCell>
+																			</TableRow>
+																		)
+																	)}
+																</TableBody>
+															</Table>
+														) : (
+															<p>No order history</p>
+														)}
+													</div>
+
 												</div>
 											</TableCell>
 										</TableRow>

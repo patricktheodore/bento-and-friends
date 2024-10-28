@@ -8,7 +8,8 @@ export class User {
     children: Child[];
     orderHistory: OrderHistorySummary[];
     activeCoupons: Coupon[];
-    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[]) {
+    phone?: string;
+    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[], phone?: string) {
         this.id = uuidv4();
         this.displayName = displayName;
         this.email = email;
@@ -16,6 +17,7 @@ export class User {
         this.orderHistory = orderHistory;
         this.children = children ?? [];
         this.activeCoupons = [];
+        this.phone = phone ?? '';
     }
 }
 

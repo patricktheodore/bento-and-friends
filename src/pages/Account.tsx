@@ -8,6 +8,7 @@ import OrderHistory from '@/components/OrderHistory';
 import AccountSummary from '@/components/AccountSummary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MealCalendar from '@/components/MealCalendar';
+import AccountDetails from '@/components/AccountDetails';
 
 const AccountPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -87,20 +88,21 @@ const AccountPage: React.FC = () => {
 				<div className="w-full flex flex-col justify-center items-center p-4">
 					<h1 className="text-2xl font-semibold mb-4">Loading...</h1>
 				</div>
-			) : (
-				state.user ? (
-					<Tabs defaultValue="profile">
-						<div className="w-full flex justify-between items-center">
-							<h1 className="text-4xl font-bold">My Account</h1>
-							<TabsList>
-								<TabsTrigger value="profile">Profile</TabsTrigger>
-								<TabsTrigger value="order-history">Order History</TabsTrigger>
-								<TabsTrigger value="meal-calendar">Meal Calendar</TabsTrigger>
-							</TabsList>
-						</div>
-	
-						<TabsContent value="profile">
-							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+			) : state.user ? (
+				<Tabs defaultValue="profile">
+					<div className="w-full flex justify-between items-center">
+						<h1 className="text-4xl font-bold">My Account</h1>
+						<TabsList>
+							<TabsTrigger value="profile">Profile</TabsTrigger>
+							<TabsTrigger value="order-history">Order History</TabsTrigger>
+							<TabsTrigger value="meal-calendar">Meal Calendar</TabsTrigger>
+						</TabsList>
+					</div>
+
+					<TabsContent value="profile">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							<div className="space-y-6">
+								<AccountDetails user={state.user} />
 								{state.user.children.length === 0 && <NoChildrenMessage />}
 								<ChildrenManagement
 									user={state.user}
@@ -111,27 +113,25 @@ const AccountPage: React.FC = () => {
 								{state.user.children.length > 0 && <StartOrderMessage />}
 								<AccountSummary user={state.user} />
 							</div>
-						</TabsContent>
-	
-						<TabsContent value="order-history">
-							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
-								<OrderHistory />
-							</div>
-						</TabsContent>
-	
-						<TabsContent value="meal-calendar">
-							<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
-								<MealCalendar />
-							</div>
-						</TabsContent>
-	
-					</Tabs>
-				) : (
-					<div className="w-full flex flex-col justify-center items-center p-4">
-						<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>
-					</div>
-				)
+						</div>
+					</TabsContent>
 
+					<TabsContent value="order-history">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							<OrderHistory />
+						</div>
+					</TabsContent>
+
+					<TabsContent value="meal-calendar">
+						<div className="w-full bg-white rounded-lg border border-stone-200 p-4 mt-4">
+							<MealCalendar />
+						</div>
+					</TabsContent>
+				</Tabs>
+			) : (
+				<div className="w-full flex flex-col justify-center items-center p-4">
+					<h1 className="text-2xl font-semibold mb-4">You are not signed in.</h1>
+				</div>
 			)}
 		</div>
 	);
