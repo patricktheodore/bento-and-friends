@@ -138,31 +138,69 @@ export const createCheckoutSession = functions.https.onCall(
 );
 
 export const saveOrder = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "User must be authenticated to save an order."
-    );
-  }
+  const startTime = Date.now();
+  const debugLog: any[] = [];// Collect all debug info
 
-  const {order, sessionId} = data;
-  const userId = context.auth.uid;
-
-  const db = admin.firestore();
-  const stripe = new Stripe(functions.config().stripe.secret_key, {
-    apiVersion: "2024-06-20",
-  });
+  const logDebug = (stage: string, data: any) => {
+    const timestamp = Date.now() - startTime;
+    debugLog.push({timestamp, stage, data});
+    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(data));
+  };
 
   try {
+    logDebug("StartSaveOrder", {
+      hasOrder: !!data.order,
+      hasSessionId: !!data.sessionId,
+      mealsCount: data?.order?.meals?.length,
+      userId: context?.auth?.uid,
+    });
+
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to save an order."
+      );
+    }
+
+    const {order, sessionId} = data;
+    const userId = context.auth.uid;
+
+    logDebug("InitialMealData", order.meals.map((meal: InputMeal, index: number) => ({
+      index,
+      mealId: meal?.id,
+      mainPresent: !!meal?.main,
+      childPresent: !!meal?.child,
+      schoolPresent: !!meal?.school,
+      childId: meal?.child?.id,
+      schoolId: meal?.school?.id,
+      mainId: meal?.main?.id,
+    })));
+
+    const db = admin.firestore();
+    const stripe = new Stripe(functions.config().stripe.secret_key, {
+      apiVersion: "2024-06-20",
+    });
+
+    logDebug("RetrievingStripeSession", {sessionId});
     const session = await stripe.checkout.sessions.retrieve(sessionId);
+    logDebug("StripeSessionRetrieved", {
+      sessionId: session.id,
+      hasMetadata: !!session.metadata,
+    });
 
     const bundleDiscount = parseFloat(session.metadata?.bundleDiscount || "0");
     const couponDiscount = parseFloat(session.metadata?.couponDiscount || "0");
     const finalTotal = parseFloat(session.metadata?.finalTotal ||
       order.total.toString());
 
+    console.log("Calculated totals:", {
+      bundleDiscount, couponDiscount, finalTotal,
+    });
+
     // Start a new transaction
     const result = await db.runTransaction(async (transaction) => {
+      logDebug("StartingTransaction", {userId});
+
       // Perform all reads first
       const counterRef = db.collection("counters").doc("orderNumber");
       const counterDoc = await transaction.get(counterRef);
@@ -177,12 +215,16 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       const cumulativeAnalyticsDoc =
         await transaction.get(cumulativeAnalyticsRef);
 
-      if (!counterDoc.exists) {
-        throw new Error("Order number counter does not exist");
-      }
+      logDebug("DocumentReads", {
+        counterExists: counterDoc.exists,
+        userExists: userDoc.exists,
+      });
 
-      if (!userDoc.exists) {
-        throw new Error("User document does not exist");
+      if (!counterDoc.exists || !userDoc.exists) {
+        throw new Error(
+          `Required documents missing: Counter:
+            ${counterDoc.exists}, User: ${userDoc.exists}`
+        );
       }
 
       const currentValue = counterDoc.data()?.value || 0;
@@ -193,10 +235,53 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       const orderHistory = userData?.orderHistory || [];
 
       // Generate meal IDs beforehand
-      const mealsWithIds = order.meals.map((meal: InputMeal) => ({
-        ...meal,
-        id: db.collection("meals").doc().id, // Generate a new ID for each meal
-      }));
+      const mealsWithIds = order.meals.map((meal: InputMeal) => {
+        const mealId = db.collection("meals").doc().id;
+        logDebug("GeneratingMealId", {
+          originalMealId: meal?.id,
+          newMealId: mealId,
+          hasChild: !!meal?.child?.id,
+          hasSchool: !!meal?.school?.id,
+          hasMain: !!meal?.main?.id,
+        });
+        return {...meal, id: mealId};
+      });
+
+      // Validate all meals before processing
+      const mealValidations = mealsWithIds.map((
+        meal: InputMeal, index:number
+      ) => {
+        const validation = {
+          index,
+          mealId: meal.id,
+          hasChild: !!meal?.child?.id,
+          hasSchool: !!meal?.school?.id,
+          hasMain: !!meal?.main?.id,
+          childData: {
+            id: meal?.child?.id,
+            name: meal?.child?.name,
+          },
+          schoolData: {
+            id: meal?.school?.id,
+            name: meal?.school?.name,
+          },
+          mainData: {
+            id: meal?.main?.id,
+            display: meal?.main?.display,
+          },
+        };
+        logDebug("MealValidation", validation);
+        return validation;
+      });
+
+      const invalidMeals = mealValidations.filter((v:any) =>
+        !v.hasChild || !v.hasSchool || !v.hasMain);
+      if (invalidMeals.length > 0) {
+        logDebug("InvalidMealsFound", invalidMeals);
+        throw new Error(`Invalid meal data found:
+          ${JSON.stringify(invalidMeals)}`
+        );
+      }
 
       // Now perform all writes
       const orderRef = db.collection("orders").doc();
@@ -235,47 +320,73 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         orderHistory: [...orderHistory, newOrderHistoryEntry],
       });
 
-      // Create meal documents within the transaction
-      mealsWithIds.forEach((meal: InputMeal & { id: string }) => {
-        const mealRef = db.collection("meals").doc(meal.id);
-        const deliveryDate = new Date(meal.orderDate);
+      mealsWithIds.forEach((meal:InputMeal, index:number) => {
+        try {
+          const mealRef = db.collection("meals").doc(meal.id);
+          logDebug("ProcessingMeal", {
+            index,
+            mealId: meal.id,
+            childId: meal.child?.id,
+            schoolId: meal.school?.id,
+            mainId: meal.main?.id,
+          });
 
-        const mealData: MealDocument = {
-          id: meal.id,
-          orderId: orderRef.id,
-          customOrderNumber,
-          deliveryDate: Timestamp.fromDate(deliveryDate),
-          status: "scheduled",
-          userId,
-          userEmail: order.userEmail,
-          child: {
-            id: meal.child.id,
-            name: meal.child.name,
-            className: meal.child.className,
-            year: meal.child.year,
-          },
-          school: {id: meal.school.id, name: meal.school.name},
-          allergens: meal.child.allergens ?? "",
-          main: {id: meal.main.id, display: meal.main.display},
-          probiotic: {
-            id: meal.probiotic?.id ?? "",
-            display: meal.probiotic?.display ?? "",
-          },
-          fruit: {
-            id: meal.fruit?.id ?? "",
-            display: meal.fruit?.display ?? "",
-          },
-          drink: {
-            id: meal.drink?.id ?? "",
-            display: meal.drink?.display ?? "",
-          },
-          addOns: meal.addOns?.map((addOn) => ({
-            id: addOn.id,
-            display: addOn.display,
-          })) ?? [],
-        };
+          const mealData: MealDocument = {
+            id: meal.id,
+            orderId: orderRef.id,
+            customOrderNumber,
+            deliveryDate: Timestamp.fromDate(new Date(meal.orderDate)),
+            status: "scheduled",
+            userId,
+            userEmail: order.userEmail,
+            child: {
+              id: meal.child.id,
+              name: meal.child.name,
+              className: meal.child.className,
+              year: meal.child.year,
+            },
+            school: {
+              id: meal.school.id,
+              name: meal.school.name,
+            },
+            allergens: meal.child.allergens ?? "",
+            main: {
+              id: meal.main.id,
+              display: meal.main.display,
+            },
+            probiotic: {
+              id: meal.probiotic?.id ?? "",
+              display: meal.probiotic?.display ?? "",
+            },
+            fruit: {
+              id: meal.fruit?.id ?? "",
+              display: meal.fruit?.display ?? "",
+            },
+            drink: {
+              id: meal.drink?.id ?? "",
+              display: meal.drink?.display ?? "",
+            },
+            addOns: meal.addOns?.map((addOn) => ({
+              id: addOn.id,
+              display: addOn.display,
+            })) ?? [],
+          };
 
-        transaction.set(mealRef, mealData);
+          transaction.set(mealRef, mealData);
+          logDebug("MealProcessed", {
+            index,
+            mealId: meal.id,
+            success: true,
+          });
+        } catch (error) {
+          logDebug("MealProcessingError", {
+            index,
+            mealId: meal.id,
+            error: (error as Error).message,
+            stack: (error as Error).stack,
+          });
+          throw error;
+        }
       });
 
       const dailyData = dailyAnalyticsDoc.exists ? dailyAnalyticsDoc.data() : {
@@ -322,13 +433,25 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
         finalTotal: finalTotal,
       } as OrderConfirmationEmailData);
 
+      logDebug("TransactionComplete", {
+        customOrderNumber,
+        totalMealsProcessed: mealsWithIds.length,
+      });
       return {orderId: orderRef.id, customOrderNumber, finalTotal};
     });
 
-    console.log(`Order saved with ID: ${result.customOrderNumber}`);
+    logDebug("OrderSaveComplete", {
+      success: true,
+      orderId: result.orderId,
+      customOrderNumber: result.customOrderNumber,
+    });
     return result;
   } catch (error) {
-    console.error("Error saving order:", error);
+    logDebug("OrderSaveError", {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      debugLog,
+    });
     throw new functions.https.HttpsError(
       "internal",
       "Unable to save order: " + (error as Error).message
@@ -425,7 +548,7 @@ export const updateAnalytics = functions.pubsub
         db.collection("dailyAnalytics").doc(dateString);
 
       await db.runTransaction(async (transaction) => {
-        // Fetch yesterday's data
+        // Fetch yesterday"s data
         const yesterdayDoc = await transaction.get(yesterdayAnalyticsRef);
         const yesterdayData = yesterdayDoc.data() || {
           orderCount: 0,
@@ -443,7 +566,7 @@ export const updateAnalytics = functions.pubsub
           schoolCount: 0,
         };
 
-        // Update cumulative analytics with yesterday's data
+        // Update cumulative analytics with yesterday"s data
         const updatedCumulativeData = {
           orderCount: cumulativeData.orderCount + yesterdayData.orderCount,
           mealCount: cumulativeData.mealCount + yesterdayData.mealCount,
@@ -457,7 +580,7 @@ export const updateAnalytics = functions.pubsub
           cumulativeAnalyticsRef, updatedCumulativeData, {merge: true}
         );
 
-        // Prepare new day's analytics
+        // Prepare new day"s analytics
         const newDayData = {
           date: dateString,
           orderCount: 0,
@@ -465,7 +588,7 @@ export const updateAnalytics = functions.pubsub
           revenue: 0,
         };
 
-        // Set new day's analytics
+        // Set new day"s analytics
         transaction.set(todayAnalyticsRef, newDayData);
 
         console.log(`Analytics updated successfully for ${dateString}`);
@@ -520,6 +643,20 @@ export const sendOrderConfirmationEmail = async (
 
   const savings = originalTotal - finalTotal;
 
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    timeZone: "Australia/Perth",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+
+  const formatDate = (dateString: string) => {
+    // Create date object and adjust for timezone
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-AU", dateOptions);
+  };
+
   const msg = {
     to,
     from: {
@@ -531,10 +668,10 @@ export const sendOrderConfirmationEmail = async (
     dynamicTemplateData: {
       customerName,
       customOrderNumber,
-      orderDate: new Date(orderDate).toLocaleDateString(),
+      orderDate: orderDate ? formatDate(orderDate) : undefined,
       meals: meals.map((meal) => ({
         ...meal,
-        deliveryDate: new Date(meal.orderDate).toLocaleDateString(),
+        deliveryDate: formatDate(meal.orderDate),
         total: meal.total.toFixed(2),
       })),
       originalTotal: originalTotal.toFixed(2),

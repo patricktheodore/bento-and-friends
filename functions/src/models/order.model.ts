@@ -19,6 +19,7 @@ interface MenuItem {
 }
 
 export interface InputMeal {
+  id: string;
   orderDate: string;
   child: Child;
   school: School;
