@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import debounce from 'lodash/debounce';
 import ChildManagementDialog from './ChildManagementDialog';
+import ManualOrderDialog from './ManualOrderDialog';
 import { Label } from './ui/label';
 
 const PAGE_SIZE = 50;
@@ -28,6 +29,7 @@ const UsersComponent: React.FC = () => {
 	const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
 	const [isEditingPhone, setIsEditingPhone] = useState(false);
 	const [editedPhone, setEditedPhone] = useState('');
+	const [isManualOrderDialogOpen, setIsManualOrderDialogOpen] = useState(false);
 
 	const handleEditChild = async (childId: string) => {
 		const user = expandedUserDetails;
@@ -439,7 +441,15 @@ const UsersComponent: React.FC = () => {
 
 													</div>
 
-													<h4 className="font-semibold mt-4">Order History</h4>
+													<div className="flex justify-between items-center">
+														<h4 className="font-semibold mt-4">Order History</h4>
+														<Button 
+															size="sm" 
+															onClick={() => setIsManualOrderDialogOpen(true)}
+														>
+															New Order
+														</Button>
+													</div>
 													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
 														{expandedUserDetails.orderHistory.length > 0 ? (
 															<Table>
@@ -493,6 +503,14 @@ const UsersComponent: React.FC = () => {
 				onRemove={handleRemoveChild}
 				editingChild={selectedChild}
 			/>
+
+			{expandedUserDetails && (
+			<ManualOrderDialog
+				isOpen={isManualOrderDialogOpen}
+				onClose={() => setIsManualOrderDialogOpen(false)}
+				user={expandedUserDetails}
+			/>
+			)}
 
 			{!searchTerm && hasMore && (
 				<div className="flex justify-center mt-4">

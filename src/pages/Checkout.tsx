@@ -54,26 +54,26 @@ const CheckoutPage: React.FC = () => {
 
 	const { finalTotal, totalDiscountPercentage } = useMemo(() => {
 		if (!cart) return { finalTotal: 0, couponDiscountAmount: 0, totalDiscountPercentage: 0 };
-	
+
 		let subtotalAfterBundleDiscount = bundleDiscountedTotal;
 		let couponDiscountAmount = 0;
-	
+
 		if (appliedCoupon) {
-		  if (appliedCoupon.discountType === 'percentage') {
-			couponDiscountAmount = subtotalAfterBundleDiscount * (appliedCoupon.discountAmount / 100);
-		  } else {
-			couponDiscountAmount = Math.min(appliedCoupon.discountAmount, subtotalAfterBundleDiscount);
-		  }
+			if (appliedCoupon.discountType === 'percentage') {
+				couponDiscountAmount = subtotalAfterBundleDiscount * (appliedCoupon.discountAmount / 100);
+			} else {
+				couponDiscountAmount = Math.min(appliedCoupon.discountAmount, subtotalAfterBundleDiscount);
+			}
 		}
-	
+
 		const totalDiscountAmount = bundleDiscountAmount + couponDiscountAmount;
 		const finalTotal = Math.max(0, subtotalAfterBundleDiscount - couponDiscountAmount);
 		const totalDiscountPercentage = (totalDiscountAmount / cart.total) * 100;
-	
-		return { 
-		  finalTotal, 
-		  couponDiscountAmount, 
-		  totalDiscountPercentage 
+
+		return {
+			finalTotal,
+			couponDiscountAmount,
+			totalDiscountPercentage,
 		};
 	}, [cart, bundleDiscountedTotal, bundleDiscountAmount, appliedCoupon]);
 
@@ -107,6 +107,25 @@ const CheckoutPage: React.FC = () => {
 
 	const updateMeal = () => {
 		if (editingMeal) {
+			// Verify school data is present
+			if (!editingMeal.school?.id) {
+				const school = state.schools.find((s) => s.name === editingMeal.child.school);
+
+				if (!school) {
+					toast.error('Error: School information is missing');
+					return;
+				}
+
+				// Ensure school data is complete before updating
+				editingMeal.school = {
+					id: school.id,
+					name: school.name,
+					address: school.address,
+					isActive: school.isActive,
+					deliveryDays: school.deliveryDays,
+				};
+			}
+
 			dispatch({
 				type: 'UPDATE_MEAL',
 				payload: editingMeal,
@@ -147,6 +166,47 @@ const CheckoutPage: React.FC = () => {
 
 	const handleCheckout = async () => {
 		if (!cart) return;
+
+		// Validate all meals have complete school data
+		const invalidMeals = cart.meals.filter((meal) => !meal.school?.id);
+		if (invalidMeals.length > 0) {
+			// Try to recover missing school data
+			const updatedMeals = cart.meals.map((meal) => {
+				if (!meal.school?.id) {
+					const school = state.schools.find((s) => s.name === meal.child.school);
+					if (school) {
+						return {
+							...meal,
+							school: {
+								id: school.id,
+								name: school.name,
+								address: school.address,
+								isActive: school.isActive,
+								deliveryDays: school.deliveryDays,
+							},
+						};
+					}
+				}
+				return meal;
+			});
+
+			// Check if recovery was successful
+			const stillInvalid = updatedMeals.filter((meal) => !meal.school?.id);
+			if (stillInvalid.length > 0) {
+				toast.error('Some orders have missing school information. Please try again or contact support.');
+				console.error('Invalid meals:', stillInvalid);
+				return;
+			}
+
+			// Update cart with recovered data
+			dispatch({
+				type: 'SET_CART',
+				payload: {
+					...cart,
+					meals: updatedMeals,
+				},
+			});
+		}
 
 		setIsProcessing(true);
 		const functions = getFunctions();
@@ -196,8 +256,6 @@ const CheckoutPage: React.FC = () => {
 		} catch (error) {
 			console.error('Error:', error);
 			toast.error('An error occurred during checkout');
-		} finally {
-			setIsProcessing(false);
 		}
 	};
 
@@ -326,8 +384,32 @@ const CheckoutPage: React.FC = () => {
 													onValueChange={(value) => {
 														const newChild = user?.children.find(
 															(child) => child.id === value
-														)!;
-														setEditingMeal({ ...editingMeal, child: newChild });
+														);
+														if (newChild) {
+															const newSchool = state.schools.find(
+																(school) => school.name === newChild.school
+															);
+
+															if (!newSchool) {
+																console.error(
+																	`School not found for child ${newChild.name}`
+																);
+																toast.error('Error: School information not found');
+																return;
+															}
+
+															setEditingMeal({
+																...editingMeal,
+																child: newChild,
+																school: {
+																	id: newSchool.id,
+																	name: newSchool.name,
+																	address: newSchool.address,
+																	isActive: newSchool.isActive,
+																	deliveryDays: newSchool.deliveryDays,
+																},
+															});
+														}
 													}}
 												>
 													<SelectTrigger>
@@ -428,7 +510,12 @@ const CheckoutPage: React.FC = () => {
 							value={couponCode}
 							onChange={(e) => setCouponCode(e.target.value)}
 						/>
-						<Button variant={'outline'} onClick={() => handleApplyCoupon(couponCode)}>Apply Coupon</Button>
+						<Button
+							variant={'outline'}
+							onClick={() => handleApplyCoupon(couponCode)}
+						>
+							Apply Coupon
+						</Button>
 					</div>
 				)}
 				<Button

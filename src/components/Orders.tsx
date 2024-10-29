@@ -271,10 +271,10 @@ useEffect(() => {
 									</TableCell>
 									<TableCell className="px-2 py-3 text-xs sm:text-sm">{order.meals.length}</TableCell>
 									<TableCell className="px-2 py-3 text-xs sm:text-sm">
-										${order.total.toFixed(2)}
+										${order.total ? order.total.toFixed(2) : '0'}
 									</TableCell>
 									<TableCell className="px-2 py-3 text-xs sm:text-sm">	
-										${order.finalTotal.toFixed(2)}
+										${order.finalTotal && order.finalTotal > 0 ? order.finalTotal.toFixed(2) : '0'}
 									</TableCell>
 								</TableRow>
 								{expandedOrderId === order.id && (
