@@ -94,6 +94,8 @@ const Cart: React.FC = () => {
 		}
 	}, [isCartOpen, resetProcessingState]);
 
+	
+
 	const calculateDiscount = (mealCount: number) => {
 		if (mealCount >= 5) return 0.2;
 		if (mealCount >= 3) return 0.1;
@@ -228,6 +230,31 @@ const Cart: React.FC = () => {
 
 	const handleCheckout = async () => {
 		if (!cart) return;
+
+		const now = new Date();
+		now.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+
+		const invalidDates = cart.meals.filter(meal => {
+			const orderDate = new Date(meal.orderDate);
+			return orderDate <= now;
+		});
+
+		if (invalidDates.length > 0) {
+			toast.error(
+				<div>
+					<p>Some meals have invalid delivery dates:</p>
+					<ul className="list-disc pl-4 mt-2">
+						{invalidDates.map((meal, index) => (
+							<li key={index}>
+								{meal.child.name} - {formatDate(meal.orderDate)}
+							</li>
+						))}
+					</ul>
+					<p className="mt-2">Please update or remove these meals to continue.</p>
+				</div>
+			);
+			return;
+		}
 
 		// Validate all meals have complete school data
 		const invalidMeals = cart.meals.filter((meal) => !meal.school?.id);
@@ -404,6 +431,14 @@ const Cart: React.FC = () => {
 								className="py-4 border-b"
 							>
 								<h3 className="font-semibold">{meal.main.display}</h3>
+								{new Date(meal.orderDate) <= new Date() && (
+									<Alert variant="destructive" className="mt-2 mb-2">
+										<AlertTriangle className="h-4 w-4" />
+										<AlertDescription>
+											This meal's delivery date has passed. Please update or remove it.
+										</AlertDescription>
+									</Alert>
+								)}
 								<p className="text-sm text-gray-500">
 									{meal.addOns.map((addon) => addon.display).join(', ')}
 								</p>

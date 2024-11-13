@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Edit2, Trash2 } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Meal, Order } from '@/models/order.model';
 import { AddOn, Main } from '@/models/item.model';
@@ -16,6 +16,8 @@ import { Coupon } from '@/models/user.model';
 import { validateCoupon } from '@/services/coupon-service';
 import { Input } from '@/components/ui/input';
 import DiscountMessage from '../components/DiscountMessage';
+import { formatDate } from '@/utils/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const stripePromise = loadStripe(
 	'pk_live_51PzenCRuOSdR9YdWStFVzk83YT4PRIeDGCMRCylZObMEVE0Fp24AwPMp0gK91zLvZXNvfhSGNG7vKnetFkg1MWna00flH0J7XX'
@@ -167,6 +169,31 @@ const CheckoutPage: React.FC = () => {
 	const handleCheckout = async () => {
 		if (!cart) return;
 
+		const now = new Date();
+		now.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+
+		const invalidDates = cart.meals.filter(meal => {
+			const orderDate = new Date(meal.orderDate);
+			return orderDate <= now;
+		});
+
+		if (invalidDates.length > 0) {
+			toast.error(
+				<div>
+					<p>Some meals have invalid delivery dates:</p>
+					<ul className="list-disc pl-4 mt-2">
+						{invalidDates.map((meal, index) => (
+							<li key={index}>
+								{meal.child.name} - {formatDate(meal.orderDate)}
+							</li>
+						))}
+					</ul>
+					<p className="mt-2">Please update or remove these meals to continue.</p>
+				</div>
+			);
+			return;
+		}
+
 		// Validate all meals have complete school data
 		const invalidMeals = cart.meals.filter((meal) => !meal.school?.id);
 		if (invalidMeals.length > 0) {
@@ -299,6 +326,14 @@ const CheckoutPage: React.FC = () => {
 						<div className="flex flex-wrap justify-between items-start">
 							<div className="w-full sm:w-2/3">
 								<h3 className="font-semibold text-lg">{meal.main.display}</h3>
+								{new Date(meal.orderDate) <= new Date() && (
+									<Alert variant="destructive" className="mt-2 mb-2">
+										<AlertTriangle className="h-4 w-4" />
+										<AlertDescription>
+											This meal's delivery date has passed. Please update or remove it.
+										</AlertDescription>
+									</Alert>
+								)}
 								<p className="text-sm text-gray-500">
 									{meal.addOns.map((addon) => addon.display).join(', ')}
 								</p>

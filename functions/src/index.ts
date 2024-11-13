@@ -152,8 +152,24 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
 
   const logDebug = (stage: string, data: any) => {
     const timestamp = Date.now() - startTime;
-    debugLog.push({timestamp, stage, data});
-    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(data));
+    // Create a safe copy of the data without circular references
+    const safeData = JSON.parse(JSON.stringify(data, (key, value) => {
+      if (key === "debugLog") return undefined; // Skip the debugLog property
+      if (typeof value === "object" && value !== null) {
+        return Object.keys(value).reduce((acc, k) => {
+          if (typeof value[k] !== "object") {
+            acc[k] = value[k];
+          } else {
+            acc[k] = `[${typeof value[k]}]`;
+          }
+          return acc;
+        }, {} as any);
+      }
+      return value;
+    }));
+
+    debugLog.push({timestamp, stage, data: safeData});
+    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(safeData));
   };
 
   try {
@@ -431,18 +447,28 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
       transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
       transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
 
-      await sendOrderConfirmationEmail({
-        to: order.userEmail,
-        customOrderNumber,
-        meals: mealsWithIds.map((meal: Meal) => ({
-          mainDisplay: meal.main.display,
-          childName: meal.child.name,
-          orderDate: meal.orderDate,
-          total: meal.total,
-        })),
-        originalTotal: order.total,
-        finalTotal: finalTotal,
-      } as OrderConfirmationEmailData);
+      // In the saveOrder function, where the email is sent:
+      try {
+        await sendOrderConfirmationEmail({
+          to: order.userEmail,
+          customOrderNumber,
+          meals: mealsWithIds.map((meal: Meal) => ({
+            mainDisplay: meal.main.display,
+            childName: meal.child.name,
+            orderDate: meal.orderDate,
+            total: meal.total,
+          })),
+          originalTotal: order.total,
+          finalTotal: finalTotal,
+        } as OrderConfirmationEmailData);
+      } catch (error) {
+        // Log the error but continue with the order processing
+        console.error(
+          `Failed to send order confirmation email for order
+          ${customOrderNumber}:`,
+          error
+        );
+      }
 
       logDebug("TransactionComplete", {
         customOrderNumber,
@@ -642,17 +668,8 @@ export const sendWelcomeEmail = functions.auth.user().onCreate(async (user) => {
 export const sendOrderConfirmationEmail = async (
   data: OrderConfirmationEmailData
 ) => {
-  const {
-    to,
-    customerName,
-    customOrderNumber,
-    orderDate,
-    meals,
-    originalTotal,
-    finalTotal,
-  } = data;
-
-  const savings = originalTotal - finalTotal;
+  const maxRetries = 3;
+  let attempt = 0;
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     timeZone: "Australia/Perth",
@@ -668,38 +685,53 @@ export const sendOrderConfirmationEmail = async (
     return date.toLocaleDateString("en-AU", dateOptions);
   };
 
-  const msg = {
-    to,
-    from: {
-      email: "bentoandfriends@outlook.com.au",
-      name: "Bento & Friends",
-    },
-    subject: `Order Confirmation: ${customOrderNumber}`,
-    templateId: "d-3dc5c0e2fb2643279bf93a8a0efea205",
-    dynamicTemplateData: {
-      customerName,
-      customOrderNumber,
-      orderDate: orderDate ? formatDate(orderDate) : undefined,
-      meals: meals.map((meal) => ({
-        ...meal,
-        deliveryDate: formatDate(meal.orderDate),
-        total: meal.total.toFixed(2),
-      })),
-      originalTotal: originalTotal.toFixed(2),
-      finalTotal: finalTotal.toFixed(2),
-      savings: savings > 0 ? savings.toFixed(2) : null,
-    },
-  };
+  while (attempt < maxRetries) {
+    try {
+      const msg = {
+        to: data.to,
+        from: {
+          email: "bentoandfriends@outlook.com.au",
+          name: "Bento & Friends",
+        },
+        subject: `Order Confirmation: ${data.customOrderNumber}`,
+        templateId: "d-3dc5c0e2fb2643279bf93a8a0efea205",
+        dynamicTemplateData: {
+          customerName: data.customerName || "Valued Customer",
+          customOrderNumber: data.customOrderNumber,
+          meals: data.meals.map((meal) => ({
+            ...meal,
+            deliveryDate: formatDate(meal.orderDate),
+            total: meal.total.toFixed(2),
+          })),
+          originalTotal: data.originalTotal.toFixed(2),
+          finalTotal: data.finalTotal.toFixed(2),
+          savings: data.originalTotal - data.finalTotal > 0 ?
+            (data.originalTotal - data.finalTotal).toFixed(2) : null,
+        },
+      };
 
-  try {
-    await sgMail.send(msg);
-    console.log(`Order confirmation email sent for order ${customOrderNumber}`);
-  } catch (error) {
-    console.error("Error sending order confirmation email", error);
-    throw new functions.https.HttpsError(
-      "internal",
-      "Failed to send order confirmation email"
-    );
+      await sgMail.send(msg);
+      console.log(
+        `Order confirmation email sent successfully for order
+        ${data.customOrderNumber}`
+      );
+      return;
+    } catch (error) {
+      attempt++;
+      console.error(
+        `Attempt ${attempt} failed to send order confirmation email:`,
+        error
+      );
+      if (attempt === maxRetries) {
+        console.error(
+          `Failed to send order confirmation email after
+          ${maxRetries} attempts for order ${data.customOrderNumber}`
+        );
+        return;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
   }
 };
 

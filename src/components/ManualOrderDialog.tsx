@@ -6,15 +6,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAppContext } from '@/context/AppContext';
-import { AddOn, Main } from '@/models/item.model';
+import { Main } from '@/models/item.model';
 import { Child, User } from '@/models/user.model';
-import { Meal, Order } from '@/models/order.model';
+import { Meal } from '@/models/order.model';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { formatDate } from '@/utils/utils';
 import { toast } from 'react-hot-toast';
 
 interface ManualOrderDialogProps {
