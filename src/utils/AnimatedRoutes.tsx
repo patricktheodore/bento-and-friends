@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from '../layout/PageTransition';
 import { AdminRoute } from './RouteGuard';
 import AnimatedLoadingScreen from '../utils/AnimatedLoadingScreen';
+import CateringPage from '@/pages/Catering';
 
 // Lazy load components
 const HomePage = lazy(() => import('../pages/Home'));
@@ -29,6 +30,7 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/menu" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><MenuPage /></Suspense></PageTransition>} />
         <Route path="/order" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><OrderPage /></Suspense></PageTransition>} />
         <Route path="/contact" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><ContactPage /></Suspense></PageTransition>} />
+        <Route path="/catering" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><CateringPage /></Suspense></PageTransition>} />
         <Route path="/account" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><AccountPage /></Suspense></PageTransition>} />
         <Route path="/signin" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><UserloginPage /></Suspense></PageTransition>} />
         <Route path="/signout" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><SignOut /></Suspense></PageTransition>} />

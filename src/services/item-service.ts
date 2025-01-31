@@ -1,6 +1,6 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Main, Probiotic, AddOn, Fruit, Drink } from '../models/item.model';
+import { Main, Probiotic, AddOn, Fruit, Drink, Platter } from '../models/item.model';
 
 export const getMains = async (): Promise<{ success: boolean; data?: Main[]; error?: string }> => {
     try {
@@ -95,3 +95,24 @@ export const getDrinks = async (): Promise<{ success: boolean; data?: Drink[]; e
 		return { success: false, error: (error as Error).message };
 	}
 };
+
+export const getPlatters = async (): Promise<{ success: boolean; data?: Platter[]; error?: string }> => {
+	try {
+		const plattersCollection = collection(db, 'platters');
+		const plattersSnapshot = await getDocs(plattersCollection);
+		const platters = plattersSnapshot.docs.map(doc => {
+			const data = doc.data();
+			return new Platter(
+				data.display,
+				data.image,
+				data.description,
+				data.price,
+				doc.id
+			);
+		});
+		return { success: true, data: platters };
+	} catch (error) {
+		console.error('Error getting platters: ', error);
+		return { success: false, error: (error as Error).message };
+	}
+}

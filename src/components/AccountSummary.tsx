@@ -8,17 +8,17 @@ interface AccountSummaryProps {
 
 const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
   const stats = useMemo(() => {
-    const totalOrders = user.orderHistory.length;
-    const totalMeals = user.orderHistory.reduce((sum, order) => sum + order.items, 0);
+    const totalOrders = user.orderHistory?.length;
+    const totalMeals = user.orderHistory?.reduce((sum, order) => sum + order.items, 0);
     
     // Calculate total meal value (before discounts)
-    const totalMealValue = user.orderHistory.reduce((sum, order) => {
+    const totalMealValue = user.orderHistory?.reduce((sum, order) => {
       // Assuming each order has an 'originalTotal' field representing the sum of meal costs before discounts
       return sum + (order.originalTotal || order.total);
     }, 0);
     
     // Calculate total paid (after discounts)
-    const totalPaid = user.orderHistory.reduce((sum, order) => sum + order.total, 0);
+    const totalPaid = user.orderHistory?.reduce((sum, order) => sum + order.total, 0);
     
     // Calculate savings
     const totalSavings = totalMealValue - totalPaid;
@@ -28,10 +28,10 @@ const AccountSummary: React.FC<AccountSummaryProps> = ({ user }) => {
     return {
       totalOrders,
       totalMeals,
-      totalMealValue: totalMealValue.toFixed(2),
-      totalPaid: totalPaid.toFixed(2),
-      totalSavings: totalSavings.toFixed(2),
-      averageMealValue: averageMealValue.toFixed(2),
+      totalMealValue: totalMealValue?.toFixed(2),
+      totalPaid: totalPaid?.toFixed(2),
+      totalSavings: totalSavings?.toFixed(2),
+      averageMealValue: averageMealValue?.toFixed(2),
     };
   }, [user.orderHistory]);
 

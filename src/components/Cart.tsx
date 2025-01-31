@@ -35,6 +35,7 @@ const Cart: React.FC = () => {
 	const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 	const [duplicateOrders, setDuplicateOrders] = useState<{ childName: string; date: string }[]>([]);
 	const [couponError, setCouponError] = useState<string | null>(null);
+	const [isMainOnly, setIsMainOnly] = useState<boolean>(false);
 
 	const checkDuplicateOrders = useMemo(() => {
 		if (!cart) return [];
@@ -93,8 +94,6 @@ const Cart: React.FC = () => {
 			resetProcessingState();
 		}
 	}, [isCartOpen, resetProcessingState]);
-
-	
 
 	const calculateDiscount = (mealCount: number) => {
 		if (mealCount >= 5) return 0.2;
@@ -197,6 +196,11 @@ const Cart: React.FC = () => {
 				};
 			}
 
+			if (isMainOnly) {
+				editingMeal.probiotic = undefined;
+				editingMeal.fruit = undefined;
+			}
+
 			dispatch({
 				type: 'UPDATE_MEAL',
 				payload: editingMeal,
@@ -210,6 +214,15 @@ const Cart: React.FC = () => {
 	const cancelEdit = () => {
 		setEditingMeal(null);
 		setIsDialogOpen(false);
+	};
+
+	const orderAddOns = (addOns: AddOn[]): AddOn[] => {
+		const mainOnly = addOns.find((addon) => addon.display.toLowerCase().includes('main only'));
+		if (mainOnly) {
+			return [mainOnly, ...addOns.filter((addon) => addon.id !== mainOnly.id)];
+		} else {
+			return addOns;
+		}
 	};
 
 	const isValidDate = (date: Date) => {
@@ -228,13 +241,14 @@ const Cart: React.FC = () => {
 		return isWeekend || isPast || isBlocked;
 	};
 
+	// In Cart.tsx
 	const handleCheckout = async () => {
-		if (!cart) return;
+		if (!cart || !state.cart) return;
 
 		const now = new Date();
-		now.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+		now.setHours(0, 0, 0, 0);
 
-		const invalidDates = cart.meals.filter(meal => {
+		const invalidDates = cart.meals.filter((meal) => {
 			const orderDate = new Date(meal.orderDate);
 			return orderDate <= now;
 		});
@@ -298,21 +312,28 @@ const Cart: React.FC = () => {
 		}
 
 		setIsProcessing(true);
-		const functions = getFunctions();
-		const createCheckoutSession = httpsCallable<
-			{
-				cart: Order;
-				bundleDiscount: number;
-				couponDiscount: number;
-				couponCode?: string;
-				couponId?: string;
-				successUrl: string;
-				cancelUrl: string;
-			},
-			{ sessionId: string }
-		>(functions, 'createCheckoutSession');
 
 		try {
+			localStorage.setItem('cart', JSON.stringify(cart));
+			const stripe = await stripePromise;
+			if (!stripe) {
+				throw new Error('Stripe failed to initialize');
+			}
+
+			const functions = getFunctions();
+			const createCheckoutSession = httpsCallable<
+				{
+					cart: Order;
+					bundleDiscount: number;
+					couponDiscount: number;
+					couponCode?: string;
+					couponId?: string;
+					successUrl: string;
+					cancelUrl: string;
+				},
+				{ sessionId: string }
+			>(functions, 'createCheckoutSession');
+
 			const bundleDiscount = cart.total - bundleDiscountedTotal;
 			const couponDiscount = appliedCoupon
 				? appliedCoupon.discountType === 'percentage'
@@ -320,38 +341,35 @@ const Cart: React.FC = () => {
 					: appliedCoupon.discountAmount
 				: 0;
 
+			// Ensure URLs are absolute
+			const successUrl = new URL('/order-success', window.location.origin).toString();
+			const cancelUrl = new URL('/checkout', window.location.origin).toString();
+
 			const result = await createCheckoutSession({
 				cart,
 				bundleDiscount,
 				couponDiscount,
 				couponCode: appliedCoupon?.code,
 				couponId: appliedCoupon?.id,
-				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-				cancelUrl: `${window.location.origin}/checkout`,
+				successUrl: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+				cancelUrl: cancelUrl,
 			});
 
-			if (!result || !result.data) {
-				resetProcessingState();
+			if (!result?.data?.sessionId) {
 				throw new Error('Failed to create checkout session');
 			}
 
-			const { sessionId } = result.data;
+			// Redirect to Stripe Checkout
+			const { error } = await stripe.redirectToCheckout({
+				sessionId: result.data.sessionId,
+			});
 
-			if (sessionId) {
-				const stripe = await stripePromise;
-				const { error } = await stripe!.redirectToCheckout({ sessionId });
-
-				if (error) {
-					resetProcessingState();
-					toast.error(error.message || 'An error occurred during checkout');
-				}
-			} else {
-				resetProcessingState();
-				throw new Error('Failed to create checkout session');
+			if (error) {
+				throw error;
 			}
 		} catch (error) {
-			console.error('Error:', error);
-			toast.error('An error occurred during checkout');
+			console.error('Checkout Error:', error);
+			toast.error('An error occurred during checkout. Please try again.');
 			resetProcessingState();
 		}
 	};
@@ -432,7 +450,10 @@ const Cart: React.FC = () => {
 							>
 								<h3 className="font-semibold">{meal.main.display}</h3>
 								{new Date(meal.orderDate) <= new Date() && (
-									<Alert variant="destructive" className="mt-2 mb-2">
+									<Alert
+										variant="destructive"
+										className="mt-2 mb-2"
+									>
 										<AlertTriangle className="h-4 w-4" />
 										<AlertDescription>
 											This meal's delivery date has passed. Please update or remove it.
@@ -440,7 +461,7 @@ const Cart: React.FC = () => {
 									</Alert>
 								)}
 								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')}
+									{meal.addOns.map((addon) => addon.display).join(', ')} - {meal.probiotic ? meal.probiotic.display : ' No probitic '} - {meal.fruit ? meal.fruit.display : ' No fruit '}
 								</p>
 								<p className="text-sm">
 									{meal.child.name} - {formatDate(meal.orderDate)}
@@ -473,7 +494,7 @@ const Cart: React.FC = () => {
 												<Edit2 className="h-4 w-4 mr-1" /> Edit
 											</Button>
 										</DialogTrigger>
-										<DialogContent className="sm:max-w-[425px]">
+										<DialogContent className="sm:max-w-[425px] max-h-[95vh] overflow-scroll">
 											<DialogHeader>
 												<DialogTitle>Edit Order</DialogTitle>
 											</DialogHeader>
@@ -509,9 +530,10 @@ const Cart: React.FC = () => {
 															</SelectContent>
 														</Select>
 													</div>
+
 													<div>
 														<label className="text-sm font-medium">Add-ons</label>
-														{state.addOns.map((addon) => (
+														{orderAddOns(state.addOns).map((addon) => (
 															<div
 																key={addon.id}
 																className="flex items-center space-x-2 mb-2"
@@ -521,12 +543,95 @@ const Cart: React.FC = () => {
 																	checked={editingMeal.addOns.some(
 																		(a) => a.id === addon.id
 																	)}
-																	onCheckedChange={() => handleAddOnToggle(addon.id)}
+																	onCheckedChange={(checked) => {
+																		setIsMainOnly(
+																			checked &&
+																				addon.display
+																					.toLowerCase()
+																					.includes('main only')
+																		);
+																		handleAddOnToggle(addon.id);
+																	}}
 																/>
 																<Label htmlFor={addon.id}>{addon.display}</Label>
 															</div>
 														))}
 													</div>
+
+													{!isMainOnly && (
+														<>
+															<div>
+																<label className="text-sm font-medium">Yogurt</label>
+																<div className="space-y-2">
+																	{state.probiotics &&
+																		state.probiotics.map((yogurt) => (
+																			<div
+																				key={yogurt.id}
+																				className="flex items-center space-x-2"
+																			>
+																				<Checkbox
+																					id={`yogurt-${yogurt.id}`}
+																					checked={
+																						editingMeal.probiotic?.id ===
+																						yogurt.id
+																					}
+																					onCheckedChange={(checked) => {
+																						setEditingMeal({
+																							...editingMeal,
+																							probiotic: checked
+																								? yogurt
+																								: undefined,
+																						});
+																					}}
+																				/>
+																				<Label
+																					htmlFor={`yogurt-${yogurt.id}`}
+																					className="text-sm"
+																				>
+																					{yogurt.display}
+																				</Label>
+																			</div>
+																		))}
+																</div>
+															</div>
+
+															<div>
+																<label className="text-sm font-medium">Fruit</label>
+																<div className="space-y-2">
+																	{state.fruits &&
+																		state.fruits.map((fruit) => (
+																			<div
+																				key={fruit.id}
+																				className="flex items-center space-x-2"
+																			>
+																				<Checkbox
+																					id={`fruit-${fruit.id}`}
+																					checked={
+																						editingMeal.fruit?.id ===
+																						fruit.id
+																					}
+																					onCheckedChange={(checked) => {
+																						setEditingMeal({
+																							...editingMeal,
+																							fruit: checked
+																								? fruit
+																								: undefined,
+																						});
+																					}}
+																				/>
+																				<Label
+																					htmlFor={`fruit-${fruit.id}`}
+																					className="text-sm"
+																				>
+																					{fruit.display}
+																				</Label>
+																			</div>
+																		))}
+																</div>
+															</div>
+														</>
+													)}
+
 													<div>
 														<label className="text-sm font-medium">Child</label>
 														<Select
@@ -539,7 +644,6 @@ const Cart: React.FC = () => {
 																	const newSchool = state.schools.find(
 																		(school) => school.name === newChild.school
 																	);
-
 
 																	if (!newSchool) {
 																		console.error(
@@ -565,7 +669,6 @@ const Cart: React.FC = () => {
 																}
 															}}
 														>
-															
 															<SelectTrigger>
 																<SelectValue placeholder="Select a child" />
 															</SelectTrigger>
@@ -581,6 +684,7 @@ const Cart: React.FC = () => {
 															</SelectContent>
 														</Select>
 													</div>
+
 													<div>
 														<label className="text-sm font-medium">Date</label>
 														<Calendar

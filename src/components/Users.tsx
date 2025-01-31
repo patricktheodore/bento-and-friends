@@ -303,7 +303,7 @@ const UsersComponent: React.FC = () => {
 										</TableCell>
 										<TableCell>{user.email}</TableCell>
 										<TableCell>{user.phone ? formatPhoneNumber(user.phone) : '-'}</TableCell>
-										<TableCell>{user.orderHistory.length}</TableCell>
+										<TableCell>{user.orderHistory?.length}</TableCell>
 									</TableRow>
 									{expandedUserId === user.id && expandedUserDetails && (
 										<TableRow>
@@ -451,7 +451,7 @@ const UsersComponent: React.FC = () => {
 														</Button>
 													</div>
 													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
-														{expandedUserDetails.orderHistory.length > 0 ? (
+														{expandedUserDetails.orderHistory?.length > 0 ? (
 															<Table>
 																<TableHeader>
 																	<TableRow>
@@ -462,7 +462,7 @@ const UsersComponent: React.FC = () => {
 																	</TableRow>
 																</TableHeader>
 																<TableBody>
-																	{expandedUserDetails.orderHistory.map(
+																	{expandedUserDetails.orderHistory?.map(
 																		(order: OrderHistorySummary) => (
 																			<TableRow key={order.customOrderNumber}>
 																				<TableCell>

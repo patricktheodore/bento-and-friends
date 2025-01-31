@@ -4,10 +4,10 @@ import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
-import { getMains, getProbiotics, getAddOns, getFruits, getDrinks } from '../services/item-service';
+import { getMains, getProbiotics, getAddOns, getFruits, getDrinks, getPlatters } from '../services/item-service';
 import { getCoupons } from '@/services/coupon-service';
 import { getBlockedDates } from '@/services/date-service';
-import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
+import { AddOn, Drink, Fruit, Main, Platter, Probiotic } from '../models/item.model';
 import { v4 as uuidv4 } from 'uuid';
 
 type AppState = {
@@ -15,6 +15,7 @@ type AppState = {
 	cart: Order | null;
 	isCartOpen: boolean;
 	mains: Main[];
+	platters: Platter[];
 	probiotics: Probiotic[];
 	fruits: Fruit[];
 	drinks: Drink[];
@@ -34,6 +35,7 @@ type Action =
 	| { type: 'UPDATE_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
 	| { type: 'SET_MENU_ITEMS'; payload: Array<Main | Probiotic | Fruit | Drink | AddOn> }
 	| { type: 'SET_MAINS'; payload: Main[] }
+	| { type: 'SET_PLATTERS'; payload: Platter[] }
 	| { type: 'SET_PROBIOTICS'; payload: Probiotic[] }
 	| { type: 'SET_FRUITS'; payload: Fruit[] }
 	| { type: 'SET_DRINKS'; payload: Drink[] }
@@ -64,6 +66,7 @@ const initialState: AppState = {
 	isCartOpen: false,
 	schools: [],
 	mains: [],
+	platters: [],
 	probiotics: [],
 	fruits: [],
 	drinks: [],
@@ -127,6 +130,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			};
 		case 'SET_MAINS':
 			return { ...state, mains: action.payload };
+		case 'SET_PLATTERS':
+			return { ...state, platters: action.payload };
 		case 'SET_PROBIOTICS':
 			return { ...state, probiotics: action.payload };
 		case 'SET_FRUITS':
@@ -276,10 +281,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 		const loadAllData = async () => {
 			dispatch({ type: 'SET_LOADING', payload: true });
 			try {
-				const [user, schools, mains, probiotics, addOns, fruits, drinks, coupons, blockedDates] = await Promise.all([
+				const [user, schools, mains, platters, probiotics, addOns, fruits, drinks, coupons, blockedDates] = await Promise.all([
 					getCurrentUser(),
 					getSchools(),
 					getMains(),
+					getPlatters(),
 					getProbiotics(),
 					getAddOns(),
 					getFruits(),
@@ -291,6 +297,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 				dispatch({ type: 'SET_USER', payload: user });
 				dispatch({ type: 'SET_SCHOOLS', payload: schools.data ? schools.data : [] });
 				dispatch({ type: 'SET_MAINS', payload: mains.data ? mains.data : [] });
+				dispatch({ type: 'SET_PLATTERS', payload: platters.data ? platters.data : [] });
 				dispatch({ type: 'SET_PROBIOTICS', payload: probiotics.data ? probiotics.data : [] });
 				dispatch({ type: 'SET_ADD_ONS', payload: addOns.data ? addOns.data : [] });
 				dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });

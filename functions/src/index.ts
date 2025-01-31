@@ -56,6 +56,12 @@ interface AdminOrderData {
   };
 }
 
+interface SaveOrderResult {
+  orderId: string;
+  customOrderNumber: string;
+  finalTotal: number;
+}
+
 export const createCheckoutSession = functions.https.onCall(
   async (data: {
     cart: Cart;
@@ -146,40 +152,11 @@ export const createCheckoutSession = functions.https.onCall(
   }
 );
 
-export const saveOrder = functions.https.onCall(async (data, context) => {
-  const startTime = Date.now();
-  const debugLog: any[] = [];// Collect all debug info
-
-  const logDebug = (stage: string, data: any) => {
-    const timestamp = Date.now() - startTime;
-    // Create a safe copy of the data without circular references
-    const safeData = JSON.parse(JSON.stringify(data, (key, value) => {
-      if (key === "debugLog") return undefined; // Skip the debugLog property
-      if (typeof value === "object" && value !== null) {
-        return Object.keys(value).reduce((acc, k) => {
-          if (typeof value[k] !== "object") {
-            acc[k] = value[k];
-          } else {
-            acc[k] = `[${typeof value[k]}]`;
-          }
-          return acc;
-        }, {} as any);
-      }
-      return value;
-    }));
-
-    debugLog.push({timestamp, stage, data: safeData});
-    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(safeData));
-  };
-
-  try {
-    logDebug("StartSaveOrder", {
-      hasOrder: !!data.order,
-      hasSessionId: !!data.sessionId,
-      mealsCount: data?.order?.meals?.length,
-      userId: context?.auth?.uid,
-    });
-
+export const saveOrder = functions.https.onCall(
+  async (
+    data,
+    context
+  ): Promise<SaveOrderResult> => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -189,312 +166,118 @@ export const saveOrder = functions.https.onCall(async (data, context) => {
 
     const {order, sessionId} = data;
     const userId = context.auth.uid;
-
-    logDebug("InitialMealData", order.meals.map((
-      meal: InputMeal, index: number
-    ) => ({
-      index,
-      mealId: meal?.id,
-      mainPresent: !!meal?.main,
-      childPresent: !!meal?.child,
-      schoolPresent: !!meal?.school,
-      childId: meal?.child?.id,
-      schoolId: meal?.school?.id,
-      mainId: meal?.main?.id,
-    })));
-
     const db = admin.firestore();
-    const stripe = new Stripe(functions.config().stripe.secret_key, {
-      apiVersion: "2024-06-20",
-    });
-
-    logDebug("RetrievingStripeSession", {sessionId});
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-    logDebug("StripeSessionRetrieved", {
-      sessionId: session.id,
-      hasMetadata: !!session.metadata,
-    });
 
     const bundleDiscount = parseFloat(session.metadata?.bundleDiscount || "0");
     const couponDiscount = parseFloat(session.metadata?.couponDiscount || "0");
     const finalTotal = parseFloat(session.metadata?.finalTotal ||
       order.total.toString());
 
-    console.log("Calculated totals:", {
-      bundleDiscount, couponDiscount, finalTotal,
-    });
+    try {
+      // Run everything in a transaction for data consistency
+      const result = await db.runTransaction(async (transaction) => {
+        // Generate order number
+        const counterRef = db.collection("counters").doc("orderNumber");
+        const counterDoc = await transaction.get(counterRef);
+        if (!counterDoc.exists) {
+          throw new Error("Counter document does not exist");
+        }
 
-    // Start a new transaction
-    const result = await db.runTransaction(async (transaction) => {
-      logDebug("StartingTransaction", {userId});
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) {
+          throw new Error("User document does not exist");
+        }
 
-      // Perform all reads first
-      const counterRef = db.collection("counters").doc("orderNumber");
-      const counterDoc = await transaction.get(counterRef);
-      const userRef = db.collection("users").doc(userId);
-      const userDoc = await transaction.get(userRef);
-      const now = admin.firestore.Timestamp.now();
-      const dateString = now.toDate().toISOString().split("T")[0];
-      const dailyAnalyticsRef = db.collection("dailyAnalytics").doc(dateString);
-      const cumulativeAnalyticsRef =
-        db.collection("cumulativeAnalytics").doc("totals");
-      const dailyAnalyticsDoc = await transaction.get(dailyAnalyticsRef);
-      const cumulativeAnalyticsDoc =
-        await transaction.get(cumulativeAnalyticsRef);
+        const currentValue = counterDoc.data()?.value || 0;
+        const nextValue = currentValue + 1;
+        const customOrderNumber = `BF${nextValue.toString().padStart(5, "0")}`;
+        const now = admin.firestore.Timestamp.now();
 
-      logDebug("DocumentReads", {
-        counterExists: counterDoc.exists,
-        userExists: userDoc.exists,
-      });
+        // Create order document
+        const orderRef = db.collection("orders").doc();
+        const mealRefs = order.meals.map(() => db.collection("meals").doc());
 
-      if (!counterDoc.exists || !userDoc.exists) {
-        throw new Error(
-          `Required documents missing: Counter:
-            ${counterDoc.exists}, User: ${userDoc.exists}`
-        );
-      }
-
-      const currentValue = counterDoc.data()?.value || 0;
-      const nextValue = currentValue + 1;
-      const customOrderNumber = `BF${nextValue.toString().padStart(5, "0")}`;
-
-      const userData = userDoc.data();
-      const orderHistory = userData?.orderHistory || [];
-
-      // Generate meal IDs beforehand
-      const mealsWithIds = order.meals.map((meal: InputMeal) => {
-        const mealId = db.collection("meals").doc().id;
-        logDebug("GeneratingMealId", {
-          originalMealId: meal?.id,
-          newMealId: mealId,
-          hasChild: !!meal?.child?.id,
-          hasSchool: !!meal?.school?.id,
-          hasMain: !!meal?.main?.id,
-        });
-        return {...meal, id: mealId};
-      });
-
-      // Validate all meals before processing
-      const mealValidations = mealsWithIds.map((
-        meal: InputMeal, index:number
-      ) => {
-        const validation = {
-          index,
-          mealId: meal.id,
-          hasChild: !!meal?.child?.id,
-          hasSchool: !!meal?.school?.id,
-          hasMain: !!meal?.main?.id,
-          childData: {
-            id: meal?.child?.id,
-            name: meal?.child?.name,
-          },
-          schoolData: {
-            id: meal?.school?.id,
-            name: meal?.school?.name,
-          },
-          mainData: {
-            id: meal?.main?.id,
-            display: meal?.main?.display,
-          },
+        const orderData = {
+          ...order,
+          id: orderRef.id,
+          customOrderNumber,
+          userId,
+          stripeSessionId: sessionId,
+          createdAt: now,
+          status: "paid",
+          bundleDiscount,
+          couponDiscount,
+          originalTotal: order.total,
+          finalTotal,
         };
-        logDebug("MealValidation", validation);
-        return validation;
-      });
 
-      const invalidMeals = mealValidations.filter((v:any) =>
-        !v.hasChild || !v.hasSchool || !v.hasMain);
-      if (invalidMeals.length > 0) {
-        logDebug("InvalidMealsFound", invalidMeals);
-        throw new Error(`Invalid meal data found:
-          ${JSON.stringify(invalidMeals)}`
-        );
-      }
+        const userData = userDoc.data();
+        const orderHistory = userData?.orderHistory || [];
+        const historyEntry = {
+          orderId: orderRef.id,
+          customOrderNumber,
+          createdAt: now.toDate().toISOString(),
+          originalTotal: order.total,
+          total: finalTotal,
+          items: order.meals.length,
+        };
+        // Perform all writes
+        transaction.update(counterRef, {value: nextValue});
+        transaction.set(orderRef, orderData);
+        transaction.update(userRef, {
+          orderHistory: [...orderHistory, historyEntry],
+        });
 
-      // Now perform all writes
-      const orderRef = db.collection("orders").doc();
-      const newOrder = {
-        ...order,
-        id: orderRef.id,
-        customOrderNumber,
-        userId: userId,
-        stripeSessionId: sessionId,
-        createdAt: now,
-        status: "paid",
-        bundleDiscount,
-        couponDiscount,
-        originalTotal: order.total,
-        finalTotal: finalTotal,
-        meals: mealsWithIds, // Use the meals with generated IDs
-      };
-
-      const newOrderHistoryEntry = {
-        orderId: orderRef.id,
-        customOrderNumber,
-        createdAt: now.toDate().toISOString(),
-        originalTotal: order.total,
-        total: finalTotal,
-        items: mealsWithIds.length,
-      };
-
-      // Update the counter
-      transaction.update(counterRef, {value: nextValue});
-
-      // Set the new order
-      transaction.set(orderRef, newOrder);
-
-      // Update user"s order history
-      transaction.update(userRef, {
-        orderHistory: [...orderHistory, newOrderHistoryEntry],
-      });
-
-      mealsWithIds.forEach((meal:InputMeal, index:number) => {
-        try {
-          const mealRef = db.collection("meals").doc(meal.id);
-          logDebug("ProcessingMeal", {
-            index,
-            mealId: meal.id,
-            childId: meal.child?.id,
-            schoolId: meal.school?.id,
-            mainId: meal.main?.id,
-          });
-
-          const mealData: MealDocument = {
-            id: meal.id,
-            orderId: orderRef.id,
+        order.meals.forEach((meal: InputMeal, index: number) => {
+          const mealData = {
             customOrderNumber,
-            deliveryDate: Timestamp.fromDate(new Date(meal.orderDate)),
+            orderId: orderRef.id,
+            deliveryDate: admin.firestore.Timestamp.fromDate(
+              new Date(meal.orderDate)
+            ),
             status: "scheduled",
             userId,
             userEmail: order.userEmail,
             child: {
-              id: meal.child.id,
               name: meal.child.name,
               className: meal.child.className,
               year: meal.child.year,
             },
             school: {
-              id: meal.school.id,
               name: meal.school.name,
             },
-            allergens: meal.child.allergens ?? "",
+            allergens: meal.child.allergens || "",
             main: {
-              id: meal.main.id,
               display: meal.main.display,
             },
-            probiotic: {
-              id: meal.probiotic?.id ?? "",
-              display: meal.probiotic?.display ?? "",
-            },
-            fruit: {
-              id: meal.fruit?.id ?? "",
-              display: meal.fruit?.display ?? "",
-            },
-            drink: {
-              id: meal.drink?.id ?? "",
-              display: meal.drink?.display ?? "",
-            },
-            addOns: meal.addOns?.map((addOn) => ({
-              id: addOn.id,
-              display: addOn.display,
-            })) ?? [],
+            addOns: meal.addOns?.map((addon) => ({
+              display: addon.display,
+            })) || [],
+            fruit: meal.fruit || null,
+            probiotic: meal.probiotic || null,
           };
 
-          transaction.set(mealRef, mealData);
-          logDebug("MealProcessed", {
-            index,
-            mealId: meal.id,
-            success: true,
-          });
-        } catch (error) {
-          logDebug("MealProcessingError", {
-            index,
-            mealId: meal.id,
-            error: (error as Error).message,
-            stack: (error as Error).stack,
-          });
-          throw error;
-        }
-      });
+          transaction.set(mealRefs[index], mealData);
+        });
 
-      const dailyData = dailyAnalyticsDoc.exists ? dailyAnalyticsDoc.data() : {
-        date: dateString,
-        orderCount: 0,
-        mealCount: 0,
-        revenue: 0,
-      };
-
-      const cumulativeData =
-        cumulativeAnalyticsDoc.exists ? cumulativeAnalyticsDoc.data() : {
-          orderCount: 0,
-          mealCount: 0,
-          revenue: 0,
-        };
-
-      // Update daily analytics
-      if (dailyData) {
-        dailyData.orderCount += 1;
-        dailyData.mealCount += order.meals.length;
-        dailyData.revenue += finalTotal;
-      }
-
-      // Update cumulative analytics
-      if (cumulativeData) {
-        cumulativeData.orderCount += 1;
-        cumulativeData.mealCount += order.meals.length;
-        cumulativeData.revenue += finalTotal;
-      }
-
-      transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
-      transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
-
-      // In the saveOrder function, where the email is sent:
-      try {
-        await sendOrderConfirmationEmail({
-          to: order.userEmail,
+        return {
+          orderId: orderRef.id,
           customOrderNumber,
-          meals: mealsWithIds.map((meal: Meal) => ({
-            mainDisplay: meal.main.display,
-            childName: meal.child.name,
-            orderDate: meal.orderDate,
-            total: meal.total,
-          })),
-          originalTotal: order.total,
-          finalTotal: finalTotal,
-        } as OrderConfirmationEmailData);
-      } catch (error) {
-        // Log the error but continue with the order processing
-        console.error(
-          `Failed to send order confirmation email for order
-          ${customOrderNumber}:`,
-          error
-        );
-      }
-
-      logDebug("TransactionComplete", {
-        customOrderNumber,
-        totalMealsProcessed: mealsWithIds.length,
+          finalTotal: order.total,
+        };
       });
-      return {orderId: orderRef.id, customOrderNumber, finalTotal};
-    });
-
-    logDebug("OrderSaveComplete", {
-      success: true,
-      orderId: result.orderId,
-      customOrderNumber: result.customOrderNumber,
-    });
-    return result;
-  } catch (error) {
-    logDebug("OrderSaveError", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-      debugLog,
-    });
-    throw new functions.https.HttpsError(
-      "internal",
-      "Unable to save order: " + (error as Error).message
-    );
+      return result;
+    } catch (error) {
+      console.error("Error saving order:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to save order: " + (error as Error).message
+      );
+    }
   }
-});
+);
 
 export const updateMealDeliveryDate =
   functions.https.onCall(async (data: UpdateMealDateRequest, context) => {
@@ -665,9 +448,17 @@ export const sendWelcomeEmail = functions.auth.user().onCreate(async (user) => {
   }
 });
 
-export const sendOrderConfirmationEmail = async (
-  data: OrderConfirmationEmailData
+export const sendOrderConfirmationEmail = functions.https.onCall(async (
+  data: OrderConfirmationEmailData,
+  context
 ) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "User must be authenticated to send confirmation emails."
+    );
+  }
+
   const maxRetries = 3;
   let attempt = 0;
 
@@ -723,17 +514,17 @@ export const sendOrderConfirmationEmail = async (
         error
       );
       if (attempt === maxRetries) {
-        console.error(
-          `Failed to send order confirmation email after
-          ${maxRetries} attempts for order ${data.customOrderNumber}`
+        throw new functions.https.HttpsError(
+          "internal",
+          `Failed to send confirmation email after ${maxRetries} attempts`,
+          error
         );
-        return;
       }
       await new Promise((resolve) =>
         setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
-};
+});
 
 export const sendContactEmail = functions.https.onCall(async (data) => {
   const {name, email, phone, message} = data;
@@ -934,6 +725,8 @@ export const saveAdminOrder = functions.https.onCall(async (
             id: addOn.id,
             display: addOn.display,
           })) ?? [],
+          fruit: meal.fruit ?? null,
+          probiotic: meal.probiotic ?? null,
         };
 
         transaction.set(mealRef, mealData);
@@ -997,3 +790,182 @@ export const saveAdminOrder = functions.https.onCall(async (
     );
   }
 });
+
+export const updateOrderAnalytics = functions.https.onCall(
+  async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Must be authenticated to update analytics"
+      );
+    }
+
+    const {order} = data;
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+    const dateString = now.toDate().toISOString().split("T")[0];
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // Get references
+        const dailyAnalyticsRef = db.collection("dailyAnalytics")
+          .doc(dateString);
+        const cumulativeAnalyticsRef = db
+          .collection("cumulativeAnalytics")
+          .doc("totals");
+
+        // Get current data
+        const [dailyDoc, cumulativeDoc] = await Promise.all([
+          transaction.get(dailyAnalyticsRef),
+          transaction.get(cumulativeAnalyticsRef),
+        ]);
+
+        const dailyData = dailyDoc.exists ? dailyDoc.data() : {
+          date: dateString,
+          orderCount: 0,
+          mealCount: 0,
+          revenue: 0,
+        };
+        const cumulativeData =
+          cumulativeDoc.exists ? cumulativeDoc.data() : {
+            orderCount: 0,
+            mealCount: 0,
+            revenue: 0,
+          };
+        // Update daily analytics
+        if (dailyData) {
+          dailyData.orderCount += 1;
+          dailyData.mealCount += order.meals.length;
+          dailyData.revenue += data.finalTotal;
+        }
+        // Update cumulative analytics
+        if (cumulativeData) {
+          cumulativeData.orderCount += 1;
+          cumulativeData.mealCount += order.meals.length;
+          cumulativeData.revenue += data.finalTotal;
+        }
+        transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
+        transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
+      });
+
+      return {success: true};
+    } catch (error) {
+      console.error("Error updating analytics:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update analytics"
+      );
+    }
+  }
+);
+
+export const sendCateringEnquiry = functions.https.onCall(async (data) => {
+  const msg = {
+    to: "brodielangan98@gmail.com",
+    from: {
+      email: "Bentoandfriends@outlook.com.au",
+      name: "Bento & Friends",
+    },
+    cc: "Bentoandfriends@outlook.com.au",
+    subject: "New Catering Enquiry",
+    replyTo: data.contact.email,
+    templateId: "d-790254d3fb3b4307a5077648e0b2df9e",
+    dynamicTemplateData: {
+      name: data.contact.name,
+      email: data.contact.email,
+      phone: data.contact.phone,
+      date: data.event.date,
+      message: data.event.message,
+      platters: data.platters.map(
+        (platter: {name:string, quantity: number}) => ({
+          name: platter.name,
+          quantity: platter.quantity,
+        })),
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    return {success: true, message: "Email sent successfully"};
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw new functions.https.HttpsError("internal", "Failed to send email");
+  }
+});
+
+export const resetTermDetailsReview = functions.https.onCall(
+  async (data, context) => {
+  // Verify admin status
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to create admin orders."
+      );
+    }
+
+    const adminUid = context.auth.uid;
+    const adminRef = admin.firestore().collection("users").doc(adminUid);
+    const adminDoc = await adminRef.get();
+
+    if (!adminDoc.exists || !adminDoc.data()?.isAdmin) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only admins can create orders for other users.",
+      );
+    }
+
+    try {
+      const usersRef = admin.firestore().collection("users");
+
+      // Get all users - we"ll process them in batches
+      const snapshot = await usersRef.get();
+
+      // Process in batches of 500 (Firestore batch limit)
+      const batchSize = 500;
+      const batches = [];
+      let batch = admin.firestore().batch();
+      let operationCount = 0;
+
+      snapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          hasReviewedTermDetails: false,
+          lastTermResetDate: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        operationCount++;
+
+        if (operationCount === batchSize) {
+          batches.push(batch.commit());
+          batch = admin.firestore().batch();
+          operationCount = 0;
+        }
+      });
+
+      // Commit any remaining operations
+      if (operationCount > 0) {
+        batches.push(batch.commit());
+      }
+
+      // Wait for all batches to complete
+      await Promise.all(batches);
+
+      // Log the action for audit purposes
+      await admin.firestore().collection("adminLogs").add({
+        action: "resetTermDetails",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        adminUid: context.auth.uid,
+        affectedUsers: snapshot.size,
+      });
+
+      return {
+        success: true,
+        usersUpdated: snapshot.size,
+      };
+    } catch (error) {
+      console.error("Error resetting term details:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to reset term details."
+      );
+    }
+  }
+);

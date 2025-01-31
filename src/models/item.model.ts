@@ -86,3 +86,19 @@ export class Drink {
         this.price = price;
     }
 }
+
+export class Platter {
+    id: string;
+    display: string;
+    description: string;
+    image?: string;
+    price: number;
+
+    constructor(display: string = '', image: string = '', description: string = '',  price: number = 0, id?: string) {
+        this.id = id || uuidv4();
+        this.display = display;
+        this.description = description;
+        this.image = image;
+        this.price = price;
+    }
+}

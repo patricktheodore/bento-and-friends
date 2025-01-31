@@ -405,6 +405,12 @@ const RunSheet: React.FC = () => {
 				<div className="col-span-2">
 					<span className="font-semibold">Add-ons:</span> {formatAddOns(meal.addOns)}
 				</div>
+				<div>
+					<span className="font-semibold">Probiotic: {meal.probiotic ? meal.probiotic.display : 'N/A' }</span>
+				</div>
+				<div>
+					<span className="font-semibold">Fruit: {meal.fruit ? meal.fruit.display : 'N/A' }</span>
+				</div>
 			</div>
 		</div>
 	);
@@ -417,6 +423,7 @@ const RunSheet: React.FC = () => {
 			<TableHead>Main Dish</TableHead>
 			<TableHead>Allergies</TableHead>
 			<TableHead>Add-ons</TableHead>
+			<TableHead>Probiotic / Fruit</TableHead>
 		</TableRow>
 	);
 
@@ -548,7 +555,7 @@ const RunSheet: React.FC = () => {
 									<React.Fragment key={date}>
 										<TableRow>
 											<TableCell
-												colSpan={6}
+												colSpan={7}
 												className="font-bold bg-gray-100"
 											>
 												{date}
@@ -558,7 +565,7 @@ const RunSheet: React.FC = () => {
 											<React.Fragment key={school}>
 												<TableRow>
 													<TableCell
-														colSpan={6}
+														colSpan={7}
 														className="font-semibold bg-gray-50"
 													>
 														{school}
@@ -577,6 +584,7 @@ const RunSheet: React.FC = () => {
 														<TableCell>{meal.main.display || 'N/A'}</TableCell>
 														<TableCell>{meal.allergens}</TableCell>
 														<TableCell>{formatAddOns(meal.addOns)}</TableCell>
+														<TableCell>{meal.probiotic ? meal.probiotic.display : 'N/A'} | {meal.fruit ? meal.fruit.display : 'N/A'}</TableCell>
 													</TableRow>
 												))}
 											</React.Fragment>

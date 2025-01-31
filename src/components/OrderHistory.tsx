@@ -165,6 +165,8 @@ const OrderHistory: React.FC = () => {
                     schools={state.schools}
                     onAddToCart={handleAddToCart}
                     initialSelectedAddons={selectedMeal.addOns.map(addon => addon.id)}
+					initialSelectedYogurt={selectedMeal.probiotic ? selectedMeal.probiotic.id : ''}
+					initialSelectedFruit={selectedMeal.fruit ? selectedMeal.fruit.id : ''}
                     initialSelectedChild={selectedMeal.child.id}
                 />
             )}

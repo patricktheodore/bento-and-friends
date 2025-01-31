@@ -9,7 +9,8 @@ export class User {
     orderHistory: OrderHistorySummary[];
     activeCoupons: Coupon[];
     phone?: string;
-    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[], phone?: string) {
+    hasReviewedTermDetails?: boolean;
+    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[], phone?: string, hasReviewedTermDetails?: boolean) {
         this.id = uuidv4();
         this.displayName = displayName;
         this.email = email;
@@ -18,6 +19,7 @@ export class User {
         this.children = children ?? [];
         this.activeCoupons = [];
         this.phone = phone ?? '';
+        this.hasReviewedTermDetails = hasReviewedTermDetails ?? false;
     }
 }
 

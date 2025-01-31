@@ -28,6 +28,8 @@ interface OrderDialogProps {
     schools: School[];
     onAddToCart: (meals: Meal[]) => void;
     initialSelectedAddons?: string[];
+    initialSelectedYogurt?: string;
+    initialSelectedFruit?: string;
     initialSelectedChild?: string;
 }
 
@@ -40,20 +42,27 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     schools,
     onAddToCart,
     initialSelectedAddons,
+    initialSelectedYogurt,
+    initialSelectedFruit,
     initialSelectedChild,
 }) => {
     const {state } = useAppContext();
     const [selectedAddons, setSelectedAddons] = useState<string[]>(initialSelectedAddons || []);
+    const [isMainOnly, setIsMainOnly] = useState<boolean>(false);
+    const [selectedYogurt, setSelectedYogurt] = useState<string | null>(initialSelectedYogurt || null);
+    const [selectedFruit, setSelectedFruit] = useState<string | null>(initialSelectedFruit || null);
     const [selectedChildren, setSelectedChildren] = useState<string[]>(initialSelectedChild ? [initialSelectedChild] : []);
     const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 
     useEffect(() => {
         if (isOpen) {
             setSelectedAddons(initialSelectedAddons || []);
+            setSelectedYogurt(initialSelectedYogurt || state.probiotics.find(yogurt => yogurt.display.toLowerCase().includes('surprise'))?.id || null);
+            setSelectedFruit(initialSelectedFruit || state.fruits.find(fruit => fruit.display.toLowerCase().includes('mixed'))?.id || null);
             setSelectedChildren(initialSelectedChild ? [initialSelectedChild] : []);
             setSelectedDates([]);
         }
-    }, [isOpen, initialSelectedAddons, initialSelectedChild]);
+    }, [isOpen, initialSelectedAddons, initialSelectedYogurt, initialSelectedFruit, initialSelectedChild]);
 
     const glutenFreeAddon = useMemo(() => 
         addOns.find(addon => addon.display.toLowerCase().includes('gluten free')),
@@ -84,9 +93,9 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                     meals.push({
                         id: uuidv4(),
                         main: selectedMain,
+                        probiotic: selectedYogurt && !isMainOnly ? state.probiotics.find((yogurt) => yogurt.id === selectedYogurt) : undefined,
                         addOns: mealAddons,
-                        probiotic: undefined,
-                        fruit: undefined,
+                        fruit: selectedFruit && !isMainOnly ? state.fruits.find((fruit) => fruit.id === selectedFruit) : undefined,
                         drink: undefined,
                         school: schools.find((school) => school.name === selectedChildData.school) as School,
                         orderDate: date.toISOString(),
@@ -102,8 +111,27 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         handleClose();
     };
 
+    const orderAddOns = (addOns: AddOn[]): AddOn[] => {
+        const mainOnly = addOns.find(addon => addon.display.toLowerCase().includes('main only'));
+        if (mainOnly) {
+            return [mainOnly, ...addOns.filter(addon => addon.id !== mainOnly.id)];
+        } else {
+            return addOns;
+        }
+    }
+
+    const formatPrice = (price: number): string => {
+		if (price < 0) {
+			return `-$${price.toFixed(2).slice(1)}`;
+		} else {
+			return `$${price.toFixed(2)}`;
+		}
+	}
+
     const handleClose = () => {
         setSelectedAddons([]);
+        setSelectedYogurt(null);
+        setSelectedFruit(null);
         setSelectedChildren([]);
         setSelectedDates([]);
         onClose();
@@ -116,6 +144,12 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                 <p className='text-sm'>Main: {selectedMain?.display}</p>
                 {selectedAddons.length > 0 && (
                     <p className='text-sm'>Add-ons: {addOns.filter(addon => selectedAddons.includes(addon.id)).map(addon => addon.display).join(', ')}</p>
+                )}
+                {!isMainOnly && selectedYogurt && (
+                    <p className='text-sm'>Yogurt: {state.probiotics.find(yogurt => yogurt.id === selectedYogurt)?.display}</p>
+                )}
+                {!isMainOnly && selectedFruit && (
+                    <p className='text-sm'>Fruit: {state.fruits.find(fruit => fruit.id === selectedFruit)?.display}</p>
                 )}
                 <p className="text-sm text-gray-600 italic">
                     Note: Gluten-free option will be automatically added (and charged) when adding to cart for children with gluten/celiac allergies.
@@ -184,14 +218,16 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                     {renderSummary()}
                     <div className="space-y-6">                        
                         <div>
-                            <h4 className="font-semibold mb-2">1. Add-ons</h4>
+                            <h4 className="font-semibold mb-2">1. Customisation</h4>
+                            <h4 className="mb-2">Add-ons</h4>
                             <div className="space-y-2">
-                                {addOns.map((addon) => (
+                                {orderAddOns(addOns).map((addon) => (
                                     <div key={addon.id} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={addon.id}
                                             checked={selectedAddons.includes(addon.id)}
                                             onCheckedChange={(checked) => {
+                                                setIsMainOnly(checked && addon.display.toLowerCase().includes('main only'));
                                                 if (checked) {
                                                     setSelectedAddons(prev => [...prev, addon.id]);
                                                 } else {
@@ -200,11 +236,57 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                             }}
                                         />
                                         <Label htmlFor={addon.id} className="text-sm">
-                                            {addon.display} (${addon.price.toFixed(2)})
+                                            {addon.display} ({formatPrice(addon.price)})
                                         </Label>
                                     </div>
                                 ))}
                             </div>
+                            {!isMainOnly && (
+                                <>
+                                    <h4 className="mt-4 mb-2">Yogurt</h4>
+                                    <div className="space-y-2 mb-2">
+                                        {state.probiotics && state.probiotics.map((yogurt) => (
+                                            <div key={yogurt.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`yogurt-${yogurt.id}`}
+                                                    checked={selectedYogurt === yogurt.id}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setSelectedYogurt(yogurt.id);
+                                                        } else {
+                                                            setSelectedYogurt(null);
+                                                        }
+                                                    }}
+                                                />
+                                                <Label htmlFor={`yogurt-${yogurt.id}`} className="text-sm">
+                                                    {yogurt.display}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <h4 className="mt-4 mb-2">Fruit</h4>
+                                    <div className="space-y-2 mb-2">
+                                        {state.fruits && state.fruits.map((fruit) => (
+                                            <div key={fruit.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`fruit-${fruit.id}`}
+                                                    checked={selectedFruit === fruit.id}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setSelectedFruit(fruit.id);
+                                                        } else {
+                                                            setSelectedFruit(null);
+                                                        }
+                                                    }}
+                                                />
+                                                <Label htmlFor={`fruit-${fruit.id}`} className="text-sm">
+                                                    {fruit.display}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                         
                         <div>

@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import CartIcon from '@/components/CartIcon';
 import Cart from '@/components/Cart';
 import logo from "@/assets/bento-logo.png";
+import { UpdateDetailsDialog } from '@/components/UpdateDetailsDialog';
 
 const Header: React.FC = () => {
     const { state } = useAppContext();
@@ -13,7 +14,6 @@ const Header: React.FC = () => {
     
     const menuItems = [
         { to: '/menu', label: 'Menu' },
-        // { to: '/about', label: 'About' },
         { to: '/contact', label: 'Contact' },
         ...(state.user 
             ? (state.user.isAdmin
@@ -24,6 +24,7 @@ const Header: React.FC = () => {
                 ]
                 : [
                     { to: '/order', label: 'Order' },
+                    { to: '/catering', label: 'Catering' },
                     { to: '/account', label: 'Account' },
                     { to: '/signout', label: 'Sign Out' }
                 ])
@@ -68,6 +69,7 @@ const Header: React.FC = () => {
 
     return (
         <>
+            {state.user && <UpdateDetailsDialog />}
             <nav
                 className={`bg-brand-cream border-b border-stone-300 sticky top-0 z-50 ${isOpen ? 'menu-open' : ''}`}
                 role="navigation"

@@ -25,8 +25,8 @@ export interface InputMeal {
   school: School;
   main: MenuItem;
   probiotic?: MenuItem;
-  fruit?: MenuItem;
-  drink?: MenuItem;
+  fruit?: string;
+  drink?: string;
   addOns?: MenuItem[];
 }
 

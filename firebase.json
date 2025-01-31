@@ -21,6 +21,17 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      }
+    ],
     "public": "dist",
     "ignore": [
       "firebase.json",

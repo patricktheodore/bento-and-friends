@@ -8,6 +8,7 @@ import { useAppContext } from '../context/AppContext';
 import DiscountOptionsComponent from '@/components/DiscountOptions';
 import { getStorage, ref, getDownloadURL } from "firebase/storage";
 import placeholder from '@/assets/banner.png';
+import CateringPreviewComponent from '@/components/CateringPreview';
 
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
@@ -32,7 +33,7 @@ const HomePage: React.FC = () => {
 
 	return (
 		<>
-			<div className="relative max-h-screen h-[75vh] flex items-center justify-center">
+			<div className="relative max-h-screen h-[40vh] flex items-center justify-center">
 				<div
 					className="absolute inset-0 bg-cover bg-center z-0"
 					style={{
@@ -74,7 +75,7 @@ const HomePage: React.FC = () => {
 			<HowItWorksSummaryComponent />
 			<DiscountOptionsComponent />
 			<NutritionComponent />
-			{/* <AboutUsComponent /> */}
+			<CateringPreviewComponent />
 			<OurStoryComponent />
             <FeaturedMenuItemsCarousel />
 			{/* <TestimonialsComponent /> */}

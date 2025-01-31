@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon } from '@heroicons/react/16/solid';
 import { getCurrentUser } from '../services/auth';
-import { getMains, getProbiotics, getFruits, getDrinks, getAddOns } from '../services/item-service';
+import { getMains, getProbiotics, getFruits, getDrinks, getAddOns, getPlatters } from '../services/item-service';
 import toast from 'react-hot-toast';
-import { AddOn, Drink, Fruit, Main, Probiotic } from '../models/item.model';
+import { AddOn, Drink, Fruit, Main, Platter, Probiotic } from '../models/item.model';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -22,6 +22,7 @@ const itemTypeOptions = [
 	{ value: 'fruit', label: 'Fruit' },
 	{ value: 'drink', label: 'Drink' },
 	{ value: 'addon', label: 'Add On' },
+	{ value: 'platter', label: 'Platter' },
 ];
 
 const columnConfigs = {
@@ -31,9 +32,10 @@ const columnConfigs = {
 	probiotic: ['name'],
 	fruit: ['name'],
 	drink: ['image', 'name', 'price'],
+	platter: ['image', 'name', 'price']
 };
 
-type MenuItem = Main | Probiotic | AddOn | Fruit | Drink;
+type MenuItem = Main | Probiotic | AddOn | Fruit | Drink | Platter;
 
 const ItemController: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -42,7 +44,7 @@ const ItemController: React.FC = () => {
 	const [selectedType, setSelectedType] = useState({ value: 'all', label: 'All Items' });
 	const [isItemModalOpen, setIsItemModalOpen] = useState(false);
 	const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-	const [selectedItemType, setSelectedItemType] = useState<'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | null>(
+	const [selectedItemType, setSelectedItemType] = useState<'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter' | null>(
 		'main'
 	);
 	const [isAdmin, setIsAdmin] = useState(false);
@@ -58,12 +60,13 @@ const ItemController: React.FC = () => {
 
 				setIsAdmin(user.isAdmin);
 
-				const [mainItems, probioticItems, fruitItems, drinkItems, addOnItems] = await Promise.all([
+				const [mainItems, probioticItems, fruitItems, drinkItems, addOnItems, platters] = await Promise.all([
 					getMains(),
 					getProbiotics(),
 					getFruits(),
 					getDrinks(),
 					getAddOns(),
+					getPlatters()
 				]);
 
 				const allItems = [
@@ -72,6 +75,7 @@ const ItemController: React.FC = () => {
 					...(fruitItems.success && fruitItems.data ? fruitItems.data : []),
 					...(drinkItems.success && drinkItems.data ? drinkItems.data : []),
 					...(addOnItems.success && addOnItems.data ? addOnItems.data : []),
+					...(platters.success && platters.data ? platters.data : [])
 				];
 
 				dispatch({ type: 'SET_MENU_ITEMS', payload: allItems });
@@ -109,18 +113,27 @@ const ItemController: React.FC = () => {
 		return downloadURL;
 	};
 
-	const getItemType = (item: MenuItem): 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' => {
+	const getItemType = (item: MenuItem): 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter' => {
 		if (item instanceof Main) return 'main';
 		if (item instanceof Probiotic) return 'probiotic';
 		if (item instanceof Fruit) return 'fruit';
 		if (item instanceof Drink) return 'drink';
 		if (item instanceof AddOn) return 'addon';
+		if (item instanceof Platter) return 'platter';
 		throw new Error('Unknown item type');
 	};
 
+	const formatPrice = (price: number): string => {
+		if (price < 0) {
+			return `-$${price.toFixed(2).slice(1)}`;
+		} else {
+			return `$${price.toFixed(2)}`;
+		}
+	}
+
 	const handleSubmitItem = async (item: MenuItem, imageFile: File | null) => {
 		try {
-			if (imageFile && (item instanceof Main || item instanceof Drink)) {
+			if (imageFile && (item instanceof Main || item instanceof Drink || item instanceof Platter)) {
 				const imageUrl = await uploadImage(imageFile);
 				item.image = imageUrl;
 			}
@@ -148,6 +161,7 @@ const ItemController: React.FC = () => {
 		if (item instanceof Fruit) return 'fruits';
 		if (item instanceof Drink) return 'drinks';
 		if (item instanceof AddOn) return 'addon';
+		if (item instanceof Platter) return 'platters';
 		throw new Error('Invalid item type');
 	};
 
@@ -177,7 +191,7 @@ const ItemController: React.FC = () => {
 	const renderCell = (item: MenuItem, column: string) => {
 		switch (column) {
 			case 'image':
-				return (item instanceof Main || item instanceof Drink) && item.image ? (
+				return (item instanceof Main || item instanceof Drink || item instanceof Platter) && item.image ? (
 					<div className="w-20 h-20 p-2 flex items-center justify-center">
 						<img
 							src={item.image}
@@ -192,7 +206,7 @@ const ItemController: React.FC = () => {
 				return getItemType(item).charAt(0).toUpperCase() + getItemType(item).slice(1);
 			case 'price':
 				return (item instanceof Main || item instanceof Drink || item instanceof AddOn) && item.price
-					? `$${item.price}`
+					? `${formatPrice(item.price)}`
 					: 'N/A';
 			case 'allergens':
 				return item instanceof Main ? item.allergens?.join(', ') || 'None' : 'N/A';

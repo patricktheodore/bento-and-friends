@@ -167,12 +167,12 @@ const CheckoutPage: React.FC = () => {
 	};
 
 	const handleCheckout = async () => {
-		if (!cart) return;
+		if (!cart || !state.cart) return;
 
 		const now = new Date();
-		now.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+		now.setHours(0, 0, 0, 0);
 
-		const invalidDates = cart.meals.filter(meal => {
+		const invalidDates = cart.meals.filter((meal) => {
 			const orderDate = new Date(meal.orderDate);
 			return orderDate <= now;
 		});
@@ -236,21 +236,28 @@ const CheckoutPage: React.FC = () => {
 		}
 
 		setIsProcessing(true);
-		const functions = getFunctions();
-		const createCheckoutSession = httpsCallable<
-			{
-				cart: Order;
-				bundleDiscount: number;
-				couponDiscount: number;
-				couponCode?: string;
-				couponId?: string;
-				successUrl: string;
-				cancelUrl: string;
-			},
-			{ sessionId: string }
-		>(functions, 'createCheckoutSession');
 
 		try {
+			localStorage.setItem('cart', JSON.stringify(cart));
+			const stripe = await stripePromise;
+			if (!stripe) {
+				throw new Error('Stripe failed to initialize');
+			}
+
+			const functions = getFunctions();
+			const createCheckoutSession = httpsCallable<
+				{
+					cart: Order;
+					bundleDiscount: number;
+					couponDiscount: number;
+					couponCode?: string;
+					couponId?: string;
+					successUrl: string;
+					cancelUrl: string;
+				},
+				{ sessionId: string }
+			>(functions, 'createCheckoutSession');
+
 			const bundleDiscount = cart.total - bundleDiscountedTotal;
 			const couponDiscount = appliedCoupon
 				? appliedCoupon.discountType === 'percentage'
@@ -258,31 +265,35 @@ const CheckoutPage: React.FC = () => {
 					: appliedCoupon.discountAmount
 				: 0;
 
+			// Ensure URLs are absolute
+			const successUrl = new URL('/order-success', window.location.origin).toString();
+			const cancelUrl = new URL('/checkout', window.location.origin).toString();
+
 			const result = await createCheckoutSession({
 				cart,
 				bundleDiscount,
 				couponDiscount,
 				couponCode: appliedCoupon?.code,
 				couponId: appliedCoupon?.id,
-				successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-				cancelUrl: `${window.location.origin}/checkout`,
+				successUrl: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+				cancelUrl: cancelUrl,
 			});
 
-			const { sessionId } = result.data;
-
-			if (sessionId) {
-				const stripe = await stripePromise;
-				const { error } = await stripe!.redirectToCheckout({ sessionId });
-
-				if (error) {
-					toast.error(error.message || 'An error occurred during checkout');
-				}
-			} else {
+			if (!result?.data?.sessionId) {
 				throw new Error('Failed to create checkout session');
 			}
+
+			// Redirect to Stripe Checkout
+			const { error } = await stripe.redirectToCheckout({
+				sessionId: result.data.sessionId,
+			});
+
+			if (error) {
+				throw error;
+			}
 		} catch (error) {
-			console.error('Error:', error);
-			toast.error('An error occurred during checkout');
+			console.error('Checkout Error:', error);
+			toast.error('An error occurred during checkout. Please try again.');
 		}
 	};
 
