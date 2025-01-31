@@ -31,7 +31,6 @@ const OrderPage: React.FC = () => {
                 {state.mains.map((item) => (
                     <MenuItemCard
                         key={item.id}
-                        image={item.image}
                         description={item.description}
                         title={item.display}
                         allergens={item.allergens}

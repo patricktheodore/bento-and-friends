@@ -26,7 +26,7 @@ const allergenIcons: { [key: string]: React.ReactNode } = {
   soy: <Bean size={18} />,
 };
 
-const MenuItemCard: React.FC<MenuItemProps> = ({ image, title, description, allergens, item }) => {
+const MenuItemCard: React.FC<MenuItemProps> = ({ title, description, allergens, item }) => {
   const { state, dispatch } = useAppContext();
   const navigate = useNavigate();
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);

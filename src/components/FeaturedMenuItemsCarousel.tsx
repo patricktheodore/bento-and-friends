@@ -98,7 +98,6 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 						>
 							<MenuItemCard
 								key={item.id}
-								image={item.image}
 								title={item.display}
 								allergens={item.allergens}
 								description={item.description}
