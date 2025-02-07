@@ -172,6 +172,12 @@ const RunSheet: React.FC = () => {
 		return addOns.map((addOn: any) => addOn.display).join(', ') || 'None';
 	};
 
+	const formatFruitYogurt = (yogurt:string, fruit:string) => {
+		if (!yogurt && !fruit) return 'N/A';
+
+		return `${yogurt} | ${fruit}`
+	}
+
 	const handlePrintRunSheet = () => {
 		const pdf = new jsPDF({
 			orientation: 'landscape',
@@ -211,18 +217,21 @@ const RunSheet: React.FC = () => {
 				pdf.text(`School: ${school}`, 10, yOffset);
 				yOffset += 7;
 
+				console.log(meals)
+
 				const mealData = meals.map((meal) => [
 					meal.child.name || 'N/A',
 					meal.child.year || 'N/A',
 					meal.child.className || 'N/A',
 					meal.main.display || 'N/A',
 					meal.allergens || 'N/A',
+					formatFruitYogurt(meal.probiotic?.display ?? '', meal.fruit?.display ?? ''),
 					formatAddOns(meal.addOns),
 				]);
 
 				pdf.autoTable({
 					startY: yOffset,
-					head: [['Child', 'Year', 'Class', 'Main Dish', 'Allergies', 'Add-ons']],
+					head: [['Child', 'Year', 'Class', 'Main Dish', 'Allergies', 'Probitic | Fruit', 'Add-ons']],
 					body: mealData,
 					headStyles: { fillColor: [5, 45, 42] },
 					styles: { cellPadding: 2, fontSize: 8 },
