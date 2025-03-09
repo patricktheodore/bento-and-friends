@@ -33,10 +33,11 @@ const RunSheet: React.FC = () => {
 		from: new Date(),
 		to: new Date(),
 	});
-	const [selectedSchool, setSelectedSchool] = useState<string | undefined>('all');
+	const [selectedSchool, setSelectedSchool] = useState<string>('all');
 	const [isLoading, setIsLoading] = useState(false);
 	const [quickSelect, setQuickSelect] = useState('today');
 	const [sortedMeals, setSortedMeals] = useState<any[]>([]);
+	
 	const groupMealsByDateAndSchool = (meals: any[]) => {
 		return meals.reduce((acc, meal) => {
 			const date = formatDate(meal.deliveryDate);
@@ -62,22 +63,21 @@ const RunSheet: React.FC = () => {
 
 	useEffect(() => {
 		if (sortedMeals.length > 0) {
-			console.log('Sorted meals:', sortedMeals);
-
-			// Group by date and school for easier verification
-			const groupedMeals = sortedMeals.reduce((acc, meal) => {
-				const date = formatDate(meal.deliveryDate);
-				const school = meal.school.name;
-				if (!acc[date]) acc[date] = {};
-				if (!acc[date][school]) acc[date][school] = [];
-				acc[date][school].push(meal);
-				return acc;
-			}, {});
-
+			const groupedMeals = groupMealsByDateAndSchool(sortedMeals);
 			setGroupedMeals(groupedMeals);
-			console.log('Grouped meals:', groupedMeals);
 		}
 	}, [sortedMeals]);
+
+	// Add this function to filter meals by school
+	const filterMealsBySchool = (school: string, mealsToFilter = meals) => {
+		debugger;
+		if (school === 'all') {
+			setSortedMeals(sortMenuData(mealsToFilter));
+		} else {
+			const filtered = mealsToFilter.filter((meal) => meal.school.name === school);
+			setSortedMeals(sortMenuData(filtered));
+		}
+	};
 
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
@@ -124,12 +124,15 @@ const RunSheet: React.FC = () => {
 		}
 	};
 
-	const handleSchoolSelect = (schoolId: string) => {
-		setSelectedSchool(schoolId);
-		handleSearch(dateRange, schoolId);
+	// Updated handleSchoolSelect
+	const handleSchoolSelect = (school: string) => {
+		setSelectedSchool(school);
+		// Use the new schoolId directly, not the state variable
+		filterMealsBySchool(school, meals);
 	};
 
-	const handleSearch = async (range: DateRange = dateRange, school: string | undefined = selectedSchool) => {
+	// Updated handleSearch
+	const handleSearch = async (range: DateRange = dateRange) => {
 		if (!range.from) return;
 
 		setIsLoading(true);
@@ -137,10 +140,11 @@ const RunSheet: React.FC = () => {
 		const endDate = range.to || range.from;
 
 		try {
-			const fetchedMeals = await getMealsBetweenDates(startDate, endDate, school === 'all' ? undefined : school);
-			const sorted = sortMenuData(fetchedMeals);
+			const fetchedMeals = await getMealsBetweenDates(startDate, endDate);
 			setMeals(fetchedMeals);
-			setSortedMeals(sorted);
+			
+			// Apply current school filter
+			filterMealsBySchool(selectedSchool, fetchedMeals);
 		} catch (error) {
 			console.error('Error fetching meals:', error);
 			toast.error('There was an error loading the run sheet for selected dates. Please refresh and try again.');
@@ -216,8 +220,6 @@ const RunSheet: React.FC = () => {
 				pdf.setFont('helvetica', 'normal');
 				pdf.text(`School: ${school}`, 10, yOffset);
 				yOffset += 7;
-
-				console.log(meals)
 
 				const mealData = meals.map((meal) => [
 					meal.child.name || 'N/A',
@@ -532,7 +534,7 @@ const RunSheet: React.FC = () => {
 						{state.schools.map((school) => (
 							<SelectItem
 								key={school.id}
-								value={school.id}
+								value={school.name}
 							>
 								{school.name}
 							</SelectItem>
@@ -550,11 +552,11 @@ const RunSheet: React.FC = () => {
 			) : (
 				<>
 					<h3 className="text-2xl font-semibold mb-4">Run Sheet Summary</h3>
-					<RunSheetSummary meals={meals} />
+					<RunSheetSummary meals={sortedMeals} />
 
 					{/* Mobile view */}
 					<h3 className="text-2xl font-semibold mb-4">Detailed Meal List</h3>
-					<div className="md:hidden">{meals.map(renderMealCard)}</div>
+					<div className="md:hidden">{sortedMeals.map(renderMealCard)}</div>
 
 					{/* Desktop view */}
 					<div className="hidden md:block rounded-md border bg-white">

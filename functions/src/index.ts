@@ -295,17 +295,29 @@ export const updateMealDeliveryDate =
       // Start a new transaction
       const result = await db.runTransaction(async (transaction) => {
         const orderRef = db.collection("orders").doc(orderId);
-        const mealRef = db.collection("meals").doc(mealId);
-
         const orderDoc = await transaction.get(orderRef);
-        const mealDoc = await transaction.get(mealRef);
 
         if (!orderDoc.exists) {
           throw new functions.https.HttpsError("not-found", "Order not found");
         }
 
+        // First try direct document reference
+        let mealRef = db.collection("meals").doc(mealId);
+        let mealDoc = await transaction.get(mealRef);
+
+        // If meal not found with direct ID, try querying by 'id' field
         if (!mealDoc.exists) {
-          throw new functions.https.HttpsError("not-found", "Meal not found");
+          const mealQuery = db.collection("meals").where("id", "==", mealId)
+            .limit(1);
+          const mealQuerySnapshot = await transaction.get(mealQuery);
+
+          if (mealQuerySnapshot.empty) {
+            throw new functions.https.HttpsError("not-found", "Meal not found");
+          }
+          // Use the first document from the query
+          mealDoc = mealQuerySnapshot.docs[0];
+          // Update the reference to use in the transaction
+          mealRef = mealDoc.ref;
         }
 
         const orderData = orderDoc.data();

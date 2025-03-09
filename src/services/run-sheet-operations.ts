@@ -1,7 +1,7 @@
 import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../firebase'; // Adjust the import path as needed
 
-export const getMealsBetweenDates = async (startDate: Date, endDate: Date, schoolId?: string) => {
+export const getMealsBetweenDates = async (startDate: Date, endDate: Date) => {
   // Set the time to the start of the day for the start date
   const startOfDay = new Date(startDate);
   startOfDay.setHours(0, 0, 0, 0);
@@ -18,10 +18,6 @@ export const getMealsBetweenDates = async (startDate: Date, endDate: Date, schoo
     where('deliveryDate', '<=', endTimestamp),
     orderBy('deliveryDate')
   );
-
-  if (schoolId) {
-    q = query(q, where('school.id', '==', schoolId));
-  }
 
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
