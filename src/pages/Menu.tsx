@@ -15,8 +15,7 @@ const MenuPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedMain, setSelectedMain] = useState<Main | null>(null);
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
-
-	
+	const sortedMains = state.mains.sort((a) => a.isFeatured ? -1 : 1);
 
 	const renderAddOns = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -101,7 +100,7 @@ const MenuPage: React.FC = () => {
 
     const renderMainItems = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {state.mains.map((item) => (
+            {sortedMains.map((item) => (
                 <Card key={item.id}>
                     <CardHeader>
                         <CardTitle>{item.display}</CardTitle>

@@ -9,6 +9,7 @@ const OrderPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedMain, setSelectedMain] = useState<Main | null>(null);
+    const sortedMains = state.mains.sort((a) => a.isFeatured ? -1 : 1);
 
     const handleOrderNow = (itemId: string) => {
         const main = state.mains.find(m => m.id === itemId);
@@ -28,7 +29,7 @@ const OrderPage: React.FC = () => {
         <div className="container mx-auto p-4 py-8">
             <h1 className="text-2xl md:text-4xl font-extrabold leading-tight">Order</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-                {state.mains.map((item) => (
+                {sortedMains.map((item) => (
                     <MenuItemCard
                         key={item.id}
                         description={item.description}

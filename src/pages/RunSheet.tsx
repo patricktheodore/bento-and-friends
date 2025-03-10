@@ -306,73 +306,104 @@ const RunSheet: React.FC = () => {
 			unit: 'mm',
 			format: 'a4',
 		}) as jsPDFWithPlugin;
-
+	
 		const pageHeight = 297;
-
+	
 		// Label dimensions and layout
 		const labelWidth = 38.1;
 		const labelHeight = 21.2;
 		const labelsPerRow = 5;
 		const labelsPerCol = 13;
-
+	
 		// Specified margins and gaps
 		const marginTop = 10.2;
 		const marginLeft = 4.6;
 		const gapHorizontal = 2.5;
 		const marginBottom = marginTop;
-
+	
 		// Calculate vertical gap
 		const totalLabelHeight = labelsPerCol * labelHeight;
 		const availableVerticalSpace = pageHeight - marginTop - marginBottom;
 		const gapVertical = (availableVerticalSpace - totalLabelHeight) / (labelsPerCol - 1);
-
+	
 		// Inner padding for text
 		const paddingLeft = 2;
 		const paddingTop = 1;
-
+	
 		let labelIndex = 0;
-
+	
+		// Function to get the first letter or a star for Surprise
+		const getInitialOrStar = (text: string | undefined): string => {
+			if (!text) return '';
+			
+			// Check if it's a "Surprise" yogurt/fruit
+			if (text.toLowerCase().includes('surprise') || text.toLowerCase().includes('mixed')) {
+				return '?';
+			}
+			
+			// Otherwise return the first letter
+			return text.charAt(0).toUpperCase();
+		};
+	
 		Object.entries(groupedMeals).forEach(([_, schools]) => {
 			Object.entries(schools).forEach(([school, meals]) => {
 				meals.forEach((meal) => {
 					if (labelIndex > 0 && labelIndex % (labelsPerRow * labelsPerCol) === 0) {
 						pdf.addPage();
 					}
-
+	
 					const col = labelIndex % labelsPerRow;
 					const row = Math.floor((labelIndex % (labelsPerRow * labelsPerCol)) / labelsPerRow);
-
+	
 					const x = marginLeft + col * (labelWidth + gapHorizontal);
 					const y = marginTop + row * (labelHeight + gapVertical);
-
+	
+					// Add yogurt indicator to top right
+					if (meal.probiotic?.display) {
+						pdf.setFont('helvetica', 'bold');
+						pdf.setFontSize(10);
+						const yogurtSymbol = getInitialOrStar(meal.probiotic.display);
+						// Position in top right corner
+						pdf.text(yogurtSymbol, x + labelWidth - 3, y + paddingTop + 4);
+					}
+	
+					// Add fruit indicator to bottom right
+					if (meal.fruit?.display) {
+						pdf.setFont('helvetica', 'bold');
+						pdf.setFontSize(10);
+						const fruitSymbol = getInitialOrStar(meal.fruit.display);
+						// Position in bottom right corner
+						pdf.text(fruitSymbol, x + labelWidth - 3, y + labelHeight - 3);
+					}
+	
 					// Student Name (Bold)
 					pdf.setFont('helvetica', 'bold');
 					pdf.setFontSize(8);
 					pdf.text(meal.child.name, x + paddingLeft, y + paddingTop + 4);
-
+	
 					// School (Normal, abbreviated if necessary)
 					pdf.setFont('helvetica', 'normal');
 					pdf.setFontSize(6);
 					const schoolAbbr = school.length > 20 ? school.substring(0, 18) + '...' : school;
 					pdf.text(schoolAbbr, x + paddingLeft, y + paddingTop + 8);
-
+	
 					var locationText = `Year ${meal.child.year} Class ${meal.child.className}`;
 					if (!meal.child.year || !meal.child.className) {
 						locationText = 'Staff Room';
 					}
-
+	
 					pdf.text(
 						locationText,
 						x + paddingLeft,
 						y + paddingTop + 11
 					);
-
+	
 					// Main Dish (truncate if too long)
 					pdf.setFontSize(6);
 					const mainDish =
 						meal.main.display.length > 30 ? meal.main.display.substring(0, 28) + '...' : meal.main.display;
 					pdf.text(mainDish, x + paddingLeft, y + paddingTop + 15);
-
+	
 					// Add-ons (if space allows)
 					if (meal.addOns && meal.addOns.length > 0) {
 						pdf.setFontSize(6);
@@ -383,15 +414,15 @@ const RunSheet: React.FC = () => {
 							pdf.text(addOnsText.substring(0, 33) + '...', x + paddingLeft, y + paddingTop + 19);
 						}
 					}
-
+	
 					labelIndex++;
 				});
 			});
 		});
-
+	
 		pdf.save('meal-labels.pdf');
 		toast.success('Meal labels PDF generated and downloaded.');
-	};
+	}
 
 	const handlePrintMainDishSummary = () => {
 		const pdf = new jsPDF({
