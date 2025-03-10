@@ -138,6 +138,10 @@ const ItemController: React.FC = () => {
 				item.image = imageUrl;
 			}
 
+			if (item instanceof Main) {
+				item.isPromo = item.isPromo ?? false;
+			}
+
 			const response = await addOrUpdateItem(item);
 
 			if (response.success) {

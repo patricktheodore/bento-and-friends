@@ -19,7 +19,8 @@ export const getMains = async (): Promise<{ success: boolean; data?: Main[]; err
                 data.isVegetarian,
                 data.addOns,
                 data.price,
-				doc.id
+				doc.id,
+				data.isPromo
             );
         });
         return { success: true, data: mains };

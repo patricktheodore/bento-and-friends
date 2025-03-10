@@ -69,6 +69,11 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         [addOns]
     );
 
+    const mainOnlyAddon = useMemo(() => 
+        addOns.find(addon => addon.display.toLowerCase().includes('main only')),
+        [addOns]
+    );
+
     const handleAddToCart = () => {
         if (!selectedMain) return;
 
@@ -221,13 +226,20 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                             <h4 className="font-semibold mb-2">1. Customisation</h4>
                             <h4 className="mb-2">Add-ons</h4>
                             <div className="space-y-2">
-                                {orderAddOns(addOns).map((addon) => (
+                            {orderAddOns(addOns).map((addon) => {
+                                const isMainOnlyAddon = addon.display.toLowerCase().includes('main only');
+                                const isDisabled = isMainOnlyAddon && selectedMain?.isPromo === true;
+                                
+                                return (
                                     <div key={addon.id} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={addon.id}
                                             checked={selectedAddons.includes(addon.id)}
+                                            disabled={isDisabled}
                                             onCheckedChange={(checked) => {
-                                                setIsMainOnly(checked && addon.display.toLowerCase().includes('main only'));
+                                                if (isDisabled) return;
+                                                
+                                                setIsMainOnly(checked && isMainOnlyAddon);
                                                 if (checked) {
                                                     setSelectedAddons(prev => [...prev, addon.id]);
                                                 } else {
@@ -235,11 +247,17 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                                 }
                                             }}
                                         />
-                                        <Label htmlFor={addon.id} className="text-sm">
+                                        <Label htmlFor={addon.id} className={`text-sm ${isDisabled ? 'text-gray-400' : ''}`}>
                                             {addon.display} ({formatPrice(addon.price)})
+                                            {isDisabled && (
+                                                <span className="ml-2 text-xs text-red-500 italic">
+                                                    (Not available for promotional items)
+                                                </span>
+                                            )}
                                         </Label>
                                     </div>
-                                ))}
+                                );
+                            })}
                             </div>
                             {!isMainOnly && (
                                 <>

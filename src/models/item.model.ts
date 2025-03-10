@@ -10,6 +10,7 @@ export class Main {
     isActive?: boolean;
     isFeatured?: boolean;
     isVegetarian?: boolean;
+    isPromo?: boolean; // New property
     addOns?: AddOn[];
     price: number;
 
@@ -24,7 +25,8 @@ export class Main {
         isVegetarian: boolean = false,
         addOns: AddOn[] = [],
         price: number = 0,
-        id?: string
+        id?: string,
+        isPromo: boolean = false // Default to false
     ) {
         this.id = id || uuidv4();
         this.display = display;
@@ -35,6 +37,7 @@ export class Main {
         this.isActive = isActive;
         this.isFeatured = isFeatured;
         this.isVegetarian = isVegetarian;
+        this.isPromo = isPromo;
         this.addOns = addOns;
         this.price = price;
     }

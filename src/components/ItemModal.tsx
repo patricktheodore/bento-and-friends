@@ -114,7 +114,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 						formData.isVegetarian,
 						formData.addOns,
 						formData.price,
-						existingId
+						existingId,
+						formData.isPromo
 					);
 					break;
 				case 'probiotic':
@@ -337,6 +338,17 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 														}
 													/>
 													<Label htmlFor="isFeatured">Featured</Label>
+												</div>
+
+												<div className="flex items-center space-x-2">
+													<Switch
+														id="isPromo"
+														checked={formData.isPromo || false}
+														onCheckedChange={(checked) =>
+															handleInputChange('isPromo', checked)
+														}
+													/>
+													<Label htmlFor="isPromo">Promotional Item</Label>
 												</div>
 
 												<div className="flex items-center space-x-2">

@@ -81,6 +81,9 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ title, description, allergens, 
         <div className="flex flex-col flex-grow min-w-0">
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="flex items-center gap-2 text-lg font-semibold text-brand-dark-green">
+              {item.isPromo && (
+                <span className='bg-lime-400 rounded-full py-2 px-4 text-sm'>Promo</span>
+              )}
               <span className="truncate">{title}</span>
             </CardTitle>
           </CardHeader>
