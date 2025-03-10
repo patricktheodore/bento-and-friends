@@ -253,8 +253,6 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                                     onCheckedChange={(checked) => {
                                                         if (checked) {
                                                             setSelectedYogurt(yogurt.id);
-                                                        } else {
-                                                            setSelectedYogurt(null);
                                                         }
                                                     }}
                                                 />
@@ -274,8 +272,6 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                                     onCheckedChange={(checked) => {
                                                         if (checked) {
                                                             setSelectedFruit(fruit.id);
-                                                        } else {
-                                                            setSelectedFruit(null);
                                                         }
                                                     }}
                                                 />

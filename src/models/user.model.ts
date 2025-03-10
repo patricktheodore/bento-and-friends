@@ -47,8 +47,8 @@ export class Child {
     school: string;
     allergens: string;
     isTeacher: boolean;
-    year?: string;
-    className?: string;
+    year: string;
+    className: string;
 
     constructor(name: string = '', year: string = '', isTeacher: boolean = false, school: string = '', className: string = '', allergens: string = '') {
         this.id = uuidv4(); // Generate a unique ID
