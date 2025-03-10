@@ -69,11 +69,6 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         [addOns]
     );
 
-    const mainOnlyAddon = useMemo(() => 
-        addOns.find(addon => addon.display.toLowerCase().includes('main only')),
-        [addOns]
-    );
-
     const handleAddToCart = () => {
         if (!selectedMain) return;
 

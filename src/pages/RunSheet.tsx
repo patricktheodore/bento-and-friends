@@ -21,7 +21,6 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import RunSheetSummary from '@/components/RunSheetSummary';
-import { Meal } from '@/models/order.model';
 
 interface jsPDFWithPlugin extends jsPDF {
 	autoTable: (options: UserOptions) => jsPDF;
