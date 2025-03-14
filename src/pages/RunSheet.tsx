@@ -332,15 +332,18 @@ const RunSheet: React.FC = () => {
 		let labelIndex = 0;
 	
 		// Function to get the first letter or a star for Surprise
-		const getInitialOrStar = (text: string | undefined): string => {
+		const getInitial = (text: string | undefined): string => {
 			if (!text) return '';
 			
 			// Check if it's a "Surprise" yogurt/fruit
-			if (text.toLowerCase().includes('surprise') || text.toLowerCase().includes('mixed')) {
-				return '?';
+			if (text.toLowerCase().includes('surprise')) {
+				return 'SM';
 			}
-			
-			// Otherwise return the first letter
+
+			if (text.toLowerCase().includes('mixed')) {
+				return 'MF';
+			}
+
 			return text.charAt(0).toUpperCase();
 		};
 	
@@ -361,18 +364,18 @@ const RunSheet: React.FC = () => {
 					if (meal.probiotic?.display) {
 						pdf.setFont('helvetica', 'bold');
 						pdf.setFontSize(10);
-						const yogurtSymbol = getInitialOrStar(meal.probiotic.display);
+						const yogurtSymbol = getInitial(meal.probiotic.display);
 						// Position in top right corner
-						pdf.text(yogurtSymbol, x + labelWidth - 3, y + paddingTop + 4);
+						pdf.text(yogurtSymbol, x + labelWidth - 3, y + paddingTop + 9);
 					}
 	
 					// Add fruit indicator to bottom right
 					if (meal.fruit?.display) {
 						pdf.setFont('helvetica', 'bold');
 						pdf.setFontSize(10);
-						const fruitSymbol = getInitialOrStar(meal.fruit.display);
+						const fruitSymbol = getInitial(meal.fruit.display);
 						// Position in bottom right corner
-						pdf.text(fruitSymbol, x + labelWidth - 3, y + labelHeight - 3);
+						pdf.text(fruitSymbol, x + labelWidth - 3, y + labelHeight - 6	);
 					}
 	
 					// Student Name (Bold)
@@ -579,23 +582,84 @@ const RunSheet: React.FC = () => {
 				
 				// Get unique classes and count meals
 				schoolMeals.forEach((meal) => {
-					const classKey = meal.child.className || 'Staff Room'; // Use "Staff Room" for null class names
-					classCounts[classKey] = (classCounts[classKey] || 0) + 1;
+					let className = meal.child.className || 'Staff Room'; // Use "Staff Room" for null class names
+					
+					// Skip formatting for Staff Room
+					if (className === 'Staff Room') {
+						classCounts[className] = (classCounts[className] || 0) + 1;
+						return;
+					}
+					
+					// Get and normalize the year value
+					const year = meal.child.year ? String(meal.child.year).trim() : '';
+					
+					// Check if we need to add a prefix - ONLY for PP and K
+					if (year) {
+						// Check for variations of Pre-primary
+						if (['pre-primary', 'pre primary', 'pp', 'pre primary', 'preprimary'].includes(year.toLowerCase())) {
+							className = `PP-${className}`;
+						} 
+						// Check for variations of Kindergarten
+						else if (['kindergarten', 'kinder', 'k', 'kindy'].includes(year.toLowerCase()) || 
+								 year.toLowerCase().includes('kind') || 
+								 year.toLowerCase().includes('kinder')) {
+							className = `K-${className}`;
+						}
+						// For numeric years - no longer adding 'Y' prefix
+					} 
+					
+					classCounts[className] = (classCounts[className] || 0) + 1;
 				});
 	
-				// Sort class names appropriately
+				// Sort class names with updated priority: K first, then PP, then standard classes, then Staff Room
 				const classNames = Object.keys(classCounts).sort((a, b) => {
-					// Try to sort numerically first
+					// If Staff Room, always put at the end
+					if (a === 'Staff Room') return 1;
+					if (b === 'Staff Room') return -1;
+					
+					// Check for K prefix
+					const isKClassA = a.startsWith('K-');
+					const isKClassB = b.startsWith('K-');
+					
+					// Check for PP prefix
+					const isPPClassA = a.startsWith('PP-');
+					const isPPClassB = b.startsWith('PP-');
+					
+					// Sort order: K classes, PP classes, then standard classes
+					if (isKClassA && !isKClassB) return -1; // K comes before non-K
+					if (!isKClassA && isKClassB) return 1;  // Non-K comes after K
+					
+					if (isKClassA && isKClassB) {
+						// Both are K classes, sort numerically if possible
+						const numA = parseInt(a.substring(2));
+						const numB = parseInt(b.substring(2));
+						if (!isNaN(numA) && !isNaN(numB)) {
+							return numA - numB;
+						}
+						return a.localeCompare(b);
+					}
+					
+					if (isPPClassA && !isPPClassB && !isKClassB) return -1; // PP comes before standard
+					if (!isPPClassA && !isKClassA && isPPClassB) return 1;  // Standard comes after PP
+					
+					if (isPPClassA && isPPClassB) {
+						// Both are PP classes, sort numerically if possible
+						const numA = parseInt(a.substring(3));
+						const numB = parseInt(b.substring(3));
+						if (!isNaN(numA) && !isNaN(numB)) {
+							return numA - numB;
+						}
+						return a.localeCompare(b);
+					}
+					
+					// Both are standard classes
+					// Try to sort numerically if both are numbers
 					const numA = parseInt(a);
 					const numB = parseInt(b);
 					
 					if (!isNaN(numA) && !isNaN(numB)) {
 						return numA - numB;
 					}
-					
-					// If one is "Staff Room", put it at the end
-					if (a === 'Staff Room') return 1;
-					if (b === 'Staff Room') return -1;
 					
 					// Otherwise sort alphabetically
 					return a.localeCompare(b);
