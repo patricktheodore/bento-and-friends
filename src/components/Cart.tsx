@@ -237,8 +237,10 @@ const Cart: React.FC = () => {
 		const isBlocked = state.blockedDates.some(
 			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
 		);
+		const schoolDeiveryDays = editingMeal?.school?.deliveryDays.map(day => day.toLowerCase());
+        const schoolDeliversOnDay = schoolDeiveryDays?.includes(date.toLocaleString('en-US', { weekday: 'long' }).toLowerCase());
 
-		return isWeekend || isPast || isBlocked;
+		return isWeekend || isPast || isBlocked || !schoolDeliversOnDay;
 	};
 
 	// In Cart.tsx

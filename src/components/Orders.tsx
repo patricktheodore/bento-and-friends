@@ -7,7 +7,6 @@ import { ChevronDown, ChevronUp, Loader2, CalendarIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import toast from 'react-hot-toast';
-import { useAppContext } from '@/context/AppContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
@@ -38,7 +37,6 @@ interface Order {
 const PAGE_SIZE = 50;
 
 const OrdersComponent: React.FC = () => {
-	const { state } = useAppContext();
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [lastVisible, setLastVisible] = useState<any>(null);
 	const [loading, setLoading] = useState(false);
@@ -127,21 +125,21 @@ useEffect(() => {
 		return `${dayOfWeek}, ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 	};
 
-	const isValidDate = (date: Date) => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
+	// const isValidDate = (date: Date) => {
+	// 	const today = new Date();
+	// 	today.setHours(0, 0, 0, 0);
+	// 	const tomorrow = new Date(today);
+	// 	tomorrow.setDate(tomorrow.getDate() + 1);
 
-		const day = date.getDay();
-		const isWeekend = day === 0 || day === 6;
-		const isPast = date <= today;
-		const isBlocked = state.blockedDates.some(
-			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
-		);
+	// 	const day = date.getDay();
+	// 	const isWeekend = day === 0 || day === 6;
+	// 	const isPast = date <= today;
+	// 	const isBlocked = state.blockedDates.some(
+	// 		(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
+	// 	);
 
-		return !(isWeekend || isPast || isBlocked);
-	};
+	// 	return !(isWeekend || isPast || isBlocked);
+	// };
 
 	const handleDateChange = (orderId: string, mealId: string) => {
 		setSelectedMeal({ orderId, mealId });
@@ -373,7 +371,7 @@ useEffect(() => {
 							mode="single"
 							selected={selectedDate}
 							onSelect={setSelectedDate}
-							disabled={(date) => !isValidDate(date)}
+							// disabled={(date) => !isValidDate(date)}
 							className="rounded-md border"
 						/>
 					</div>

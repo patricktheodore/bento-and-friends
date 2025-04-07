@@ -168,8 +168,10 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 		const isBlocked = state.blockedDates.some(
 			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
 		);
-
-		return isWeekend || isPast || isBlocked;
+        const school = state.user?.children.find(child => selectedChildren.includes(child.id))?.school;
+        const schoolDeiveryDays = state.schools.find(schoolData => schoolData.name === school)?.deliveryDays.map(day => day.toLowerCase());
+        const schoolDeliversOnDay = schoolDeiveryDays?.includes(date.toLocaleString('en-US', { weekday: 'long' }).toLowerCase());
+		return isWeekend || isPast || isBlocked || !schoolDeliversOnDay;
 	};
 
     if (children.length === 0) {
@@ -331,13 +333,21 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                         
                         <div>
                             <h4 className="font-semibold mb-2">3. Select Dates</h4>
-                            <Calendar
-                                mode="multiple"
-                                selected={selectedDates}
-                                onSelect={(dates) => setSelectedDates(dates || [])}
-                                className="rounded-md border"
-                                disabled={isValidDate}
-                            />
+                            {selectedChildren.length < 1 && (
+                                <span className='text-sm text-gray-600 italic'>
+                                    Please select at least one recipient to enable date selection.
+                                </span>
+                            )}
+                            {selectedChildren.length > 0 && (
+                                <Calendar
+                                    mode="multiple"
+                                    selected={selectedDates}
+                                    onSelect={(dates) => setSelectedDates(dates || [])}
+                                    className="rounded-md border"
+                                    disabled={isValidDate}
+                                />
+                            )}
+
                         </div>
                     </div>
                 </ScrollArea>
