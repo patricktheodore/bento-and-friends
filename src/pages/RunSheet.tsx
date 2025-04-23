@@ -21,6 +21,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import RunSheetSummary from '@/components/RunSheetSummary';
+import { Fruit, Probiotic } from '@/models/item.model';
 
 interface jsPDFWithPlugin extends jsPDF {
 	autoTable: (options: UserOptions) => jsPDF;
@@ -37,6 +38,10 @@ const RunSheet: React.FC = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [quickSelect, setQuickSelect] = useState('today');
 	const [sortedMeals, setSortedMeals] = useState<any[]>([]);
+	const [sides, setSides] = useState<Probiotic[]>([]);
+	const [fruits, setFruits] = useState<Fruit[]>([]);
+
+
 	
 	const groupMealsByDateAndSchool = (meals: any[]) => {
 		return meals.reduce((acc, meal) => {
@@ -59,6 +64,9 @@ const RunSheet: React.FC = () => {
 
 	useEffect(() => {
 		handleQuickSelect('today');
+
+		setSides(state.probiotics);
+		setFruits(state.fruits);
 	}, []);
 
 	useEffect(() => {
@@ -280,7 +288,7 @@ const RunSheet: React.FC = () => {
 
 				pdf.autoTable({
 					startY: yOffset,
-					head: [['Child', 'Year', 'Class', 'Main Dish', 'Allergies', 'Probitic | Fruit', 'Add-ons']],
+					head: [['Child', 'Year', 'Class', 'Main Dish', 'Allergies', 'Side | Fruit', 'Add-ons']],
 					body: mealData,
 					headStyles: { fillColor: [5, 45, 42] },
 					styles: { cellPadding: 2, fontSize: 8 },
@@ -330,22 +338,14 @@ const RunSheet: React.FC = () => {
 		const paddingTop = 1;
 	
 		let labelIndex = 0;
-	
-		// Function to get the first letter or a star for Surprise
-		const getInitial = (text: string | undefined): string => {
-			if (!text) return '';
-			
-			// Check if it's a "Surprise" yogurt/fruit
-			if (text.toLowerCase().includes('surprise')) {
-				return 'SM';
-			}
 
-			if (text.toLowerCase().includes('mixed')) {
-				return 'MF';
-			}
+		const getFruitCode = (text:string) => {
+			return fruits.find((fruit) => fruit.display === text)?.code || '';
+		}
 
-			return text.charAt(0).toUpperCase();
-		};
+		const getSideCode = (text:string) => {
+			return sides.find((side) => side.display === text)?.code || '';
+		}
 	
 		Object.entries(groupedMeals).forEach(([_, schools]) => {
 			Object.entries(schools).forEach(([school, meals]) => {
@@ -364,18 +364,18 @@ const RunSheet: React.FC = () => {
 					if (meal.probiotic?.display) {
 						pdf.setFont('helvetica', 'bold');
 						pdf.setFontSize(10);
-						const yogurtSymbol = getInitial(meal.probiotic.display);
+						const yogurtSymbol = getSideCode(meal.probiotic.display);
 						// Position in top right corner
-						pdf.text(yogurtSymbol, x + labelWidth - 3, y + paddingTop + 9);
+						pdf.text(yogurtSymbol, x + labelWidth - 5, y + paddingTop + 9);
 					}
 	
 					// Add fruit indicator to bottom right
 					if (meal.fruit?.display) {
 						pdf.setFont('helvetica', 'bold');
 						pdf.setFontSize(10);
-						const fruitSymbol = getInitial(meal.fruit.display);
+						const fruitSymbol = getFruitCode(meal.fruit.display);
 						// Position in bottom right corner
-						pdf.text(fruitSymbol, x + labelWidth - 3, y + labelHeight - 6	);
+						pdf.text(fruitSymbol, x + labelWidth - 5, y + labelHeight - 6	);
 					}
 	
 					// Student Name (Bold)
@@ -744,7 +744,7 @@ const RunSheet: React.FC = () => {
 					<span className="font-semibold">Add-ons:</span> {formatAddOns(meal.addOns)}
 				</div>
 				<div>
-					<span className="font-semibold">Probiotic: {meal.probiotic ? meal.probiotic.display : 'N/A' }</span>
+					<span className="font-semibold">Side: {meal.probiotic ? meal.probiotic.display : 'N/A' }</span>
 				</div>
 				<div>
 					<span className="font-semibold">Fruit: {meal.fruit ? meal.fruit.display : 'N/A' }</span>
@@ -761,7 +761,7 @@ const RunSheet: React.FC = () => {
 			<TableHead>Main Dish</TableHead>
 			<TableHead>Allergies</TableHead>
 			<TableHead>Add-ons</TableHead>
-			<TableHead>Probiotic / Fruit</TableHead>
+			<TableHead>Side / Fruit</TableHead>
 		</TableRow>
 	);
 

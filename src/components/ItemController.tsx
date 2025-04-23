@@ -14,11 +14,12 @@ import { useAppContext } from '../context/AppContext';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { EyeOff } from 'lucide-react';
 
 const itemTypeOptions = [
 	{ value: 'all', label: 'All Items' },
 	{ value: 'main', label: 'Main' },
-	{ value: 'probiotic', label: 'Probiotic' },
+	{ value: 'side', label: 'Side' },
 	{ value: 'fruit', label: 'Fruit' },
 	{ value: 'drink', label: 'Drink' },
 	{ value: 'addon', label: 'Add On' },
@@ -29,7 +30,7 @@ const columnConfigs = {
 	all: ['image', 'name', 'type', 'price'],
 	main: ['image', 'name', 'allergens', 'price'],
 	addon: ['name', 'price'],
-	probiotic: ['name'],
+	side: ['name'],
 	fruit: ['name'],
 	drink: ['image', 'name', 'price'],
 	platter: ['image', 'name', 'price']
@@ -44,10 +45,15 @@ const ItemController: React.FC = () => {
 	const [selectedType, setSelectedType] = useState({ value: 'all', label: 'All Items' });
 	const [isItemModalOpen, setIsItemModalOpen] = useState(false);
 	const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-	const [selectedItemType, setSelectedItemType] = useState<'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter' | null>(
+	const [selectedItemType, setSelectedItemType] = useState<'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter' | null>(
 		'main'
 	);
 	const [isAdmin, setIsAdmin] = useState(false);
+	const [hideUnavailableItems, setHideUnavailableItems] = useState(false);
+	
+	const toggleUnavailableItems = () => {
+		setHideUnavailableItems((prev) => !prev);
+	}
 
 	useEffect(() => {
 		const fetchItemsAndCheckAdmin = async () => {
@@ -113,9 +119,9 @@ const ItemController: React.FC = () => {
 		return downloadURL;
 	};
 
-	const getItemType = (item: MenuItem): 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter' => {
+	const getItemType = (item: MenuItem): 'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter' => {
 		if (item instanceof Main) return 'main';
-		if (item instanceof Probiotic) return 'probiotic';
+		if (item instanceof Probiotic) return 'side';
 		if (item instanceof Fruit) return 'fruit';
 		if (item instanceof Drink) return 'drink';
 		if (item instanceof AddOn) return 'addon';
@@ -262,6 +268,12 @@ const ItemController: React.FC = () => {
 						</SelectContent>
 					</Select>
 					<Button
+						onClick={() => toggleUnavailableItems()}
+					 	variant={'outline'}>
+						<EyeOff className="h-5 w-5 mr-2" />
+						Toggle Unavailable Items
+					</Button>
+					<Button
 						onClick={() => handleOpenModal('add')}
 						className="bg-brand-dark-green text-brand-cream"
 					>
@@ -286,22 +298,29 @@ const ItemController: React.FC = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{filteredItems.map((item) => (
-							<TableRow
-								key={item.id}
-								className="cursor-pointer"
-								onClick={() => handleOpenModal('edit', item)}
-							>
-								{columns.map((column) => (
-									<TableCell
-										key={`${item.id}-${column}`}
-										className="overflow-hidden"
-									>
-										{renderCell(item, column)}
-									</TableCell>
-								))}
-							</TableRow>
-						))}
+						{filteredItems.map((item) => {
+							// Skip rendering items where isActive is explicitly false and toggle is on
+							if (hideUnavailableItems && item.isActive === false) {
+								return null;
+							}
+							
+							return (
+								<TableRow
+									key={item.id}
+									className="cursor-pointer"
+									onClick={() => handleOpenModal('edit', item)}
+								>
+									{columns.map((column) => (
+										<TableCell
+											key={`${item.id}-${column}`}
+											className="overflow-hidden"
+										>
+											{renderCell(item, column)}
+										</TableCell>
+									))}
+								</TableRow>
+							);
+						})}
 					</TableBody>
 				</Table>
 			</div>

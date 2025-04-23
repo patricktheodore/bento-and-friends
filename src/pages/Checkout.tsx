@@ -409,17 +409,20 @@ const CheckoutPage: React.FC = () => {
 											<div>
 												<label className="text-sm font-medium">Add-ons</label>
 												{state.addOns.map((addon) => (
-													<div
-														key={addon.id}
-														className="flex items-center space-x-2 mb-2"
-													>
-														<Checkbox
-															id={addon.id}
-															checked={editingMeal.addOns.some((a) => a.id === addon.id)}
-															onCheckedChange={() => handleAddOnToggle(addon.id)}
-														/>
-														<Label htmlFor={addon.id}>{addon.display}</Label>
-													</div>
+													addon.isActive && (
+														<div
+															key={addon.id}
+															className="flex items-center space-x-2 mb-2"
+														>
+															<Checkbox
+																id={addon.id}
+																checked={editingMeal.addOns.some((a) => a.id === addon.id)}
+																onCheckedChange={() => handleAddOnToggle(addon.id)}
+															/>
+															<Label htmlFor={addon.id}>{addon.display}</Label>
+														</div>
+
+													)
 												))}
 											</div>
 											{/* Child */}

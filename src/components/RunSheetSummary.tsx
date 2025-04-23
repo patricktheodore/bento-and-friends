@@ -115,7 +115,7 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="bg-brand-dark-green text-white rounded-t">
-            <CardTitle>Probiotics Summary</CardTitle>
+            <CardTitle>Sides Summary</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <ul className="divide-y">
@@ -126,7 +126,7 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
                 </li>
               ))}
               {Object.keys(yogurtSummary).length === 0 && (
-                <li className="py-2 text-gray-500">No probiotics found</li>
+                <li className="py-2 text-gray-500">No sides found</li>
               )}
             </ul>
           </CardContent>

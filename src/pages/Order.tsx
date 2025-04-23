@@ -30,15 +30,17 @@ const OrderPage: React.FC = () => {
             <h1 className="text-2xl md:text-4xl font-extrabold leading-tight">Order</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
                 {sortedMains.map((item) => (
-                    <MenuItemCard
-                        key={item.id}
-                        description={item.description}
-                        title={item.display}
-                        allergens={item.allergens}
-                        isVegetarian={item.isVegetarian}
-						item={item}
-                        onOrderNow={() => handleOrderNow(item.id)}
-                    />
+                    item.isActive && (
+                        <MenuItemCard
+                            key={item.id}
+                            description={item.description}
+                            title={item.display}
+                            allergens={item.allergens}
+                            isVegetarian={item.isVegetarian}
+                            item={item}
+                            onOrderNow={() => handleOrderNow(item.id)}
+                        />
+                    )
                 ))}
             </div>
             <OrderDialog

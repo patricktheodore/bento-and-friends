@@ -197,7 +197,7 @@ const OrderSuccessPage: React.FC = () => {
                                         {meal.addOns.map((addon) => addon.display).join(', ')}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                        {meal.probiotic ? meal.probiotic.display : 'No probiotic'} - {meal.fruit ? meal.fruit.display : 'No fruit'}
+                                        {meal.probiotic ? meal.probiotic.display : 'No side'} - {meal.fruit ? meal.fruit.display : 'No fruit'}
                                     </p>
                                     <p className="text-sm">
                                         {meal.child.name} - {formatDate(meal.orderDate)}

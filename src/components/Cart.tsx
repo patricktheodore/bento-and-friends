@@ -463,7 +463,7 @@ const Cart: React.FC = () => {
 									</Alert>
 								)}
 								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')} - {meal.probiotic ? meal.probiotic.display : ' No probitic '} - {meal.fruit ? meal.fruit.display : ' No fruit '}
+									{meal.addOns.map((addon) => addon.display).join(', ')} - {meal.probiotic ? meal.probiotic.display : ' No side '} - {meal.fruit ? meal.fruit.display : ' No fruit '}
 								</p>
 								<p className="text-sm">
 									{meal.child.name} - {formatDate(meal.orderDate)}
@@ -536,63 +536,67 @@ const Cart: React.FC = () => {
 													<div>
 														<label className="text-sm font-medium">Add-ons</label>
 														{orderAddOns(state.addOns).map((addon) => (
-															<div
-																key={addon.id}
-																className="flex items-center space-x-2 mb-2"
-															>
-																<Checkbox
-																	id={addon.id}
-																	checked={editingMeal.addOns.some(
-																		(a) => a.id === addon.id
-																	)}
-																	onCheckedChange={(checked) => {
-																		setIsMainOnly(
-																			checked &&
-																				addon.display
-																					.toLowerCase()
-																					.includes('main only')
-																		);
-																		handleAddOnToggle(addon.id);
-																	}}
-																/>
-																<Label htmlFor={addon.id}>{addon.display}</Label>
-															</div>
+															addon.isActive && (
+																<div
+																	key={addon.id}
+																	className="flex items-center space-x-2 mb-2"
+																>
+																	<Checkbox
+																		id={addon.id}
+																		checked={editingMeal.addOns.some(
+																			(a) => a.id === addon.id
+																		)}
+																		onCheckedChange={(checked) => {
+																			setIsMainOnly(
+																				checked &&
+																					addon.display
+																						.toLowerCase()
+																						.includes('main only')
+																			);
+																			handleAddOnToggle(addon.id);
+																		}}
+																	/>
+																	<Label htmlFor={addon.id}>{addon.display}</Label>
+																</div>
+															)
 														))}
 													</div>
 
 													{!isMainOnly && (
 														<>
 															<div>
-																<label className="text-sm font-medium">Yogurt</label>
+																<label className="text-sm font-medium">Side</label>
 																<div className="space-y-2">
 																	{state.probiotics &&
 																		state.probiotics.map((yogurt) => (
-																			<div
-																				key={yogurt.id}
-																				className="flex items-center space-x-2"
-																			>
-																				<Checkbox
-																					id={`yogurt-${yogurt.id}`}
-																					checked={
-																						editingMeal.probiotic?.id ===
-																						yogurt.id
-																					}
-																					onCheckedChange={(checked) => {
-																						setEditingMeal({
-																							...editingMeal,
-																							probiotic: checked
-																								? yogurt
-																								: undefined,
-																						});
-																					}}
-																				/>
-																				<Label
-																					htmlFor={`yogurt-${yogurt.id}`}
-																					className="text-sm"
+																			yogurt.isActive && (
+																				<div
+																					key={yogurt.id}
+																					className="flex items-center space-x-2"
 																				>
-																					{yogurt.display}
-																				</Label>
-																			</div>
+																					<Checkbox
+																						id={`yogurt-${yogurt.id}`}
+																						checked={
+																							editingMeal.probiotic?.id ===
+																							yogurt.id
+																						}
+																						onCheckedChange={(checked) => {
+																							setEditingMeal({
+																								...editingMeal,
+																								probiotic: checked
+																									? yogurt
+																									: undefined,
+																							});
+																						}}
+																					/>
+																					<Label
+																						htmlFor={`yogurt-${yogurt.id}`}
+																						className="text-sm"
+																					>
+																						{yogurt.display}
+																					</Label>
+																				</div>
+																			)
 																		))}
 																</div>
 															</div>
@@ -602,32 +606,35 @@ const Cart: React.FC = () => {
 																<div className="space-y-2">
 																	{state.fruits &&
 																		state.fruits.map((fruit) => (
-																			<div
-																				key={fruit.id}
-																				className="flex items-center space-x-2"
-																			>
-																				<Checkbox
-																					id={`fruit-${fruit.id}`}
-																					checked={
-																						editingMeal.fruit?.id ===
-																						fruit.id
-																					}
-																					onCheckedChange={(checked) => {
-																						setEditingMeal({
-																							...editingMeal,
-																							fruit: checked
-																								? fruit
-																								: undefined,
-																						});
-																					}}
-																				/>
-																				<Label
-																					htmlFor={`fruit-${fruit.id}`}
-																					className="text-sm"
+																			fruit.isActive && (
+																				<div
+																					key={fruit.id}
+																					className="flex items-center space-x-2"
 																				>
-																					{fruit.display}
-																				</Label>
-																			</div>
+																					<Checkbox
+																						id={`fruit-${fruit.id}`}
+																						checked={
+																							editingMeal.fruit?.id ===
+																							fruit.id
+																						}
+																						onCheckedChange={(checked) => {
+																							setEditingMeal({
+																								...editingMeal,
+																								fruit: checked
+																									? fruit
+																									: undefined,
+																							});
+																						}}
+																					/>
+																					<Label
+																						htmlFor={`fruit-${fruit.id}`}
+																						className="text-sm"
+																					>
+																						{fruit.display}
+																					</Label>
+																				</div>
+
+																			)
 																		))}
 																</div>
 															</div>

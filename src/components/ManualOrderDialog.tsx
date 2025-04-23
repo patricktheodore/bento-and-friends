@@ -250,7 +250,7 @@ const ManualOrderDialog: React.FC<ManualOrderDialogProps> = ({ isOpen, onClose, 
                                         {!item.isMainOnly && (
                                             <>
                                                 <div>
-                                                    <Label>Yogurt</Label>
+                                                    <Label>Side</Label>
                                                     <div className="space-y-2 mt-2">
                                                         {state.probiotics.map((yogurt) => (
                                                             <div key={yogurt.id} className="flex items-center space-x-2">

@@ -146,7 +146,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                     <p className='text-sm'>Add-ons: {addOns.filter(addon => selectedAddons.includes(addon.id)).map(addon => addon.display).join(', ')}</p>
                 )}
                 {!isMainOnly && selectedYogurt && (
-                    <p className='text-sm'>Yogurt: {state.probiotics.find(yogurt => yogurt.id === selectedYogurt)?.display}</p>
+                    <p className='text-sm'>Side: {state.probiotics.find(yogurt => yogurt.id === selectedYogurt)?.display}</p>
                 )}
                 {!isMainOnly && selectedFruit && (
                     <p className='text-sm'>Fruit: {state.fruits.find(fruit => fruit.id === selectedFruit)?.display}</p>
@@ -224,6 +224,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                             <h4 className="mb-2">Add-ons</h4>
                             <div className="space-y-2">
                             {orderAddOns(addOns).map((addon) => {
+                                if (!addon.isActive) return null;
+
                                 const isMainOnlyAddon = addon.display.toLowerCase().includes('main only');
                                 const isDisabled = isMainOnlyAddon && selectedMain?.isPromo === true;
                                 
@@ -258,42 +260,46 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                             </div>
                             {!isMainOnly && (
                                 <>
-                                    <h4 className="mt-4 mb-2">Yogurt</h4>
+                                    <h4 className="mt-4 mb-2">Side</h4>
                                     <div className="space-y-2 mb-2">
                                         {state.probiotics && state.probiotics.map((yogurt) => (
-                                            <div key={yogurt.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`yogurt-${yogurt.id}`}
-                                                    checked={selectedYogurt === yogurt.id}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setSelectedYogurt(yogurt.id);
-                                                        }
-                                                    }}
-                                                />
-                                                <Label htmlFor={`yogurt-${yogurt.id}`} className="text-sm">
-                                                    {yogurt.display}
-                                                </Label>
-                                            </div>
+                                            yogurt.isActive && (
+                                                <div key={yogurt.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`yogurt-${yogurt.id}`}
+                                                        checked={selectedYogurt === yogurt.id}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setSelectedYogurt(yogurt.id);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`yogurt-${yogurt.id}`} className="text-sm">
+                                                        {yogurt.display}
+                                                    </Label>
+                                                </div>
+                                            )
                                         ))}
                                     </div>
                                     <h4 className="mt-4 mb-2">Fruit</h4>
                                     <div className="space-y-2 mb-2">
                                         {state.fruits && state.fruits.map((fruit) => (
-                                            <div key={fruit.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`fruit-${fruit.id}`}
-                                                    checked={selectedFruit === fruit.id}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setSelectedFruit(fruit.id);
-                                                        }
-                                                    }}
-                                                />
-                                                <Label htmlFor={`fruit-${fruit.id}`} className="text-sm">
-                                                    {fruit.display}
-                                                </Label>
-                                            </div>
+                                            fruit.isActive && (
+                                                <div key={fruit.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`fruit-${fruit.id}`}
+                                                        checked={selectedFruit === fruit.id}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setSelectedFruit(fruit.id);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`fruit-${fruit.id}`} className="text-sm">
+                                                        {fruit.display}
+                                                    </Label>
+                                                </div>
+                                            )
                                         ))}
                                     </div>
                                 </>

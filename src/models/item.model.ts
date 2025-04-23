@@ -47,32 +47,42 @@ export class AddOn {
     id: string;
     display: string;
     price: number;
+    isActive?: boolean;
 
-    constructor(display: string = '', price: number = 0, id?: string
+    constructor(display: string = '', price: number = 0, id?: string, isActive: boolean = true
     ) {
         this.id = id || uuidv4();
         this.display = display;
         this.price = price;
+        this.isActive = isActive;
     }
 }
 
 export class Probiotic {
     id: string;
     display: string;
+    code: string;
+    isActive: boolean;
 
-    constructor(display: string = '', id?: string) {
+    constructor(display: string = '', id?: string, code: string = '', isActive: boolean = true) {
         this.id = id || uuidv4();
         this.display = display;
+        this.code = code;
+        this.isActive = isActive;
     }
 }
 
 export class Fruit {
     id: string;
     display: string;
+    code: string;
+    isActive: boolean;
 
-    constructor(display: string = '', id?: string) {
+    constructor(display: string = '', id?: string, code: string = '', isActive: boolean = true) {
         this.id = id || uuidv4();
         this.display = display;
+        this.code = code;
+        this.isActive = isActive;
     }
 }
 
@@ -81,12 +91,14 @@ export class Drink {
     display: string;
     image?: string;
     price: number;
+    isActive?: boolean;
 
-    constructor(display: string = '', image: string = '', price: number = 0, id?: string) {
+    constructor(display: string = '', image: string = '', price: number = 0, id?: string, isActive: boolean = true) {
         this.id = id || uuidv4();
         this.display = display;
         this.image = image;
         this.price = price;
+        this.isActive = isActive;
     }
 }
 
@@ -96,12 +108,14 @@ export class Platter {
     description: string;
     image?: string;
     price: number;
+    isActive?: boolean;
 
-    constructor(display: string = '', image: string = '', description: string = '',  price: number = 0, id?: string) {
+    constructor(display: string = '', image: string = '', description: string = '',  price: number = 0, id?: string, isActive: boolean = true) {
         this.id = id || uuidv4();
         this.display = display;
         this.description = description;
         this.image = image;
         this.price = price;
+        this.isActive = isActive;
     }
 }

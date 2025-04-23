@@ -20,14 +20,16 @@ const MenuPage: React.FC = () => {
 	const renderAddOns = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{state.addOns.map((addon) => (
-				<Card key={addon.id}>
-					<CardHeader>
-						<CardTitle>{addon.display}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p>Price: ${addon.price.toFixed(2)}</p>
-					</CardContent>
-				</Card>
+				addon.isActive && (
+					<Card key={addon.id}>
+						<CardHeader>
+							<CardTitle>{addon.display}</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p>Price: ${addon.price.toFixed(2)}</p>
+						</CardContent>
+					</Card>
+				)
 			))}
 		</div>
 	);
@@ -35,11 +37,13 @@ const MenuPage: React.FC = () => {
 	const renderProbiotics = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{state.probiotics.map((probiotic) => (
-				<Card key={probiotic.id}>
-					<CardHeader>
-						<CardTitle>{probiotic.display}</CardTitle>
-					</CardHeader>
-				</Card>
+				probiotic.isActive && (
+					<Card key={probiotic.id}>
+						<CardHeader>
+							<CardTitle>{probiotic.display}</CardTitle>
+						</CardHeader>
+					</Card>
+				)
 			))}
 		</div>
 	);
@@ -47,11 +51,13 @@ const MenuPage: React.FC = () => {
 	const renderFruits = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{state.fruits.map((fruit) => (
-				<Card key={fruit.id}>
-					<CardHeader>
-						<CardTitle>{fruit.display}</CardTitle>
-					</CardHeader>
-				</Card>
+				fruit.isActive && (
+					<Card key={fruit.id}>
+						<CardHeader>
+							<CardTitle>{fruit.display}</CardTitle>
+						</CardHeader>
+					</Card>
+				)
 			))}
 		</div>
 	);
@@ -67,21 +73,24 @@ const MenuPage: React.FC = () => {
 	const renderDrinks = () => (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{state.drinks.map((drink) => (
-				<Card key={drink.id}>
-					<CardHeader>
-						<CardTitle>{drink.display}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						{drink.image && (
-							<img
-								src={drink.image}
-								alt={drink.display}
-								className="w-full h-32 object-cover rounded-md mb-2"
-							/>
-						)}
-						<p>Price: ${drink.price.toFixed(2)}</p>
-					</CardContent>
-				</Card>
+				drink.isActive && (
+					<Card key={drink.id}>
+						<CardHeader>
+							<CardTitle>{drink.display}</CardTitle>
+						</CardHeader>
+						<CardContent>
+							{drink.image && (
+								<img
+									src={drink.image}
+									alt={drink.display}
+									className="w-full h-32 object-cover rounded-md mb-2"
+								/>
+							)}
+							<p>Price: ${drink.price.toFixed(2)}</p>
+						</CardContent>
+					</Card>
+				)
+					
 			))}
 		</div>
 	);
@@ -101,46 +110,48 @@ const MenuPage: React.FC = () => {
     const renderMainItems = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedMains.map((item) => (
-                <Card key={item.id}>
-                    <CardHeader>
-                        <CardTitle>{item.display}</CardTitle>
-                        <CardDescription>{item.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <img
-                            src={item.image}
-                            alt={item.display}
-                            className="w-full h-48 object-cover rounded-md mb-4"
-                        />
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {item.isNew && <Badge variant="default">New</Badge>}
-                            {item.isVegetarian && <Badge variant="secondary">Vegetarian</Badge>}
-                            {item.allergens?.map((allergen) => (
-                                <Badge
-                                    key={allergen}
-                                    variant="outline"
-                                    className="uppercase"
-                                >
-                                    {allergen}
-                                </Badge>
-                            ))}
-                        </div>
-                        <p className='text-lg font-bold'>${item.price.toFixed(2)}</p>
-                        {state.user ? (
-                            <Button
-                                className="w-full mt-2"
-                                onClick={() => handleOrderNow(item)}
-                            >
-                                Order Now
-                            </Button>
-                        ) : (
-                            <div className="flex justify-center mt-2 gap-2">
-                                <Button onClick={() => navigate('/signin')} variant="outline">Create Account</Button>
-                                <Button onClick={() => navigate('/signin')}>Login to Order</Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+				item.isActive && (
+					<Card key={item.id}>
+						<CardHeader>
+							<CardTitle>{item.display}</CardTitle>
+							<CardDescription>{item.description}</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<img
+								src={item.image}
+								alt={item.display}
+								className="w-full h-48 object-cover rounded-md mb-4"
+							/>
+							<div className="flex flex-wrap gap-2 mb-2">
+								{item.isNew && <Badge variant="default">New</Badge>}
+								{item.isVegetarian && <Badge variant="secondary">Vegetarian</Badge>}
+								{item.allergens?.map((allergen) => (
+									<Badge
+										key={allergen}
+										variant="outline"
+										className="uppercase"
+									>
+										{allergen}
+									</Badge>
+								))}
+							</div>
+							<p className='text-lg font-bold'>${item.price.toFixed(2)}</p>
+							{state.user ? (
+								<Button
+									className="w-full mt-2"
+									onClick={() => handleOrderNow(item)}
+								>
+									Order Now
+								</Button>
+							) : (
+								<div className="flex justify-center mt-2 gap-2">
+									<Button onClick={() => navigate('/signin')} variant="outline">Create Account</Button>
+									<Button onClick={() => navigate('/signin')}>Login to Order</Button>
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				)
             ))}
         </div>
     );
@@ -154,7 +165,7 @@ const MenuPage: React.FC = () => {
 						<TabsList className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground w-full md:w-auto">
 							<TabsTrigger value="mains" className="whitespace-nowrap">Main Dishes</TabsTrigger>
 							<TabsTrigger value="addons" className="whitespace-nowrap">Add-ons</TabsTrigger>
-							<TabsTrigger value="probiotics" className="whitespace-nowrap">Probiotics</TabsTrigger>
+							<TabsTrigger value="probiotics" className="whitespace-nowrap">Sides</TabsTrigger>
 							<TabsTrigger value="fruits" className="whitespace-nowrap">Fruits</TabsTrigger>
 							{/* <TabsTrigger value="drinks" className="whitespace-nowrap">Drinks</TabsTrigger> */}
 						</TabsList>

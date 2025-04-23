@@ -38,7 +38,7 @@ export const getProbiotics = async (): Promise<{ success: boolean; data?: Probio
         const probioticsSnapshot = await getDocs(probioticsCollection);
         const probiotics = probioticsSnapshot.docs.map(doc => {
             const data = doc.data();
-            return new Probiotic(data.display, doc.id);
+            return new Probiotic(data.display, doc.id, data.code, data.isActive);
         });
         return { success: true, data: probiotics };
     } catch (error) {
@@ -53,7 +53,7 @@ export const getAddOns = async (): Promise<{ success: boolean; data?: AddOn[]; e
 		const addOnsSnapshot = await getDocs(addOnsCollection);
 		const addOns = addOnsSnapshot.docs.map(doc => {
 			const data = doc.data();
-			return new AddOn(data.display, data.price, doc.id);
+			return new AddOn(data.display, data.price, doc.id, data.isActive);
 		});
 		return { success: true, data: addOns };
 	} catch (error) {
@@ -68,7 +68,7 @@ export const getFruits = async (): Promise<{ success: boolean; data?: Fruit[]; e
 		const fruitsSnapshot = await getDocs(fruitsCollection);
 		const fruits = fruitsSnapshot.docs.map(doc => {
 			const data = doc.data();
-			return new Fruit(data.display, doc.id);
+			return new Fruit(data.display, doc.id, data.code, data.isActive);
 		});
 		return { success: true, data: fruits };
 	} catch (error) {
@@ -87,7 +87,8 @@ export const getDrinks = async (): Promise<{ success: boolean; data?: Drink[]; e
 				data.display,
 				data.image,
 				data.price,
-				doc.id
+				doc.id,
+				data.isActive,
 			);
 		});
 		return { success: true, data: drinks };
@@ -108,7 +109,8 @@ export const getPlatters = async (): Promise<{ success: boolean; data?: Platter[
 				data.image,
 				data.description,
 				data.price,
-				doc.id
+				doc.id,
+				data.isActive,
 			);
 		});
 		return { success: true, data: platters };

@@ -17,11 +17,11 @@ interface ItemModalProps {
 	onSubmit: (item: Main | Probiotic | Fruit | Drink | AddOn | Platter, imageFile: File | null) => Promise<void>;
 	item: Main | Probiotic | Fruit | Drink | AddOn | Platter | null;
 	mode: 'add' | 'edit';
-	itemType: 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter' | null;
+	itemType: 'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter' | null;
 }
 
 type FormData = Partial<Main & Probiotic & Fruit & Drink & AddOn>;
-type ItemType = 'main' | 'probiotic' | 'fruit' | 'drink' | 'addon' | 'platter';
+type ItemType = 'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter';
 
 const allergenOptions: { value: string; label: string }[] = [
 	{ value: 'dairy', label: 'Dairy' },
@@ -60,7 +60,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 
 	const getItemType = (item: Main | Probiotic | Fruit | Drink | AddOn | Platter): ItemType => {
 		if (item instanceof Main) return 'main';
-		if (item instanceof Probiotic) return 'probiotic';
+		if (item instanceof Probiotic) return 'side';
 		if (item instanceof Fruit) return 'fruit';
 		if (item instanceof Drink) return 'drink';
 		if (item instanceof AddOn) return 'addon';
@@ -118,17 +118,17 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 						formData.isPromo
 					);
 					break;
-				case 'probiotic':
-					submittedItem = new Probiotic(formData.display, existingId);
+				case 'side':
+					submittedItem = new Probiotic(formData.display, existingId, formData.code, formData.isActive);
 					break;
 				case 'fruit':
-					submittedItem = new Fruit(formData.display, existingId);
+					submittedItem = new Fruit(formData.display, existingId, formData.code, formData.isActive);
 					break;
 				case 'drink':
-					submittedItem = new Drink(formData.display, formData.image, formData.price, existingId);
+					submittedItem = new Drink(formData.display, formData.image, formData.price, existingId, formData.isActive);
 					break;
 				case 'addon':
-					submittedItem = new AddOn(formData.display, formData.price, existingId);
+					submittedItem = new AddOn(formData.display, formData.price, existingId, formData.isActive);
 					break;
 				case 'platter':
 					submittedItem = new Platter(
@@ -136,7 +136,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 						formData.image,
 						formData.description,
 						formData.price,
-						existingId
+						existingId,
+						formData.isActive,
 					);
 					break;
 				default:
@@ -187,7 +188,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="main">Main</SelectItem>
-									<SelectItem value="probiotic">Probiotic</SelectItem>
+									<SelectItem value="side">Side</SelectItem>
 									<SelectItem value="fruit">Fruit</SelectItem>
 									<SelectItem value="drink">Drink</SelectItem>
 									<SelectItem value="addon">Add-On</SelectItem>
@@ -320,17 +321,6 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 
 												<div className="flex items-center space-x-2">
 													<Switch
-														id="isActive"
-														checked={formData.isActive ?? true}
-														onCheckedChange={(checked) =>
-															handleInputChange('isActive', checked)
-														}
-													/>
-													<Label htmlFor="isActive">Available</Label>
-												</div>
-
-												<div className="flex items-center space-x-2">
-													<Switch
 														id="isFeatured"
 														checked={formData.isFeatured || false}
 														onCheckedChange={(checked) =>
@@ -366,8 +356,31 @@ const ItemModal: React.FC<ItemModalProps> = ({ isOpen, onClose, onSubmit, item, 
 									)}
 								</>
 							)}
+
+							{(selectedType === 'side' || selectedType === 'fruit') && (
+								<div className="space-y-2">
+									<Label htmlFor="code">Code</Label>
+									<Input
+										id="code"
+										type="text"
+										value={formData.code || ''}
+										onChange={(e) => handleInputChange('code', e.target.value)}
+									/>
+								</div>
+							)}
 						</>
 					)}
+
+					<div className="flex items-center space-x-2">
+						<Switch
+							id="isActive"
+							checked={formData.isActive ?? true}
+							onCheckedChange={(checked) =>
+								handleInputChange('isActive', checked)
+							}
+						/>
+						<Label htmlFor="isActive">Available</Label>
+					</div>
 
 					<DialogFooter className="pt-8">
 						<Button
