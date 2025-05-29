@@ -170,11 +170,17 @@ const CheckoutPage: React.FC = () => {
 		if (!cart || !state.cart) return;
 
 		const now = new Date();
-		now.setHours(0, 0, 0, 0);
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
 
 		const invalidDates = cart.meals.filter((meal) => {
 			const orderDate = new Date(meal.orderDate);
-			return orderDate <= now;
+
+			if (now.getHours() < 7) {
+				return orderDate < today;
+			} else {
+				return orderDate <= today;
+			}
 		});
 
 		if (invalidDates.length > 0) {
@@ -298,14 +304,19 @@ const CheckoutPage: React.FC = () => {
 	};
 
 	const isValidDate = (date: Date) => {
+		const now = new Date();
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
 
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
-		const isPast = date <= today;
+
+		let isPast;
+		if (now.getHours() < 7) {
+			isPast = date < today;
+		} else {
+			isPast = date <= today;
+		}
 
 		return isWeekend || isPast;
 	};
@@ -332,13 +343,28 @@ const CheckoutPage: React.FC = () => {
 				{cart.meals.map((meal) => (
 					<div
 						key={meal.id}
-						className="bg-white border p-4 rounded-md shadow-sm"
-					>
+						className="bg-white border p-4 rounded-md shadow-sm">
 						<div className="flex flex-wrap justify-between items-start">
 							<div className="w-full sm:w-2/3">
 								<h3 className="font-semibold text-lg">{meal.main.display}</h3>
-								{new Date(meal.orderDate) <= new Date() && (
-									<Alert variant="destructive" className="mt-2 mb-2">
+								{(() => {
+									const now = new Date();
+									const today = new Date();
+									today.setHours(0, 0, 0, 0);
+									const orderDate = new Date(meal.orderDate);
+
+									let isPast;
+									if (now.getHours() < 7) {
+										isPast = orderDate < today;
+									} else {
+										isPast = orderDate <= today;
+									}
+
+									return isPast;
+								})() && (
+									<Alert
+										variant="destructive"
+										className="mt-2 mb-2">
 										<AlertTriangle className="h-4 w-4" />
 										<AlertDescription>
 											This meal's delivery date has passed. Please update or remove it.
@@ -359,14 +385,12 @@ const CheckoutPage: React.FC = () => {
 						<div className="flex justify-end space-x-2 mt-4">
 							<Dialog
 								open={isDialogOpen}
-								onOpenChange={setIsDialogOpen}
-							>
+								onOpenChange={setIsDialogOpen}>
 								<DialogTrigger asChild>
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() => startEditing(meal)}
-									>
+										onClick={() => startEditing(meal)}>
 										<Edit2 className="h-4 w-4 mr-1" /> Edit
 									</Button>
 								</DialogTrigger>
@@ -388,8 +412,7 @@ const CheckoutPage: React.FC = () => {
 															main: newMain,
 															total: calculateTotal(newMain, editingMeal.addOns),
 														});
-													}}
-												>
+													}}>
 													<SelectTrigger>
 														<SelectValue placeholder="Select main dish" />
 													</SelectTrigger>
@@ -397,8 +420,7 @@ const CheckoutPage: React.FC = () => {
 														{state.mains.map((main) => (
 															<SelectItem
 																key={main.id}
-																value={main.id}
-															>
+																value={main.id}>
 																{main.display}
 															</SelectItem>
 														))}
@@ -408,22 +430,23 @@ const CheckoutPage: React.FC = () => {
 											{/* Add-ons */}
 											<div>
 												<label className="text-sm font-medium">Add-ons</label>
-												{state.addOns.map((addon) => (
-													addon.isActive && (
-														<div
-															key={addon.id}
-															className="flex items-center space-x-2 mb-2"
-														>
-															<Checkbox
-																id={addon.id}
-																checked={editingMeal.addOns.some((a) => a.id === addon.id)}
-																onCheckedChange={() => handleAddOnToggle(addon.id)}
-															/>
-															<Label htmlFor={addon.id}>{addon.display}</Label>
-														</div>
-
-													)
-												))}
+												{state.addOns.map(
+													(addon) =>
+														addon.isActive && (
+															<div
+																key={addon.id}
+																className="flex items-center space-x-2 mb-2">
+																<Checkbox
+																	id={addon.id}
+																	checked={editingMeal.addOns.some(
+																		(a) => a.id === addon.id
+																	)}
+																	onCheckedChange={() => handleAddOnToggle(addon.id)}
+																/>
+																<Label htmlFor={addon.id}>{addon.display}</Label>
+															</div>
+														)
+												)}
 											</div>
 											{/* Child */}
 											<div>
@@ -459,8 +482,7 @@ const CheckoutPage: React.FC = () => {
 																},
 															});
 														}
-													}}
-												>
+													}}>
 													<SelectTrigger>
 														<SelectValue placeholder="Select a child" />
 													</SelectTrigger>
@@ -468,8 +490,7 @@ const CheckoutPage: React.FC = () => {
 														{user?.children.map((child) => (
 															<SelectItem
 																key={child.id}
-																value={child.id}
-															>
+																value={child.id}>
 																{child.name}
 															</SelectItem>
 														))}
@@ -498,8 +519,7 @@ const CheckoutPage: React.FC = () => {
 									<DialogFooter>
 										<Button
 											variant="outline"
-											onClick={cancelEdit}
-										>
+											onClick={cancelEdit}>
 											Cancel
 										</Button>
 										<Button onClick={updateMeal}>Save Changes</Button>
@@ -509,8 +529,7 @@ const CheckoutPage: React.FC = () => {
 							<Button
 								variant="destructive"
 								size="sm"
-								onClick={() => removeMeal(meal.id)}
-							>
+								onClick={() => removeMeal(meal.id)}>
 								<Trash2 className="h-4 w-4 mr-1" /> Remove
 							</Button>
 						</div>
@@ -546,8 +565,7 @@ const CheckoutPage: React.FC = () => {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={handleRemoveCoupon}
-						>
+							onClick={handleRemoveCoupon}>
 							Remove Coupon
 						</Button>
 					</div>
@@ -561,8 +579,7 @@ const CheckoutPage: React.FC = () => {
 						/>
 						<Button
 							variant={'outline'}
-							onClick={() => handleApplyCoupon(couponCode)}
-						>
+							onClick={() => handleApplyCoupon(couponCode)}>
 							Apply Coupon
 						</Button>
 					</div>
@@ -570,8 +587,7 @@ const CheckoutPage: React.FC = () => {
 				<Button
 					onClick={handleCheckout}
 					className="w-full sm:w-auto sm:min-w-[200px] sm:float-right"
-					disabled={isProcessing}
-				>
+					disabled={isProcessing}>
 					{isProcessing ? 'Processing...' : 'Proceed to Payment'}
 				</Button>
 			</div>

@@ -197,7 +197,11 @@ export const saveOrder = functions.https.onCall(
 
         // Create order document
         const orderRef = db.collection("orders").doc();
-        const mealRefs = order.meals.map(() => db.collection("meals").doc());
+        // Generate new meal IDs first (THIS IS THE KEY CHANGE)
+        const mealsWithIds = order.meals.map((meal: any) => {
+          const mealRef = db.collection("meals").doc();
+          return {...meal, id: mealRef.id, mealRef};
+        });
 
         const orderData = {
           ...order,
@@ -211,6 +215,12 @@ export const saveOrder = functions.https.onCall(
           couponDiscount,
           originalTotal: order.total,
           finalTotal,
+          // Now store the updated meals array with consistent IDs in the order
+          meals: mealsWithIds.map((meal: any) => {
+            // Exclude the mealRef field to avoid storing it in Firestore
+            const {mealRef, ...mealData} = meal;
+            return mealData;
+          }),
         };
 
         const userData = userDoc.data();
@@ -230,8 +240,14 @@ export const saveOrder = functions.https.onCall(
           orderHistory: [...orderHistory, historyEntry],
         });
 
-        order.meals.forEach((meal: InputMeal, index: number) => {
-          const mealData = {
+        // Now create the meal documents with consistent IDs
+        mealsWithIds.forEach((meal: any) => {
+          const {mealRef, ...mealData} = meal;
+
+          console.log(mealData);
+
+          const formattedMealData = {
+            id: meal.id,
             customOrderNumber,
             orderId: orderRef.id,
             deliveryDate: admin.firestore.Timestamp.fromDate(
@@ -252,14 +268,14 @@ export const saveOrder = functions.https.onCall(
             main: {
               display: meal.main.display,
             },
-            addOns: meal.addOns?.map((addon) => ({
+            addOns: meal.addOns?.map((addon: any) => ({
               display: addon.display,
             })) || [],
             fruit: meal.fruit || null,
             probiotic: meal.probiotic || null,
           };
 
-          transaction.set(mealRefs[index], mealData);
+          transaction.set(mealRef, formattedMealData);
         });
 
         return {
@@ -294,6 +310,9 @@ export const updateMealDeliveryDate =
     try {
       // Start a new transaction
       const result = await db.runTransaction(async (transaction) => {
+        console.log(`Attempting to update meal ${mealId} in order ${orderId}`);
+
+        // First get the order
         const orderRef = db.collection("orders").doc(orderId);
         const orderDoc = await transaction.get(orderRef);
 
@@ -301,56 +320,135 @@ export const updateMealDeliveryDate =
           throw new functions.https.HttpsError("not-found", "Order not found");
         }
 
-        // First try direct document reference
-        let mealRef = db.collection("meals").doc(mealId);
-        let mealDoc = await transaction.get(mealRef);
-
-        // If meal not found with direct ID, try querying by 'id' field
-        if (!mealDoc.exists) {
-          const mealQuery = db.collection("meals").where("id", "==", mealId)
-            .limit(1);
-          const mealQuerySnapshot = await transaction.get(mealQuery);
-
-          if (mealQuerySnapshot.empty) {
-            throw new functions.https.HttpsError("not-found", "Meal not found");
-          }
-          // Use the first document from the query
-          mealDoc = mealQuerySnapshot.docs[0];
-          // Update the reference to use in the transaction
-          mealRef = mealDoc.ref;
-        }
-
         const orderData = orderDoc.data();
-        const mealData = mealDoc.data();
-
-        if (!orderData || !mealData) {
+        if (!orderData) {
           throw new functions.https.HttpsError(
-            "internal", "Error retrieving order or meal data"
+            "internal", "Error retrieving order data"
           );
         }
 
-        // Update the meal in the order document
-        const updatedMeals = orderData.meals.map((meal: MealDocument) => {
-          if (meal.id === mealId) {
-            return {...meal, orderDate: newDeliveryDate};
-          }
-          return meal;
-        });
+        // Verify the meal exists in the order
+        const mealInOrder = orderData.meals.find((meal: MealDocument) =>
+          meal.id === mealId
+        );
 
-        // Update the order document
-        transaction.update(orderRef, {meals: updatedMeals});
+        if (!mealInOrder) {
+          console.log(`Meal ${mealId} not found in order ${orderId}`);
+        } else {
+          console.log(`Found meal ${mealId} in order ${orderId}`);
+        }
+
+        // Try multiple strategies to find the correct meal document
+        let mealRef;
+        let mealDoc;
+
+        // Strategy 1: Direct document ID lookup
+        console.log(`Strategy 1: Trying direct document ID: ${mealId}`);
+        mealRef = db.collection("meals").doc(mealId);
+        mealDoc = await transaction.get(mealRef);
+
+        // Strategy 2: Query by 'id' field
+        if (!mealDoc.exists) {
+          console.log(`Strategy 2: Trying query by 'id' field with ${mealId}`);
+          const mealByIdQuery = db.collection("meals").where("id", "==", mealId)
+            .limit(1);
+          const mealByIdSnapshot = await transaction.get(mealByIdQuery);
+
+          if (!mealByIdSnapshot.empty) {
+            mealDoc = mealByIdSnapshot.docs[0];
+            mealRef = mealDoc.ref;
+            console.log(`Found meal via 'id' field query: ${mealRef.id}`);
+          }
+        }
+
+        if (!mealDoc.exists && orderId) {
+          console.log(`Strategy 3: Querying all meals for order ${orderId}`);
+          const mealsByOrderQuery =
+            db.collection("meals").where("orderId", "==", orderId);
+          const mealsByOrderSnapshot = await transaction.get(mealsByOrderQuery);
+
+          if (!mealsByOrderSnapshot.empty) {
+            console.log(`Found ${mealsByOrderSnapshot.size}`);
+
+            if (mealInOrder) {
+              // Try to find the meal by comparing properties
+              const matchingMealDoc = mealsByOrderSnapshot.docs.find((doc) => {
+                const data = doc.data();
+                // Match by main dish, child name, and delivery date
+                return (
+                  data.main?.display === mealInOrder.main?.display &&
+                  data.child?.name === mealInOrder.child?.name &&
+                  (data.deliveryDate?.toDate().toISOString().split("T")[0] ===
+                    new Date(mealInOrder.orderDate).toISOString().split("T")[0])
+                );
+              });
+
+              if (matchingMealDoc) {
+                mealDoc = matchingMealDoc;
+                mealRef = matchingMealDoc.ref;
+                console.log(`Found matching meal by properties: ${mealRef.id}`);
+              }
+            }
+          }
+        }
+
+        // If still no meal found, we have to fail
+        if (!mealDoc || !mealDoc.exists) {
+          throw new functions.https.HttpsError("not-found",
+            "Meal not found. Could not locate the meal document in database."
+          );
+        }
+
+        const mealData = mealDoc.data();
+        if (!mealData) {
+          throw new functions.https.HttpsError(
+            "internal", "Error retrieving meal data"
+          );
+        }
+
+        console.log(`Successfully found meal document.
+          Updating delivery date to ${newDeliveryDate}`
+        );
+
+        // Update the meal in the order document
+        if (mealInOrder) {
+          const updatedMeals = orderData.meals.map((meal: MealDocument) => {
+            if (meal.id === mealId) {
+              return {...meal, orderDate: newDeliveryDate};
+            }
+            return meal;
+          });
+
+          // Update the order document
+          transaction.update(orderRef, {meals: updatedMeals});
+          console.log("Updated meal in order document");
+        } else {
+          console.log("No meal found in order document to update.");
+        }
 
         // Update the meal document
         transaction.update(mealRef, {
           deliveryDate: Timestamp.fromDate(new Date(newDeliveryDate)),
         });
+        console.log(`Updated meal document with ID ${mealRef.id}`);
 
-        return {success: true};
+        // If we found the meal via a different ID than what was in the order,
+        // we should consider repairing the reference in the order
+        if (mealInOrder && mealRef.id !== mealId && mealData.id !== mealId) {
+          console.log(`Warning: ID mismatch detected.
+            Order has meal ID ${mealId} but meal has ID ${mealRef.id}`);
+          // We could implement a repair mechanism here if needed
+        }
+
+        return {
+          success: true,
+          mealDocumentId: mealRef.id,
+          mealFieldId: mealData.id,
+          updated: new Date().toISOString(),
+        };
       });
 
-      console.log(
-        `Meal delivery date updated for order ${orderId}, meal ${mealId}`
-      );
+      console.log(`Meal delivery date updated for order ${orderId}`);
       return result;
     } catch (error) {
       console.error("Error updating meal delivery date:", error);

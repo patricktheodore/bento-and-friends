@@ -226,19 +226,26 @@ const Cart: React.FC = () => {
 	};
 
 	const isValidDate = (date: Date) => {
+		const now = new Date();
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
 
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
-		const isPast = date <= today;
+
+		let isPast;
+		if (now.getHours() < 7) {
+			isPast = date < today;
+		} else {
+			isPast = date <= today;
+		}
 		const isBlocked = state.blockedDates.some(
 			(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
 		);
-		const schoolDeiveryDays = editingMeal?.school?.deliveryDays.map(day => day.toLowerCase());
-        const schoolDeliversOnDay = schoolDeiveryDays?.includes(date.toLocaleString('en-US', { weekday: 'long' }).toLowerCase());
+		const schoolDeiveryDays = editingMeal?.school?.deliveryDays.map((day) => day.toLowerCase());
+		const schoolDeliversOnDay = schoolDeiveryDays?.includes(
+			date.toLocaleString('en-US', { weekday: 'long' }).toLowerCase()
+		);
 
 		return isWeekend || isPast || isBlocked || !schoolDeliversOnDay;
 	};
@@ -248,11 +255,17 @@ const Cart: React.FC = () => {
 		if (!cart || !state.cart) return;
 
 		const now = new Date();
-		now.setHours(0, 0, 0, 0);
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
 
 		const invalidDates = cart.meals.filter((meal) => {
 			const orderDate = new Date(meal.orderDate);
-			return orderDate <= now;
+
+			if (now.getHours() < 7) {
+				return orderDate < today;
+			} else {
+				return orderDate <= today;
+			}
 		});
 
 		if (invalidDates.length > 0) {
@@ -397,12 +410,10 @@ const Cart: React.FC = () => {
 	return (
 		<Sheet
 			open={isCartOpen}
-			onOpenChange={closeCart}
-		>
+			onOpenChange={closeCart}>
 			<SheetContent
 				side="right"
-				className="w-full md:w-[400px] flex flex-col h-full p-0 gap-0"
-			>
+				className="w-full md:w-[400px] flex flex-col h-full p-0 gap-0">
 				<div className="flex-shrink-0 p-6 pb-2 border-b">
 					<SheetHeader className="space-y-0 gap-y-2">
 						<div className="flex flex-row justify-between items-center">
@@ -410,8 +421,7 @@ const Cart: React.FC = () => {
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={closeCart}
-							>
+								onClick={closeCart}>
 								<X className="h-4 w-4" />
 							</Button>
 						</div>
@@ -428,8 +438,7 @@ const Cart: React.FC = () => {
 					{duplicateOrders.length > 0 && (
 						<Alert
 							variant="destructive"
-							className="mb-4"
-						>
+							className="mb-4">
 							<AlertTriangle className="h-4 w-4" />
 							<AlertDescription>
 								Warning: You have ordered multiple meals for the same child on the same day:
@@ -448,14 +457,26 @@ const Cart: React.FC = () => {
 						cart.meals.map((meal) => (
 							<div
 								key={meal.id}
-								className="py-4 border-b"
-							>
+								className="py-4 border-b">
 								<h3 className="font-semibold">{meal.main.display}</h3>
-								{new Date(meal.orderDate) <= new Date() && (
+								{(() => {
+									const now = new Date();
+									const today = new Date();
+									today.setHours(0, 0, 0, 0);
+									const orderDate = new Date(meal.orderDate);
+
+									let isPast;
+									if (now.getHours() < 7) {
+										isPast = orderDate < today;
+									} else {
+										isPast = orderDate <= today;
+									}
+
+									return isPast;
+								})() && (
 									<Alert
 										variant="destructive"
-										className="mt-2 mb-2"
-									>
+										className="mt-2 mb-2">
 										<AlertTriangle className="h-4 w-4" />
 										<AlertDescription>
 											This meal's delivery date has passed. Please update or remove it.
@@ -463,7 +484,9 @@ const Cart: React.FC = () => {
 									</Alert>
 								)}
 								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')} - {meal.probiotic ? meal.probiotic.display : ' No side '} - {meal.fruit ? meal.fruit.display : ' No fruit '}
+									{meal.addOns.map((addon) => addon.display).join(', ')} -{' '}
+									{meal.probiotic ? meal.probiotic.display : ' No side '} -{' '}
+									{meal.fruit ? meal.fruit.display : ' No fruit '}
 								</p>
 								<p className="text-sm">
 									{meal.child.name} - {formatDate(meal.orderDate)}
@@ -485,14 +508,12 @@ const Cart: React.FC = () => {
 								<div className="flex justify-end space-x-2 mt-2">
 									<Dialog
 										open={isDialogOpen}
-										onOpenChange={setIsDialogOpen}
-									>
+										onOpenChange={setIsDialogOpen}>
 										<DialogTrigger asChild>
 											<Button
 												variant="outline"
 												size="sm"
-												onClick={() => startEditing(meal)}
-											>
+												onClick={() => startEditing(meal)}>
 												<Edit2 className="h-4 w-4 mr-1" /> Edit
 											</Button>
 										</DialogTrigger>
@@ -515,8 +536,7 @@ const Cart: React.FC = () => {
 																	main: newMain,
 																	total: calculateTotal(newMain, editingMeal.addOns),
 																});
-															}}
-														>
+															}}>
 															<SelectTrigger>
 																<SelectValue placeholder="Select main dish" />
 															</SelectTrigger>
@@ -524,8 +544,7 @@ const Cart: React.FC = () => {
 																{state.mains.map((main) => (
 																	<SelectItem
 																		key={main.id}
-																		value={main.id}
-																	>
+																		value={main.id}>
 																		{main.display}
 																	</SelectItem>
 																))}
@@ -535,31 +554,33 @@ const Cart: React.FC = () => {
 
 													<div>
 														<label className="text-sm font-medium">Add-ons</label>
-														{orderAddOns(state.addOns).map((addon) => (
-															addon.isActive && (
-																<div
-																	key={addon.id}
-																	className="flex items-center space-x-2 mb-2"
-																>
-																	<Checkbox
-																		id={addon.id}
-																		checked={editingMeal.addOns.some(
-																			(a) => a.id === addon.id
-																		)}
-																		onCheckedChange={(checked) => {
-																			setIsMainOnly(
-																				checked &&
-																					addon.display
-																						.toLowerCase()
-																						.includes('main only')
-																			);
-																			handleAddOnToggle(addon.id);
-																		}}
-																	/>
-																	<Label htmlFor={addon.id}>{addon.display}</Label>
-																</div>
-															)
-														))}
+														{orderAddOns(state.addOns).map(
+															(addon) =>
+																addon.isActive && (
+																	<div
+																		key={addon.id}
+																		className="flex items-center space-x-2 mb-2">
+																		<Checkbox
+																			id={addon.id}
+																			checked={editingMeal.addOns.some(
+																				(a) => a.id === addon.id
+																			)}
+																			onCheckedChange={(checked) => {
+																				setIsMainOnly(
+																					checked &&
+																						addon.display
+																							.toLowerCase()
+																							.includes('main only')
+																				);
+																				handleAddOnToggle(addon.id);
+																			}}
+																		/>
+																		<Label htmlFor={addon.id}>
+																			{addon.display}
+																		</Label>
+																	</div>
+																)
+														)}
 													</div>
 
 													{!isMainOnly && (
@@ -568,36 +589,37 @@ const Cart: React.FC = () => {
 																<label className="text-sm font-medium">Side</label>
 																<div className="space-y-2">
 																	{state.probiotics &&
-																		state.probiotics.map((yogurt) => (
-																			yogurt.isActive && (
-																				<div
-																					key={yogurt.id}
-																					className="flex items-center space-x-2"
-																				>
-																					<Checkbox
-																						id={`yogurt-${yogurt.id}`}
-																						checked={
-																							editingMeal.probiotic?.id ===
-																							yogurt.id
-																						}
-																						onCheckedChange={(checked) => {
-																							setEditingMeal({
-																								...editingMeal,
-																								probiotic: checked
-																									? yogurt
-																									: undefined,
-																							});
-																						}}
-																					/>
-																					<Label
-																						htmlFor={`yogurt-${yogurt.id}`}
-																						className="text-sm"
-																					>
-																						{yogurt.display}
-																					</Label>
-																				</div>
-																			)
-																		))}
+																		state.probiotics.map(
+																			(yogurt) =>
+																				yogurt.isActive && (
+																					<div
+																						key={yogurt.id}
+																						className="flex items-center space-x-2">
+																						<Checkbox
+																							id={`yogurt-${yogurt.id}`}
+																							checked={
+																								editingMeal.probiotic
+																									?.id === yogurt.id
+																							}
+																							onCheckedChange={(
+																								checked
+																							) => {
+																								setEditingMeal({
+																									...editingMeal,
+																									probiotic: checked
+																										? yogurt
+																										: undefined,
+																								});
+																							}}
+																						/>
+																						<Label
+																							htmlFor={`yogurt-${yogurt.id}`}
+																							className="text-sm">
+																							{yogurt.display}
+																						</Label>
+																					</div>
+																				)
+																		)}
 																</div>
 															</div>
 
@@ -605,37 +627,37 @@ const Cart: React.FC = () => {
 																<label className="text-sm font-medium">Fruit</label>
 																<div className="space-y-2">
 																	{state.fruits &&
-																		state.fruits.map((fruit) => (
-																			fruit.isActive && (
-																				<div
-																					key={fruit.id}
-																					className="flex items-center space-x-2"
-																				>
-																					<Checkbox
-																						id={`fruit-${fruit.id}`}
-																						checked={
-																							editingMeal.fruit?.id ===
-																							fruit.id
-																						}
-																						onCheckedChange={(checked) => {
-																							setEditingMeal({
-																								...editingMeal,
-																								fruit: checked
-																									? fruit
-																									: undefined,
-																							});
-																						}}
-																					/>
-																					<Label
-																						htmlFor={`fruit-${fruit.id}`}
-																						className="text-sm"
-																					>
-																						{fruit.display}
-																					</Label>
-																				</div>
-
-																			)
-																		))}
+																		state.fruits.map(
+																			(fruit) =>
+																				fruit.isActive && (
+																					<div
+																						key={fruit.id}
+																						className="flex items-center space-x-2">
+																						<Checkbox
+																							id={`fruit-${fruit.id}`}
+																							checked={
+																								editingMeal.fruit
+																									?.id === fruit.id
+																							}
+																							onCheckedChange={(
+																								checked
+																							) => {
+																								setEditingMeal({
+																									...editingMeal,
+																									fruit: checked
+																										? fruit
+																										: undefined,
+																								});
+																							}}
+																						/>
+																						<Label
+																							htmlFor={`fruit-${fruit.id}`}
+																							className="text-sm">
+																							{fruit.display}
+																						</Label>
+																					</div>
+																				)
+																		)}
 																</div>
 															</div>
 														</>
@@ -676,8 +698,7 @@ const Cart: React.FC = () => {
 																		},
 																	});
 																}
-															}}
-														>
+															}}>
 															<SelectTrigger>
 																<SelectValue placeholder="Select a child" />
 															</SelectTrigger>
@@ -685,8 +706,7 @@ const Cart: React.FC = () => {
 																{user?.children.map((child) => (
 																	<SelectItem
 																		key={child.id}
-																		value={child.id}
-																	>
+																		value={child.id}>
 																		{child.name}
 																	</SelectItem>
 																))}
@@ -715,8 +735,7 @@ const Cart: React.FC = () => {
 											<DialogFooter>
 												<Button
 													variant="outline"
-													onClick={cancelEdit}
-												>
+													onClick={cancelEdit}>
 													Cancel
 												</Button>
 												<Button onClick={updateMeal}>Save Changes</Button>
@@ -726,8 +745,7 @@ const Cart: React.FC = () => {
 									<Button
 										variant="destructive"
 										size="sm"
-										onClick={() => removeMeal(meal.id)}
-									>
+										onClick={() => removeMeal(meal.id)}>
 										<Trash2 className="h-4 w-4 mr-1" /> Remove
 									</Button>
 								</div>
@@ -759,8 +777,7 @@ const Cart: React.FC = () => {
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={handleRemoveCoupon}
-								>
+									onClick={handleRemoveCoupon}>
 									Remove
 								</Button>
 							</div>
@@ -783,8 +800,7 @@ const Cart: React.FC = () => {
 						<Button
 							onClick={handleCheckout}
 							className="w-full mt-4"
-							disabled={isProcessing}
-						>
+							disabled={isProcessing}>
 							{isProcessing ? 'Processing...' : 'Proceed to Checkout'}
 						</Button>
 					</div>

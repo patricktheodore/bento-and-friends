@@ -57,8 +57,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     useEffect(() => {
         if (isOpen) {
             setSelectedAddons(initialSelectedAddons || []);
-            setSelectedYogurt(initialSelectedYogurt || state.probiotics.find(yogurt => yogurt.display.toLowerCase().includes('surprise'))?.id || null);
-            setSelectedFruit(initialSelectedFruit || state.fruits.find(fruit => fruit.display.toLowerCase().includes('mixed'))?.id || null);
+            setSelectedYogurt(initialSelectedYogurt || state.probiotics.find(yogurt => (yogurt.display.toLowerCase().includes('yoghurt') && yogurt.isActive ))?.id || null);
+            setSelectedFruit(initialSelectedFruit || state.fruits.find(fruit => (fruit.display.toLowerCase().includes('mixed') && fruit.isActive))?.id || null);
             setSelectedChildren(initialSelectedChild ? [initialSelectedChild] : []);
             setSelectedDates([]);
         }
@@ -159,12 +159,20 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     };
 
     const isValidDate = (date: Date) => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		
-		const day = date.getDay();
-		const isWeekend = day === 0 || day === 6;
-		const isPast = date <= today;
+		const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const day = date.getDay();
+        const isWeekend = day === 0 || day === 6;
+        
+        let isPast;
+        if (now.getHours() < 7) {
+            isPast = date < today;
+        } else {
+            // 7am or later - today is considered past
+            isPast = date <= today;
+        }
 		const isBlocked = state.blockedDates.some(
 			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
 		);
