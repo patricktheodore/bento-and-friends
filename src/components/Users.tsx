@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail, School } from 'lucide-react';
 import { fetchUserDetails, updateUserInFirebase } from '../services/user-service';
 import { User as UserType, OrderHistorySummary, Child } from '../models/user.model';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import { db } from '@/firebase';
 import { query, collection, orderBy, startAfter, getDocs } from 'firebase/firestore';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import debounce from 'lodash/debounce';
 import ChildManagementDialog from './ChildManagementDialog';
 import ManualOrderDialog from './ManualOrderDialog';
@@ -24,12 +25,26 @@ const UsersComponent: React.FC = () => {
 	const [expandedUserDetails, setExpandedUserDetails] = useState<UserType | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [searchTerm, setSearchTerm] = useState('');
+	const [selectedSchool, setSelectedSchool] = useState<string>('all');
 	const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
 	const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 	const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
 	const [isEditingPhone, setIsEditingPhone] = useState(false);
 	const [editedPhone, setEditedPhone] = useState('');
 	const [isManualOrderDialogOpen, setIsManualOrderDialogOpen] = useState(false);
+
+	// Get unique schools from all users
+	const uniqueSchools = useMemo(() => {
+		const schoolsSet = new Set<string>();
+		users.forEach(user => {
+			user.children.forEach(child => {
+				if (child.school && child.school.trim()) {
+					schoolsSet.add(child.school.trim());
+				}
+			});
+		});
+		return Array.from(schoolsSet).sort();
+	}, [users]);
 
 	const handleEditChild = async (childId: string) => {
 		const user = expandedUserDetails;
@@ -118,7 +133,6 @@ const UsersComponent: React.FC = () => {
 			);
 
 			setUsers((prevUsers) => (lastDoc ? [...prevUsers, ...newUsers] : newUsers));
-			setFilteredUsers((prevUsers) => (lastDoc ? [...prevUsers, ...newUsers] : newUsers));
 			setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
 			setHasMore(querySnapshot.docs.length === PAGE_SIZE);
 		} catch (error) {
@@ -133,39 +147,57 @@ const UsersComponent: React.FC = () => {
 		fetchUsers();
 	}, []);
 
-	const filterUsers = (searchTerm: string) => {
-		if (!searchTerm.trim()) {
-			setFilteredUsers(users);
-			return;
+	// Enhanced filtering function that handles both search and school filter
+	const filterUsers = (searchTerm: string, school: string) => {
+		let filtered = users;
+
+		// Filter by school if not "all"
+		if (school !== 'all') {
+			filtered = filtered.filter(user => 
+				user.children.some(child => child.school === school)
+			);
 		}
 
-		const lowerSearchTerm = searchTerm.toLowerCase();
-		const filtered = users.filter((user) => {
-			// Check user name
-			const nameMatch = user.displayName.toLowerCase().includes(lowerSearchTerm);
+		// Filter by search term if provided
+		if (searchTerm.trim()) {
+			const lowerSearchTerm = searchTerm.toLowerCase();
+			filtered = filtered.filter((user) => {
+				// Check user name
+				const nameMatch = user.displayName.toLowerCase().includes(lowerSearchTerm);
 
-			// Check email
-			const emailMatch = user.email.toLowerCase().includes(lowerSearchTerm);
+				// Check email
+				const emailMatch = user.email.toLowerCase().includes(lowerSearchTerm);
 
-			// Check children names
-			const childrenMatch = user.children.some((child) => child.name.toLowerCase().includes(lowerSearchTerm));
+				// Check children names
+				const childrenMatch = user.children.some((child) => child.name.toLowerCase().includes(lowerSearchTerm));
 
-			return nameMatch || emailMatch || childrenMatch;
-		});
+				return nameMatch || emailMatch || childrenMatch;
+			});
+		}
 
 		setFilteredUsers(filtered);
 	};
 
 	// Debounce the search to avoid too many re-renders
-	const debouncedSearch = debounce((term: string) => {
-		filterUsers(term);
+	const debouncedFilter = debounce((searchTerm: string, school: string) => {
+		filterUsers(searchTerm, school);
 	}, 300);
 
 	const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const value = event.target.value;
 		setSearchTerm(value);
-		debouncedSearch(value);
+		debouncedFilter(value, selectedSchool);
 	};
+
+	const handleSchoolChange = (school: string) => {
+		setSelectedSchool(school);
+		filterUsers(searchTerm, school);
+	};
+
+	// Update filtered users when users change
+	useEffect(() => {
+		filterUsers(searchTerm, selectedSchool);
+	}, [users]);
 
 	const loadMore = () => {
 		if (!isLoading && hasMore) {
@@ -239,6 +271,15 @@ const UsersComponent: React.FC = () => {
 		}
 	};
 
+	// Get schools for a specific user
+	const getUserSchools = (user: UserType): string[] => {
+		const schools = user.children
+			.map(child => child.school)
+			.filter(school => school && school.trim())
+			.filter((school, index, arr) => arr.indexOf(school) === index); // Remove duplicates
+		return schools;
+	};
+
 	const NoUsersDisplay = () => (
 		<Card className="mt-8">
 			<CardHeader>
@@ -247,27 +288,88 @@ const UsersComponent: React.FC = () => {
 			<CardContent className="text-center">
 				<User className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
 				<p className="text-lg mb-4">
-					{searchTerm ? 'No users match your search criteria.' : 'There are no users in the system yet.'}
+					{searchTerm || selectedSchool !== 'all' 
+						? 'No users match your filter criteria.' 
+						: 'There are no users in the system yet.'
+					}
 				</p>
+				{(searchTerm || selectedSchool !== 'all') && (
+					<div className="space-x-2">
+						<Button 
+							variant="outline" 
+							onClick={() => {
+								setSearchTerm('');
+								setSelectedSchool('all');
+								setFilteredUsers(users);
+							}}
+						>
+							Clear Filters
+						</Button>
+					</div>
+				)}
 			</CardContent>
 		</Card>
 	);
 
 	return (
 		<div className="w-full space-y-4">
-			<div className="flex justify-between items-center">
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 				<h2 className="text-2xl font-bold">Users</h2>
-				<div className="relative max-w-sm w-full">
-					<Input
-						type="text"
-						placeholder="Search by name or email..."
-						value={searchTerm}
-						onChange={handleSearch}
-						className="pl-10"
-					/>
-					<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
+				
+				<div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+					{/* School Filter */}
+					<div className="min-w-[200px]">
+						<Select value={selectedSchool} onValueChange={handleSchoolChange}>
+							<SelectTrigger className="w-full">
+								<div className="flex items-center gap-2">
+									<School className="h-4 w-4 text-gray-500" />
+									<SelectValue placeholder="Filter by school" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All Schools</SelectItem>
+								{uniqueSchools.map((school) => (
+									<SelectItem key={school} value={school}>
+										{school}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					{/* Search Input */}
+					<div className="relative min-w-[250px]">
+						<Input
+							type="text"
+							placeholder="Search by name or email..."
+							value={searchTerm}
+							onChange={handleSearch}
+							className="pl-10"
+						/>
+						<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
+					</div>
 				</div>
 			</div>
+
+			{/* Filter Summary */}
+			{(searchTerm || selectedSchool !== 'all') && (
+				<div className="flex items-center gap-2 text-sm text-gray-600">
+					<span>Filters:</span>
+					{selectedSchool !== 'all' && (
+						<span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md">
+							School: {selectedSchool}
+						</span>
+					)}
+					{searchTerm && (
+						<span className="bg-green-100 text-green-800 px-2 py-1 rounded-md">
+							Search: "{searchTerm}"
+						</span>
+					)}
+					<span className="text-gray-500">
+						({filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found)
+					</span>
+				</div>
+			)}
 
 			{filteredUsers.length === 0 ? (
 				<NoUsersDisplay />
@@ -279,6 +381,7 @@ const UsersComponent: React.FC = () => {
 								<TableHead className="w-[200px]">Name</TableHead>
 								<TableHead className="w-[200px]">Email</TableHead>
 								<TableHead className="w-[150px]">Phone</TableHead>
+								<TableHead className="w-[150px]">Schools</TableHead>
 								<TableHead className="w-[100px]">Total Orders</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -303,11 +406,26 @@ const UsersComponent: React.FC = () => {
 										</TableCell>
 										<TableCell>{user.email}</TableCell>
 										<TableCell>{user.phone ? formatPhoneNumber(user.phone) : '-'}</TableCell>
+										<TableCell>
+											<div className="flex flex-wrap gap-1">
+												{getUserSchools(user).map((school, index) => (
+													<span 
+														key={index} 
+														className="bg-gray-100 text-gray-700 px-2 py-1 rounded-sm text-xs"
+													>
+														{school}
+													</span>
+												))}
+												{getUserSchools(user).length === 0 && (
+													<span className="text-gray-400 text-sm">No school</span>
+												)}
+											</div>
+										</TableCell>
 										<TableCell>{user.orderHistory?.length}</TableCell>
 									</TableRow>
 									{expandedUserId === user.id && expandedUserDetails && (
 										<TableRow>
-											<TableCell colSpan={4}>
+											<TableCell colSpan={5}>
 												<div className="p-4 bg-gray-50 space-y-4">
 													<div className="bg-white p-4 rounded-lg shadow-sm">
 														<div className="flex justify-between items-center mb-4">
@@ -512,7 +630,7 @@ const UsersComponent: React.FC = () => {
 			/>
 			)}
 
-			{!searchTerm && hasMore && (
+			{!searchTerm && !selectedSchool && hasMore && (
 				<div className="flex justify-center mt-4">
 					<Button
 						onClick={loadMore}
