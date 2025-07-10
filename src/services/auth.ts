@@ -45,20 +45,23 @@ export const signIn = async (email: string, password: string): Promise<User> => 
 export const signOut = () => firebaseSignOut(auth);
 
 export const getCurrentUser = (): Promise<User | null> => {
-	return new Promise((resolve, reject) => {
-		const unsubscribe = onAuthStateChanged(
-			auth,
-			async (user) => {
-				unsubscribe();
-				if (user) {
-					const userDoc = await getDoc(doc(db, 'users', user.uid));
-					const userData = userDoc.data() as User;
-					resolve(userData);
-				} else {
-					resolve(null);
-				}
-			},
-			reject
-		);
-	});
+    return new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(
+            auth,
+            async (user) => {
+                unsubscribe();
+                if (user) {
+                    const userDoc = await getDoc(doc(db, 'users-test', user.uid));
+                    const userData = userDoc.data() as User;
+                    if (userData) {
+                        userData.id = userDoc.id; // Assign the doc.id to user.id
+                    }
+                    resolve(userData);
+                } else {
+                    resolve(null);
+                }
+            },
+            reject
+        );
+    });
 };

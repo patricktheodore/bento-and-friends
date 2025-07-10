@@ -9,43 +9,67 @@ import AccountSummary from '@/components/AccountSummary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MealCalendar from '@/components/MealCalendar';
 import AccountDetails from '@/components/AccountDetails';
+import toast from 'react-hot-toast';
 
 const AccountPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 
-	const handleAddChild = (childData: Omit<Child, 'id'>) => {
-        if (state.user) {
+	const handleAddChild = async (childData: Omit<Child, 'id'>) => {
+        if (!state.user) return;
+        
+        try {
             const newChild = new Child(
                 childData.name,
                 childData.year,
-				childData.isTeacher,
-                childData.school,
+                childData.isTeacher,
+                childData.schoolId, // Use schoolId instead of school
                 childData.className,
                 childData.allergens
             );
+            
             const updatedUser = {
                 ...state.user,
                 children: [...state.user.children, newChild],
             };
+            
+            // Update local state first
             dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-            updateUserInFirebase(updatedUser);
+            
+            // Then update Firebase
+            await updateUserInFirebase(updatedUser);
+        } catch (error) {
+            console.error('Error adding child:', error);
+            toast.error('Failed to add member');
+            throw error; // Re-throw so component can handle it
         }
     };
 
-    const handleRemoveChild = (childId: string) => {
-        if (state.user) {
+    const handleRemoveChild = async (childId: string) => {
+        if (!state.user) return;
+        
+        try {
             const updatedChildren = state.user.children.filter((child) => child.id !== childId);
             const updatedUser = {
                 ...state.user,
                 children: updatedChildren,
             };
+            
+            // Update local state first
             dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-            updateUserInFirebase(updatedUser);
+            
+            // Then update Firebase
+            await updateUserInFirebase(updatedUser);
+        } catch (error) {
+            console.error('Error removing child:', error);
+            toast.error('Failed to remove member');
+            throw error; // Re-throw so component can handle it
         }
     };
 
-    const handleEditChild = (childId: string, updatedChildData: Omit<Child, 'id'>) => {
-        if (state.user) {
+    const handleEditChild = async (childId: string, updatedChildData: Omit<Child, 'id'>) => {
+        if (!state.user) return;
+        
+        try {
             const updatedChildren = state.user.children.map((child) =>
                 child.id === childId
                     ? {
@@ -54,12 +78,21 @@ const AccountPage: React.FC = () => {
                       }
                     : child
             );
+            
             const updatedUser = {
                 ...state.user,
                 children: updatedChildren,
             };
+            
+            // Update local state first
             dispatch({ type: 'UPDATE_USER', payload: updatedUser });
-            updateUserInFirebase(updatedUser);
+            
+            // Then update Firebase
+            await updateUserInFirebase(updatedUser);
+        } catch (error) {
+            console.error('Error editing child:', error);
+            toast.error('Failed to update member');
+            throw error; // Re-throw so component can handle it
         }
     };
 

@@ -117,7 +117,7 @@ const UsersComponent: React.FC = () => {
 	const fetchUsers = async (lastDoc?: any) => {
 		setIsLoading(true);
 		try {
-			let usersQuery = query(collection(db, 'users'), orderBy('displayName', 'asc'));
+			let usersQuery = query(collection(db, 'users-test'), orderBy('displayName', 'asc'));
 
 			if (lastDoc) {
 				usersQuery = query(usersQuery, startAfter(lastDoc));

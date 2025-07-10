@@ -34,6 +34,7 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 	const [otherAllergen, setOtherAllergen] = useState('');
 	const [isTeacher, setIsTeacher] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+    const [schools] = useState(state.schools || []);
 
     const resetDialog = () => {
         setChildData(new Child());
@@ -41,42 +42,44 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
         setOtherAllergen('');
         setIsTeacher(false);
         setIsLoading(false);
-      };
+    };
 
-      useEffect(() => {
+    useEffect(() => {
         if (!isOpen) {
-          resetDialog();
-          return;
+            resetDialog();
+            return;
         }
-    
+
         if (editingChild) {
-          const allergens = editingChild.allergens ? editingChild.allergens.split(', ') : [];
-          const standardAllergens = allergens.filter((a) => allergenOptions.includes(a));
-          const otherAllergens = allergens.filter((a) => !allergenOptions.includes(a));
-    
-          setChildData(editingChild);
-          setSelectedAllergens(standardAllergens);
-          if (otherAllergens.length > 0) {
-            setSelectedAllergens((prev) => [...prev, 'Other']);
-            setOtherAllergen(otherAllergens.join(', '));
-          } else {
-            setOtherAllergen('');
-          }
-          setIsTeacher(editingChild.isTeacher || false);
+            const allergens = editingChild.allergens ? editingChild.allergens.split(', ') : [];
+            const standardAllergens = allergens.filter((a) => allergenOptions.includes(a));
+            const otherAllergens = allergens.filter((a) => !allergenOptions.includes(a));
+
+            setChildData(editingChild);
+            setSelectedAllergens(standardAllergens);
+            if (otherAllergens.length > 0) {
+                setSelectedAllergens((prev) => [...prev, 'Other']);
+                setOtherAllergen(otherAllergens.join(', '));
+            } else {
+                setOtherAllergen('');
+            }
+            setIsTeacher(editingChild.isTeacher || false);
         } else {
-          // Set default school if only one exists
-          const defaultSchool = state.schools.length === 1 ? state.schools[0].name : '';
-          setChildData(new Child());
-          setChildData((prev) => ({ ...prev, school: defaultSchool }));
-          setSelectedAllergens([]);
-          setOtherAllergen('');
-          setIsTeacher(false);
+            // Create new child - let user select school
+            setChildData(new Child());
+            setSelectedAllergens([]);
+            setOtherAllergen('');
+            setIsTeacher(false);
         }
-      }, [isOpen, editingChild, state.schools]);
+    }, [isOpen, editingChild]);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
 		setChildData((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleSchoolChange = (schoolId: string) => {
+		setChildData((prev) => ({ ...prev, schoolId }));
 	};
 
 	const handleAllergenChange = (value: string) => {
@@ -101,23 +104,23 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
         e.preventDefault();
         setIsLoading(true);
         try {
-          const allergens = getAllergenString();
-          const child = {
-            ...childData,
-            allergens,
-            isTeacher,
-            year: isTeacher ? '' : childData.year,
-            className: isTeacher ? '' : childData.className,
-          };
-          await onSubmit(child);
-          resetDialog();
-          onClose();
+            const allergens = getAllergenString();
+            const child = {
+                ...childData,
+                allergens,
+                isTeacher,
+                year: isTeacher ? '' : childData.year,
+                className: isTeacher ? '' : childData.className,
+            };
+            await onSubmit(child);
+            resetDialog();
+            onClose();
         } catch (error) {
-          console.error('Error submitting child:', error);
+            console.error('Error submitting child:', error);
         } finally {
-          setIsLoading(false);
+            setIsLoading(false);
         }
-      };
+    };
 
 	const handleRemove = async () => {
 		if (editingChild && onRemove) {
@@ -134,34 +137,45 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 	};
 
 	const renderSchoolSelection = () => {
-		if (state.schools.length === 1) {
+		if (schools.length === 1) {
 			return (
-				<Input
-					value={state.schools[0].name}
-					disabled
-				/>
+				<div className="space-y-2">
+					<Input
+						value={schools[0].name}
+						disabled
+						className="bg-gray-50"
+					/>
+					<p className="text-xs text-gray-500">
+						Only one school available
+					</p>
+				</div>
 			);
 		}
 
 		return (
-			<Select
-				onValueChange={(value) => setChildData((prev) => ({ ...prev, school: value }))}
-				value={childData.school}
-			>
-				<SelectTrigger>
-					<SelectValue placeholder="Select School" />
-				</SelectTrigger>
-				<SelectContent>
-					{state.schools.map((school) => (
-						<SelectItem
-							key={school.id}
-							value={school.name}
-						>
-							{school.name}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
+			<div className="space-y-2">
+				<Select
+					value={childData.schoolId || ''}
+					onValueChange={handleSchoolChange}
+				>
+					<SelectTrigger>
+						<SelectValue placeholder="Select School" />
+					</SelectTrigger>
+					<SelectContent>
+						{schools.map((school) => (
+							<SelectItem key={school.id} value={school.id}>
+								{school.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<Link
+					to="/contact"
+					className="text-brand-dark-green text-xs hover:underline"
+				>
+					School not listed here?
+				</Link>
+			</div>
 		);
 	};
 
@@ -170,10 +184,10 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 			open={isOpen}
 			onOpenChange={(open) => {
                 if (!open) {
-                  resetDialog();
-                  onClose();
+                    resetDialog();
+                    onClose();
                 }
-              }}
+            }}
 		>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
@@ -205,16 +219,12 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 							disabled={isLoading}
 						/>
 					</div>
+
 					<div className="space-y-2">
 						<Label htmlFor="school">School*</Label>
 						{renderSchoolSelection()}
-						<Link
-							to="/contact"
-							className="text-brand-dark-green text-xs hover:underline"
-						>
-							School not listed here?
-						</Link>
 					</div>
+
 					<div className="flex items-center space-x-2">
 						<Checkbox
 							id="isTeacher"
@@ -223,6 +233,7 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 						/>
 						<Label htmlFor="isTeacher">Is this member a teacher?</Label>
 					</div>
+
 					{!isTeacher && (
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
@@ -249,6 +260,7 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 							</div>
 						</div>
 					)}
+
 					<div className="space-y-2">
 						<Label htmlFor="allergens">Allergens / Dietaries</Label>
 						<Select onValueChange={handleAllergenChange}>
@@ -287,6 +299,7 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 							/>
 						)}
 					</div>
+
 					<DialogFooter>
 						{editingChild && onRemove && (
 							<Button
@@ -311,6 +324,7 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 							disabled={
 								isLoading ||
 								!childData.name ||
+								!childData.schoolId ||
 								(!isTeacher && (!childData.year || !childData.className))
 							}
 						>

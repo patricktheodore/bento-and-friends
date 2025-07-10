@@ -3,13 +3,13 @@ import { FirebaseError } from 'firebase/app';
 import { db } from '../firebase';
 import { School } from '../models/school.model';
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
 	success: boolean;
 	data?: T;
 	error?: string;
 }
 
-const handleApiError = (error: unknown): string => {
+export const handleApiError = (error: unknown): string => {
 	if (error instanceof FirebaseError) {
 		if (error.code === 'functions/permission-denied') {
 			return 'You do not have permission to perform this action.';

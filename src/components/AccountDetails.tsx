@@ -13,11 +13,24 @@ interface AccountDetailsProps {
 }
 
 const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
-    const { dispatch } = useAppContext();
+    const { state, dispatch } = useAppContext();
     const [isEditing, setIsEditing] = useState(false);
     const [phone, setPhone] = useState(user.phone || '');
     const [displayName, setDisplayName] = useState(user.displayName);
     const [phoneError, setPhoneError] = useState<string>('');
+
+    // Get unique schools from children
+    const getChildrenSchools = (): string[] => {
+        if (!user.children || user.children.length === 0) return [];
+        
+        const schoolIds = [...new Set(user.children.map(child => child.schoolId).filter(Boolean))];
+        const schoolNames = schoolIds.map(schoolId => {
+            const school = state.schools.find(s => s.id === schoolId);
+            return school ? school.name : 'Unknown School';
+        });
+        
+        return schoolNames;
+    };
 
     const validatePhoneNumber = (phoneNumber: string): boolean => {
         // Remove any non-digit characters
@@ -109,6 +122,7 @@ const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
         try {
             await updateUserInFirebase(updatedUser);
             dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+            
             setIsEditing(false);
             toast.success('Account details updated successfully');
         } catch (error) {
@@ -125,13 +139,15 @@ const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
         setIsEditing(false);
     };
 
+    const childrenSchools = getChildrenSchools();
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="text-xl">Account Details</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="displayName">Name</Label>
                         {isEditing ? (
@@ -152,6 +168,23 @@ const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
                     </div>
 
                     <div className="space-y-2">
+                        <Label htmlFor="schools">Schools</Label>
+                        <div className="text-gray-700">
+                            {childrenSchools.length > 0 ? (
+                                <div className="space-y-1">
+                                    {childrenSchools.map((schoolName, index) => (
+                                        <p key={index}>{schoolName}</p>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 italic">
+                                    No schools (add children to see their schools)
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number (Optional)</Label>
                         {isEditing ? (
                             <div className="space-y-1">
@@ -166,9 +199,6 @@ const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
                                 {phoneError && (
                                     <p className="text-sm text-red-500">{phoneError}</p>
                                 )}
-                                <p className="text-sm text-gray-500">
-                                    Format: 04XX XXX XXX (mobile) or 0X XXXX XXXX (landline)
-                                </p>
                             </div>
                         ) : (
                             <p className="text-gray-700">
@@ -177,7 +207,7 @@ const AccountDetails: React.FC<AccountDetailsProps> = ({ user }) => {
                         )}
                     </div>
 
-                    <div className="flex justify-end space-x-2">
+                    <div className="col-span-full flex justify-end space-x-2">
                         {isEditing ? (
                             <>
                                 <Button type="button" variant="outline" onClick={handleCancel}>
