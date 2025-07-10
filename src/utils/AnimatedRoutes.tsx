@@ -23,72 +23,200 @@ const RunSheet = lazy(() => import('@/pages/RunSheet'));
 const MaintenancePage = lazy(() => import('../pages/Maintenance'));
 
 // Toggle this to enable/disable maintenance mode
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 // **
 
 const AnimatedRoutes: React.FC = () => {
-  const location = useLocation();
+	const location = useLocation();
 
-  if (MAINTENANCE_MODE) {
-    return (
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route 
-            path="/maintenance" 
-            element={
-              <PageTransition>
-                <Suspense fallback={<AnimatedLoadingScreen />}>
-                  <MaintenancePage />
-                </Suspense>
-              </PageTransition>
-            } 
-          />
-          <Route path="*" element={<Navigate to="/maintenance" replace />} />
-        </Routes>
-      </AnimatePresence>
-    );
-  }
+	if (MAINTENANCE_MODE) {
+		return (
+			<AnimatePresence mode="wait">
+				<Routes
+					location={location}
+					key={location.pathname}>
+					<Route
+						path="/maintenance"
+						element={
+							<PageTransition>
+								<Suspense fallback={<AnimatedLoadingScreen />}>
+									<MaintenancePage />
+								</Suspense>
+							</PageTransition>
+						}
+					/>
+					<Route
+						path="*"
+						element={
+							<Navigate
+								to="/maintenance"
+								replace
+							/>
+						}
+					/>
+				</Routes>
+			</AnimatePresence>
+		);
+	}
 
-  return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><HomePage /></Suspense></PageTransition>} />
-        <Route path="/menu" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><MenuPage /></Suspense></PageTransition>} />
-        <Route path="/order" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><OrderPage /></Suspense></PageTransition>} />
-        <Route path="/contact" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><ContactPage /></Suspense></PageTransition>} />
-        <Route path="/catering" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><CateringPage /></Suspense></PageTransition>} />
-        <Route path="/account" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><AccountPage /></Suspense></PageTransition>} />
-        <Route path="/signin" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><UserloginPage /></Suspense></PageTransition>} />
-        <Route path="/signout" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><SignOut /></Suspense></PageTransition>} />
-        <Route path="/schools" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><SchoolsPage /></Suspense></PageTransition>} />
-        <Route path="/checkout" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><CheckoutPage /></Suspense></PageTransition>} />
-        <Route path="/payment-success" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><PaymentSuccessPage /></Suspense></PageTransition>} />
-        <Route path="/order-success" element={<PageTransition><Suspense fallback={<AnimatedLoadingScreen />}><OrderSuccessPage /></Suspense></PageTransition>} />
-        <Route path='/loading' element={<AnimatedLoadingScreen />} />
+	return (
+		<AnimatePresence mode="wait">
+			<Routes
+				location={location}
+				key={location.pathname}>
+				<Route
+					path="/"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<HomePage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/menu"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<MenuPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/order"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<OrderPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/contact"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<ContactPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/catering"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<CateringPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/account"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<AccountPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/signin"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<UserloginPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/signout"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<SignOut />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/schools"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<SchoolsPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/checkout"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<CheckoutPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/payment-success"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<PaymentSuccessPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/order-success"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<OrderSuccessPage />
+							</Suspense>
+						</PageTransition>
+					}
+				/>
+				<Route
+					path="/loading"
+					element={<AnimatedLoadingScreen />}
+				/>
 
-        <Route path='/admin' element={
-          <AdminRoute>
-            <PageTransition>
-              <Suspense fallback={<AnimatedLoadingScreen />}>
-                <AdminDashboardPage />
-              </Suspense>
-            </PageTransition>
-          </AdminRoute>} 
-        />
+				<Route
+					path="/admin"
+					element={
+						<AdminRoute>
+							<PageTransition>
+								<Suspense fallback={<AnimatedLoadingScreen />}>
+									<AdminDashboardPage />
+								</Suspense>
+							</PageTransition>
+						</AdminRoute>
+					}
+				/>
 
-        <Route path='/run-sheet' element={
-          <AdminRoute>
-            <PageTransition>
-              <Suspense fallback={<AnimatedLoadingScreen />}>
-                <RunSheet />
-              </Suspense>
-            </PageTransition>
-          </AdminRoute>}
-        />
-        
-      </Routes>
-    </AnimatePresence>
-  );
+				<Route
+					path="/run-sheet"
+					element={
+						<AdminRoute>
+							<PageTransition>
+								<Suspense fallback={<AnimatedLoadingScreen />}>
+									<RunSheet />
+								</Suspense>
+							</PageTransition>
+						</AdminRoute>
+					}
+				/>
+			</Routes>
+		</AnimatePresence>
+	);
 };
 
 export default AnimatedRoutes;

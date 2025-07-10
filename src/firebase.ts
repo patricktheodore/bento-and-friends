@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
     apiKey: "AIzaSyBfwIDGolxtV2CrV3x_FnIcb8t-mHGxrS4",
@@ -15,8 +16,14 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const functions = getFunctions(app);
+
+if (process.env.NODE_ENV === 'development') {
+    connectFunctionsEmulator(functions, 'localhost', 5001);
+}
 
 // Initialize services
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+export { functions };

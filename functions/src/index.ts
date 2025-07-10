@@ -5,6 +5,8 @@ import {Timestamp} from "firebase-admin/firestore";
 import {InputMeal, MealDocument} from "./models/order.model";
 import * as sgMail from "@sendgrid/mail";
 
+export * from './stripe';
+
 admin.initializeApp();
 sgMail.setApiKey(functions.config().sendgrid.api_key);
 
@@ -18,19 +20,19 @@ const stripe = new Stripe(functions.config().stripe.secret_key, {
   apiVersion: "2024-06-20",
 });
 
-interface Meal {
-  main: {display: string };
-  child: {name: string };
-  orderDate: string;
-  total: number;
-}
+// interface Meal {
+//   main: {display: string };
+//   child: {name: string };
+//   orderDate: string;
+//   total: number;
+// }
 
-interface Cart {
-  id: string;
-  userEmail: string;
-  meals: Meal[];
-  total: number;
-}
+// interface Cart {
+//   id: string;
+//   userEmail: string;
+//   meals: Meal[];
+//   total: number;
+// }
 
 interface OrderConfirmationEmailData {
   to: string;
@@ -62,99 +64,71 @@ interface SaveOrderResult {
   finalTotal: number;
 }
 
-export const createCheckoutSession = functions.https.onCall(
-  async (data: {
-    cart: Cart;
-    bundleDiscount: number;
-    couponDiscount: number;
-    couponCode?: string;
-    successUrl: string;
-    cancelUrl: string;
-  }, context) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated to create a checkout session."
-      );
-    }
+interface DebugLogEntry {
+  timestamp: number;
+  stage: string;
+  data: unknown;
+}
 
-    const {
-      cart,
-      bundleDiscount,
-      couponDiscount,
-      couponCode,
-      successUrl,
-      cancelUrl,
-    } = data;
+interface MealWithId extends InputMeal {
+  id: string;
+}
 
-    try {
-      const lineItems = cart.meals.map((meal) => ({
-        price_data: {
-          currency: "aud",
-          product_data: {
-            name: `${meal.main.display} for ${meal.child.name}`,
-            description:
-              `Order Date: ${new Date(meal.orderDate).toLocaleDateString()}`,
-          },
-          unit_amount: Math.round(meal.total * 100),
-        },
-        quantity: 1,
-      }));
+interface FormattedMealData {
+  id: string;
+  customOrderNumber: string;
+  orderId: string;
+  deliveryDate: admin.firestore.Timestamp;
+  status: string;
+  userId: string;
+  userEmail: string;
+  child: {
+    name: string;
+    className: string;
+    year: string;
+  };
+  school: {
+    name: string;
+  };
+  allergens: string;
+  main: {
+    display: string;
+  };
+  addOns: Array<{display: string}>;
+  fruit: unknown;
+  probiotic: unknown;
+}
 
-      const totalDiscount = bundleDiscount + couponDiscount;
-      let discountCoupon;
+interface CateringPlatter {
+  name: string;
+  quantity: number;
+}
 
-      if (totalDiscount > 0) {
-        const discountName = couponCode ?
-          `Bundle + Coupon (${couponCode})` :
-          "Bundle Discount";
+interface CateringEnquiryData {
+  contact: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  event: {
+    date: string;
+    message: string;
+  };
+  platters: CateringPlatter[];
+}
 
-        discountCoupon = await stripe.coupons.create({
-          amount_off: Math.round(totalDiscount * 100),
-          currency: "aud",
-          duration: "once",
-          name: discountName,
-        });
-      }
-
-      const sessionParams: Stripe.Checkout.SessionCreateParams = {
-        payment_method_types: ["card"],
-        line_items: lineItems,
-        mode: "payment",
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        metadata: {
-          orderId: cart.id,
-          userEmail: cart.userEmail,
-          bundleDiscount: bundleDiscount.toString(),
-          couponDiscount: couponDiscount.toString(),
-          couponCode: couponCode || "",
-          originalTotal: cart.total.toString(),
-          finalTotal: (
-            cart.total - bundleDiscount - couponDiscount).toString(),
-        },
-      };
-
-      if (discountCoupon) {
-        sessionParams.discounts = [{coupon: discountCoupon.id}];
-      }
-
-      const session = await stripe.checkout.sessions.create(sessionParams);
-
-      return {sessionId: session.id};
-    } catch (error) {
-      console.error("Error creating Checkout Session:", error);
-      throw new functions.https.HttpsError(
-        "internal",
-        "Unable to create Checkout Session: " + (error as Error).message
-      );
-    }
-  }
-);
+// interface CreateCheckoutSessionData {
+//   cart: Cart;
+//   bundleDiscount: number;
+//   couponDiscount: number;
+//   couponCode?: string;
+//   successUrl: string;
+//   cancelUrl: string;
+// }
 
 export const saveOrder = functions.https.onCall(
   async (
-    data,
+    data: {order: unknown; sessionId: string},
     context
   ): Promise<SaveOrderResult> => {
     if (!context.auth) {
@@ -172,7 +146,7 @@ export const saveOrder = functions.https.onCall(
     const bundleDiscount = parseFloat(session.metadata?.bundleDiscount || "0");
     const couponDiscount = parseFloat(session.metadata?.couponDiscount || "0");
     const finalTotal = parseFloat(session.metadata?.finalTotal ||
-      order.total.toString());
+      (order as {total: number}).total.toString());
 
     try {
       // Run everything in a transaction for data consistency
@@ -198,13 +172,15 @@ export const saveOrder = functions.https.onCall(
         // Create order document
         const orderRef = db.collection("orders").doc();
         // Generate new meal IDs first (THIS IS THE KEY CHANGE)
-        const mealsWithIds = order.meals.map((meal: any) => {
-          const mealRef = db.collection("meals").doc();
-          return {...meal, id: mealRef.id, mealRef};
+        const mealsWithIds = (
+          order as {meals: InputMeal[]}
+        ).meals.map((meal: InputMeal) => {
+          const mealDoc = db.collection("meals").doc();
+          return {...meal, id: mealDoc.id};
         });
 
         const orderData = {
-          ...order,
+          ...(order as Record<string, unknown>),
           id: orderRef.id,
           customOrderNumber,
           userId,
@@ -213,14 +189,10 @@ export const saveOrder = functions.https.onCall(
           status: "paid",
           bundleDiscount,
           couponDiscount,
-          originalTotal: order.total,
+          originalTotal: (order as {total: number}).total,
           finalTotal,
           // Now store the updated meals array with consistent IDs in the order
-          meals: mealsWithIds.map((meal: any) => {
-            // Exclude the mealRef field to avoid storing it in Firestore
-            const {mealRef, ...mealData} = meal;
-            return mealData;
-          }),
+          meals: mealsWithIds,
         };
 
         const userData = userDoc.data();
@@ -229,9 +201,9 @@ export const saveOrder = functions.https.onCall(
           orderId: orderRef.id,
           customOrderNumber,
           createdAt: now.toDate().toISOString(),
-          originalTotal: order.total,
+          originalTotal: (order as {total: number}).total,
           total: finalTotal,
-          items: order.meals.length,
+          items: (order as {meals: InputMeal[]}).meals.length,
         };
         // Perform all writes
         transaction.update(counterRef, {value: nextValue});
@@ -241,12 +213,12 @@ export const saveOrder = functions.https.onCall(
         });
 
         // Now create the meal documents with consistent IDs
-        mealsWithIds.forEach((meal: any) => {
-          const {mealRef, ...mealData} = meal;
+        mealsWithIds.forEach((meal: MealWithId) => {
+          const mealRef = db.collection("meals").doc(meal.id);
 
-          console.log(mealData);
+          console.log(meal);
 
-          const formattedMealData = {
+          const formattedMealData: FormattedMealData = {
             id: meal.id,
             customOrderNumber,
             orderId: orderRef.id,
@@ -255,7 +227,7 @@ export const saveOrder = functions.https.onCall(
             ),
             status: "scheduled",
             userId,
-            userEmail: order.userEmail,
+            userEmail: (order as {userEmail: string}).userEmail,
             child: {
               name: meal.child.name,
               className: meal.child.className,
@@ -268,7 +240,7 @@ export const saveOrder = functions.https.onCall(
             main: {
               display: meal.main.display,
             },
-            addOns: meal.addOns?.map((addon: any) => ({
+            addOns: meal.addOns?.map((addon: {display: string}) => ({
               display: addon.display,
             })) || [],
             fruit: meal.fruit || null,
@@ -281,7 +253,7 @@ export const saveOrder = functions.https.onCall(
         return {
           orderId: orderRef.id,
           customOrderNumber,
-          finalTotal: order.total,
+          finalTotal: (order as {total: number}).total,
         };
       });
       return result;
@@ -347,9 +319,9 @@ export const updateMealDeliveryDate =
         mealRef = db.collection("meals").doc(mealId);
         mealDoc = await transaction.get(mealRef);
 
-        // Strategy 2: Query by 'id' field
+        // Strategy 2: Query by "id" field
         if (!mealDoc.exists) {
-          console.log(`Strategy 2: Trying query by 'id' field with ${mealId}`);
+          console.log(`Strategy 2: Trying query by "id" field with ${mealId}`);
           const mealByIdQuery = db.collection("meals").where("id", "==", mealId)
             .limit(1);
           const mealByIdSnapshot = await transaction.get(mealByIdQuery);
@@ -357,7 +329,7 @@ export const updateMealDeliveryDate =
           if (!mealByIdSnapshot.empty) {
             mealDoc = mealByIdSnapshot.docs[0];
             mealRef = mealDoc.ref;
-            console.log(`Found meal via 'id' field query: ${mealRef.id}`);
+            console.log(`Found meal via "id" field query: ${mealRef.id}`);
           }
         }
 
@@ -636,7 +608,12 @@ export const sendOrderConfirmationEmail = functions.https.onCall(async (
   }
 });
 
-export const sendContactEmail = functions.https.onCall(async (data) => {
+export const sendContactEmail = functions.https.onCall(async (data: {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}) => {
   const {name, email, phone, message} = data;
 
   const msg = {
@@ -668,12 +645,12 @@ export const saveAdminOrder = functions.https.onCall(async (
   data: AdminOrderData, context
 ) => {
   const startTime = Date.now();
-  const debugLog: any[] = [];
+  const debugLog: DebugLogEntry[] = [];
 
-  const logDebug = (stage: string, data: any) => {
+  const logDebug = (stage: string, logData: unknown) => {
     const timestamp = Date.now() - startTime;
-    debugLog.push({timestamp, stage, data});
-    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(data));
+    debugLog.push({timestamp, stage, data: logData});
+    console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(logData));
   };
 
   try {
@@ -902,7 +879,7 @@ export const saveAdminOrder = functions.https.onCall(async (
 });
 
 export const updateOrderAnalytics = functions.https.onCall(
-  async (data, context) => {
+  async (data: {order: {meals: unknown[]}; finalTotal: number}, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -969,7 +946,9 @@ export const updateOrderAnalytics = functions.https.onCall(
   }
 );
 
-export const sendCateringEnquiry = functions.https.onCall(async (data) => {
+export const sendCateringEnquiry = functions.https.onCall(async (
+  data: CateringEnquiryData
+) => {
   const msg = {
     to: "brodielangan98@gmail.com",
     from: {
@@ -987,7 +966,7 @@ export const sendCateringEnquiry = functions.https.onCall(async (data) => {
       date: data.event.date,
       message: data.event.message,
       platters: data.platters.map(
-        (platter: {name:string, quantity: number}) => ({
+        (platter: CateringPlatter) => ({
           name: platter.name,
           quantity: platter.quantity,
         })),
@@ -1004,7 +983,7 @@ export const sendCateringEnquiry = functions.https.onCall(async (data) => {
 });
 
 export const resetTermDetailsReview = functions.https.onCall(
-  async (data, context) => {
+  async (data: unknown, context) => {
   // Verify admin status
     if (!context.auth) {
       throw new functions.https.HttpsError(

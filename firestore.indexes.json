@@ -1,4 +1,10 @@
 {
-    "indexes": [],
-    "fieldOverrides": []
+	"indexes": [
+		{
+			"collectionGroup": "tempOrders",
+			"queryScope": "COLLECTION",
+			"fields": [{ "fieldPath": "expiresAt", "order": "ASCENDING" }]
+		}
+	],
+	"fieldOverrides": []
 }

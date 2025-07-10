@@ -22,7 +22,7 @@ import { formatDate } from '@/utils/utils';
 import { Alert, AlertDescription } from './ui/alert';
 
 const stripePromise = loadStripe(
-	'pk_live_51PzenCRuOSdR9YdWStFVzk83YT4PRIeDGCMRCylZObMEVE0Fp24AwPMp0gK91zLvZXNvfhSGNG7vKnetFkg1MWna00flH0J7XX'
+	'pk_test_51PzenCRuOSdR9YdWK6BbtR2MPhP4jAjNBUPTBg0LGUOJgHmMtL6g90lToUiAoly4VzrXe9BtYVBUoQWR7Bmqa4ND00YsOJX1om'
 );
 
 const Cart: React.FC = () => {
@@ -357,7 +357,7 @@ const Cart: React.FC = () => {
 				: 0;
 
 			// Ensure URLs are absolute
-			const successUrl = new URL('/order-success', window.location.origin).toString();
+			const successUrl = new URL('/payment-success', window.location.origin).toString();
 			const cancelUrl = new URL('/checkout', window.location.origin).toString();
 
 			const result = await createCheckoutSession({
