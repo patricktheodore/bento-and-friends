@@ -1,10 +1,7 @@
-import { doc, addDoc, updateDoc, deleteDoc, getDocs, collection } from 'firebase/firestore';
-import { getFunctions, httpsCallable, HttpsCallableResult, Functions } from 'firebase/functions';
+import { doc, addDoc, updateDoc, getDocs, collection } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 import { db } from '../firebase';
 import { School } from '../models/school.model';
-
-const functions: Functions = getFunctions();
 
 interface ApiResponse<T> {
 	success: boolean;

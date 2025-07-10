@@ -4,10 +4,10 @@ import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
-import { getMains, getProbiotics, getAddOns, getFruits, getDrinks, getPlatters } from '../services/item-service';
+import { getMains, getSides, getAddOns, getFruits, getDrinks, getPlatters } from '../services/item-service';
 import { getCoupons } from '@/services/coupon-service';
 import { getBlockedDates } from '@/services/date-service';
-import { AddOn, Drink, Fruit, Main, Platter, Probiotic } from '../models/item.model';
+import { AddOn, Drink, Fruit, Main, Platter, Side, MenuItem } from '../models/item.model';
 import { v4 as uuidv4 } from 'uuid';
 
 type AppState = {
@@ -16,13 +16,13 @@ type AppState = {
 	isCartOpen: boolean;
 	mains: Main[];
 	platters: Platter[];
-	probiotics: Probiotic[];
+	sides: Side[];
 	fruits: Fruit[];
 	drinks: Drink[];
 	addOns: AddOn[];
 	schools: School[];
 	coupons: Coupon[];
-	items: Array<Main | Probiotic | Fruit | Drink | AddOn>;
+	items: MenuItem[]; // Updated to use MenuItem type
 	isLoading: boolean;
 	blockedDates: string[];
 };
@@ -31,12 +31,12 @@ type AppState = {
 type Action =
 	| { type: 'SET_USER'; payload: User | null }
 	| { type: 'UPDATE_USER'; payload: Partial<User> }
-	| { type: 'ADD_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
-	| { type: 'UPDATE_MENU_ITEM'; payload: Main | Probiotic | Fruit | Drink | AddOn }
-	| { type: 'SET_MENU_ITEMS'; payload: Array<Main | Probiotic | Fruit | Drink | AddOn> }
+	| { type: 'ADD_MENU_ITEM'; payload: MenuItem }
+	| { type: 'UPDATE_MENU_ITEM'; payload: MenuItem }
+	| { type: 'SET_MENU_ITEMS'; payload: MenuItem[] }
 	| { type: 'SET_MAINS'; payload: Main[] }
 	| { type: 'SET_PLATTERS'; payload: Platter[] }
-	| { type: 'SET_PROBIOTICS'; payload: Probiotic[] }
+	| { type: 'SET_SIDES'; payload: Side[] }
 	| { type: 'SET_FRUITS'; payload: Fruit[] }
 	| { type: 'SET_DRINKS'; payload: Drink[] }
 	| { type: 'SET_ADD_ONS'; payload: AddOn[] }
@@ -57,7 +57,8 @@ type Action =
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
 	| { type: 'DELETE_COUPON'; payload: string }
 	| { type: 'SET_BLOCKED_DATES'; payload: string[] }
-	| { type: 'CONFIRM_ORDER'; payload: OrderHistorySummary };
+	| { type: 'CONFIRM_ORDER'; payload: OrderHistorySummary }
+	| { type: 'SYNC_ITEMS' }; // New action to sync all items
 
 // Initial state
 const initialState: AppState = {
@@ -67,7 +68,7 @@ const initialState: AppState = {
 	schools: [],
 	mains: [],
 	platters: [],
-	probiotics: [],
+	sides: [],
 	fruits: [],
 	drinks: [],
 	addOns: [],
@@ -88,6 +89,64 @@ const saveCartToLocalStorage = (cart: Order | null) => {
 	} else {
 		localStorage.removeItem('cart');
 	}
+};
+
+// Helper function to combine all menu items
+const combineAllItems = (state: AppState): MenuItem[] => {
+	return [
+		...state.mains,
+		...state.platters,
+		...state.sides,
+		...state.fruits,
+		...state.drinks,
+		...state.addOns,
+	];
+};
+
+// Helper function to update individual arrays and sync combined items
+const updateItemInArrays = (state: AppState, updatedItem: MenuItem): AppState => {
+	let newState = { ...state };
+	
+	if (updatedItem instanceof Main) {
+		newState.mains = state.mains.map(item => item.id === updatedItem.id ? updatedItem : item);
+	} else if (updatedItem instanceof Platter) {
+		newState.platters = state.platters.map(item => item.id === updatedItem.id ? updatedItem : item);
+	} else if (updatedItem instanceof Side) {
+		newState.sides = state.sides.map(item => item.id === updatedItem.id ? updatedItem : item);
+	} else if (updatedItem instanceof Fruit) {
+		newState.fruits = state.fruits.map(item => item.id === updatedItem.id ? updatedItem : item);
+	} else if (updatedItem instanceof Drink) {
+		newState.drinks = state.drinks.map(item => item.id === updatedItem.id ? updatedItem : item);
+	} else if (updatedItem instanceof AddOn) {
+		newState.addOns = state.addOns.map(item => item.id === updatedItem.id ? updatedItem : item);
+	}
+	
+	// Sync combined items array
+	newState.items = combineAllItems(newState);
+	return newState;
+};
+
+// Helper function to add item to appropriate array and sync combined items
+const addItemToArrays = (state: AppState, newItem: MenuItem): AppState => {
+	let newState = { ...state };
+	
+	if (newItem instanceof Main) {
+		newState.mains = [...state.mains, newItem];
+	} else if (newItem instanceof Platter) {
+		newState.platters = [...state.platters, newItem];
+	} else if (newItem instanceof Side) {
+		newState.sides = [...state.sides, newItem];
+	} else if (newItem instanceof Fruit) {
+		newState.fruits = [...state.fruits, newItem];
+	} else if (newItem instanceof Drink) {
+		newState.drinks = [...state.drinks, newItem];
+	} else if (newItem instanceof AddOn) {
+		newState.addOns = [...state.addOns, newItem];
+	}
+	
+	// Sync combined items array
+	newState.items = combineAllItems(newState);
+	return newState;
 };
 
 // Create the context
@@ -122,24 +181,35 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		case 'SET_MENU_ITEMS':
 			return { ...state, items: action.payload };
 		case 'ADD_MENU_ITEM':
-			return { ...state, items: [...state.items, action.payload] };
+			return addItemToArrays(state, action.payload);
 		case 'UPDATE_MENU_ITEM':
-			return {
-				...state,
-				items: state.items.map((item) => (item.id === action.payload.id ? action.payload : item)),
-			};
+			return updateItemInArrays(state, action.payload);
 		case 'SET_MAINS':
-			return { ...state, mains: action.payload };
+			newState = { ...state, mains: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
 		case 'SET_PLATTERS':
-			return { ...state, platters: action.payload };
-		case 'SET_PROBIOTICS':
-			return { ...state, probiotics: action.payload };
+			newState = { ...state, platters: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
+		case 'SET_SIDES':
+			newState = { ...state, sides: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
 		case 'SET_FRUITS':
-			return { ...state, fruits: action.payload };
+			newState = { ...state, fruits: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
 		case 'SET_DRINKS':
-			return { ...state, drinks: action.payload };
+			newState = { ...state, drinks: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
 		case 'SET_ADD_ONS':
-			return { ...state, addOns: action.payload };
+			newState = { ...state, addOns: action.payload };
+			newState.items = combineAllItems(newState);
+			return newState;
+		case 'SYNC_ITEMS':
+			return { ...state, items: combineAllItems(state) };
 		case 'SET_LOADING':
 			return { ...state, isLoading: action.payload };
 		case 'SET_CART':
@@ -205,7 +275,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 			return newState;
 		case 'TOGGLE_CART':
 			return { ...state, isCartOpen: !state.isCartOpen };
-
 		case 'SET_COUPONS':
 			return { ...state, coupons: action.payload };
 		case 'ADD_COUPON':
@@ -233,41 +302,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 					orderHistory: [action.payload, ...state.user.orderHistory]
 				}
 			};
-
-		// case 'ADD_TO_ORDER':
-		// 	if (!state.currentOrder) {
-		// 		return {
-		// 			...state,
-		// 			currentOrder: {
-		// 				userId: state.user?.id || '',
-		// 				items: [action.payload],
-		// 				total: action.payload.price,
-		// 				status: 'pending',
-		// 			},
-		// 		};
-		// 	}
-		// 	return {
-		// 		...state,
-		// 		currentOrder: {
-		// 			...state.currentOrder,
-		// 			items: [...state.currentOrder.items, action.payload],
-		// 			total: state.currentOrder.total + action.payload.price,
-		// 		},
-		// 	};
-		// case 'REMOVE_FROM_ORDER':
-		// 	if (!state.currentOrder) return state;
-		// 	const itemToRemove = state.currentOrder.items.find((item) => item.id === action.payload);
-		// 	if (!itemToRemove) return state;
-		// 	return {
-		// 		...state,
-		// 		currentOrder: {
-		// 			...state.currentOrder,
-		// 			items: state.currentOrder.items.filter((item) => item.id !== action.payload),
-		// 			total: state.currentOrder.total - itemToRemove.price,
-		// 		},
-		// 	};
-		// case 'CLEAR_ORDER':
-		// 	return { ...state, currentOrder: null };
 		default:
 			return state;
 	}
@@ -281,12 +315,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 		const loadAllData = async () => {
 			dispatch({ type: 'SET_LOADING', payload: true });
 			try {
-				const [user, schools, mains, platters, probiotics, addOns, fruits, drinks, coupons, blockedDates] = await Promise.all([
+				const [user, schools, mains, platters, sides, addOns, fruits, drinks, coupons, blockedDates] = await Promise.all([
 					getCurrentUser(),
 					getSchools(),
 					getMains(),
 					getPlatters(),
-					getProbiotics(),
+					getSides(), // Updated from getProbiotics to getSides
 					getAddOns(),
 					getFruits(),
 					getDrinks(),
@@ -298,7 +332,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 				dispatch({ type: 'SET_SCHOOLS', payload: schools.data ? schools.data : [] });
 				dispatch({ type: 'SET_MAINS', payload: mains.data ? mains.data : [] });
 				dispatch({ type: 'SET_PLATTERS', payload: platters.data ? platters.data : [] });
-				dispatch({ type: 'SET_PROBIOTICS', payload: probiotics.data ? probiotics.data : [] });
+				dispatch({ type: 'SET_SIDES', payload: sides.data ? sides.data : [] });
 				dispatch({ type: 'SET_ADD_ONS', payload: addOns.data ? addOns.data : [] });
 				dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });
 				dispatch({ type: 'SET_DRINKS', payload: drinks.data ? drinks.data : [] });

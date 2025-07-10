@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon } from '@heroicons/react/16/solid';
 import { getCurrentUser } from '../services/auth';
-import { getMains, getProbiotics, getFruits, getDrinks, getAddOns, getPlatters } from '../services/item-service';
+import { getMains, getSides, getFruits, getDrinks, getAddOns, getPlatters } from '../services/item-service';
 import toast from 'react-hot-toast';
-import { AddOn, Drink, Fruit, Main, Platter, Probiotic } from '../models/item.model';
+import { AddOn, Drink, Fruit, Main, Platter, Side } from '../models/item.model';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import ItemModal from './ItemModal';
+import MainItemModal from './MainItemModal';
 import { useAppContext } from '../context/AppContext';
 
 import { Button } from './ui/button';
@@ -17,7 +18,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { EyeOff } from 'lucide-react';
 
 const itemTypeOptions = [
-	{ value: 'all', label: 'All Items' },
 	{ value: 'main', label: 'Main' },
 	{ value: 'side', label: 'Side' },
 	{ value: 'fruit', label: 'Fruit' },
@@ -27,27 +27,25 @@ const itemTypeOptions = [
 ];
 
 const columnConfigs = {
-	all: ['image', 'name', 'type', 'price'],
-	main: ['image', 'name', 'allergens', 'price'],
+	main: ['name', 'allergens', 'addons', 'price'],
 	addon: ['name', 'price'],
 	side: ['name'],
 	fruit: ['name'],
-	drink: ['image', 'name', 'price'],
-	platter: ['image', 'name', 'price']
+	drink: ['name', 'price'],
+	platter: ['name', 'price']
 };
 
-type MenuItem = Main | Probiotic | AddOn | Fruit | Drink | Platter;
+type MenuItem = Main | Side | AddOn | Fruit | Drink | Platter;
 
 const ItemController: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 	const [currentItem, setCurrentItem] = useState<MenuItem | null>(null);
 	const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
-	const [selectedType, setSelectedType] = useState({ value: 'all', label: 'All Items' });
+	const [selectedType, setSelectedType] = useState({ value: 'main', label: 'Main' });
 	const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+	const [isMainModalOpen, setIsMainModalOpen] = useState(false);
 	const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-	const [selectedItemType, setSelectedItemType] = useState<'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter' | null>(
-		'main'
-	);
+	const [selectedItemType, setSelectedItemType] = useState<'side' | 'fruit' | 'drink' | 'addon' | 'platter' | null>(null);
 	const [isAdmin, setIsAdmin] = useState(false);
 	const [hideUnavailableItems, setHideUnavailableItems] = useState(false);
 	
@@ -66,9 +64,9 @@ const ItemController: React.FC = () => {
 
 				setIsAdmin(user.isAdmin);
 
-				const [mainItems, probioticItems, fruitItems, drinkItems, addOnItems, platters] = await Promise.all([
+				const [mainItems, sideItems, fruitItems, drinkItems, addOnItems, platters] = await Promise.all([
 					getMains(),
-					getProbiotics(),
+					getSides(),
 					getFruits(),
 					getDrinks(),
 					getAddOns(),
@@ -77,7 +75,7 @@ const ItemController: React.FC = () => {
 
 				const allItems = [
 					...(mainItems.success && mainItems.data ? mainItems.data : []),
-					...(probioticItems.success && probioticItems.data ? probioticItems.data : []),
+					...(sideItems.success && sideItems.data ? sideItems.data : []),
 					...(fruitItems.success && fruitItems.data ? fruitItems.data : []),
 					...(drinkItems.success && drinkItems.data ? drinkItems.data : []),
 					...(addOnItems.success && addOnItems.data ? addOnItems.data : []),
@@ -94,17 +92,14 @@ const ItemController: React.FC = () => {
 	}, [dispatch]);
 
 	useEffect(() => {
-		if (selectedType.value === 'all') {
-			setFilteredItems(state.items);
-		} else {
-			setFilteredItems(state.items.filter((item) => getItemType(item) === selectedType.value));
-		}
+		// Filter items based on selected type
+		setFilteredItems(state.items.filter((item) => getItemType(item) === selectedType.value));
 	}, [selectedType, state.items]);
 
 	const handleTypeChange = (value: string) => {
 		setSelectedType({
 			value,
-			label: itemTypeOptions.find((option) => option.value === value)?.label || 'All Items',
+			label: itemTypeOptions.find((option) => option.value === value)?.label || 'Main',
 		});
 	};
 
@@ -121,7 +116,7 @@ const ItemController: React.FC = () => {
 
 	const getItemType = (item: MenuItem): 'main' | 'side' | 'fruit' | 'drink' | 'addon' | 'platter' => {
 		if (item instanceof Main) return 'main';
-		if (item instanceof Probiotic) return 'side';
+		if (item instanceof Side) return 'side';
 		if (item instanceof Fruit) return 'fruit';
 		if (item instanceof Drink) return 'drink';
 		if (item instanceof AddOn) return 'addon';
@@ -137,15 +132,36 @@ const ItemController: React.FC = () => {
 		}
 	}
 
-	const handleSubmitItem = async (item: MenuItem, imageFile: File | null) => {
+	const handleSubmitMainItem = async (item: Main, imageFile: File | null) => {
 		try {
-			if (imageFile && (item instanceof Main || item instanceof Drink || item instanceof Platter)) {
+			if (imageFile) {
 				const imageUrl = await uploadImage(imageFile);
 				item.image = imageUrl;
 			}
 
-			if (item instanceof Main) {
-				item.isPromo = item.isPromo ?? false;
+			const response = await addOrUpdateItem(item);
+
+			if (response.success) {
+				dispatch({
+					type: modalMode === 'add' ? 'ADD_MENU_ITEM' : 'UPDATE_MENU_ITEM',
+					payload: item,
+				});
+				toast.success(`Main item ${modalMode === 'add' ? 'added' : 'updated'} successfully`);
+				setIsMainModalOpen(false);
+				setCurrentItem(null);
+			} else {
+				toast.error(response.error || `Failed to ${modalMode} main item`);
+			}
+		} catch (error) {
+			toast.error((error as Error).message);
+		}
+	};
+
+	const handleSubmitItem = async (item: Side | Fruit | Drink | AddOn | Platter, imageFile: File | null) => {
+		try {
+			if (imageFile && (item instanceof Drink || item instanceof Platter)) {
+				const imageUrl = await uploadImage(imageFile);
+				item.image = imageUrl;
 			}
 
 			const response = await addOrUpdateItem(item);
@@ -166,12 +182,12 @@ const ItemController: React.FC = () => {
 	};
 
 	const getCollectionName = (item: MenuItem): string => {
-		if (item instanceof Main) return 'mains';
-		if (item instanceof Probiotic) return 'probiotics';
-		if (item instanceof Fruit) return 'fruits';
-		if (item instanceof Drink) return 'drinks';
-		if (item instanceof AddOn) return 'addon';
-		if (item instanceof Platter) return 'platters';
+		if (item instanceof Main) return 'mains-test';
+		if (item instanceof Side) return 'sides-test';
+		if (item instanceof Fruit) return 'fruits-test';
+		if (item instanceof Drink) return 'drinks-test';
+		if (item instanceof AddOn) return 'addon-test';
+		if (item instanceof Platter) return 'platters-test';
 		throw new Error('Invalid item type');
 	};
 
@@ -200,26 +216,24 @@ const ItemController: React.FC = () => {
 
 	const renderCell = (item: MenuItem, column: string) => {
 		switch (column) {
-			case 'image':
-				return (item instanceof Main || item instanceof Drink || item instanceof Platter) && item.image ? (
-					<div className="w-20 h-20 p-2 flex items-center justify-center">
-						<img
-							src={item.image}
-							alt={item.display}
-							className="max-w-full max-h-full object-contain rounded-md shadow"
-						/>
-					</div>
-				) : null;
 			case 'name':
 				return item.display;
-			case 'type':
-				return getItemType(item).charAt(0).toUpperCase() + getItemType(item).slice(1);
 			case 'price':
-				return (item instanceof Main || item instanceof Drink || item instanceof AddOn) && item.price
-					? `${formatPrice(item.price)}`
+				return (item instanceof Main || item instanceof Drink || item instanceof AddOn || item instanceof Platter) && item.price !== undefined
+					? formatPrice(item.price)
 					: 'N/A';
 			case 'allergens':
 				return item instanceof Main ? item.allergens?.join(', ') || 'None' : 'N/A';
+			case 'addons':
+				if (item instanceof Main && item.addOns && item.addOns.length > 0) {
+					// Get addon names from state
+					const addonNames = item.addOns.map(addonId => {
+						const addon = state.items.find(i => i.id === addonId && i instanceof AddOn);
+						return addon ? addon.display : addonId;
+					});
+					return addonNames.join(', ');
+				}
+				return 'None';
 			default:
 				return 'N/A';
 		}
@@ -231,11 +245,36 @@ const ItemController: React.FC = () => {
 		setSelectedItemType(null);
 	};
 
+	const handleCloseMainModal = () => {
+		setIsMainModalOpen(false);
+		setCurrentItem(null);
+	};
+
 	const handleOpenModal = (mode: 'add' | 'edit', item?: MenuItem) => {
 		setModalMode(mode);
-		setCurrentItem(item || null);
-		setSelectedItemType(item ? getItemType(item) : null);
-		setIsItemModalOpen(true);
+		
+		if (mode === 'edit' && item) {
+			// Edit mode - determine which modal based on item type
+			if (item instanceof Main) {
+				setCurrentItem(item);
+				setIsMainModalOpen(true);
+			} else {
+				setCurrentItem(item);
+				const itemType = getItemType(item);
+				setSelectedItemType(itemType === 'main' ? null : itemType);
+				setIsItemModalOpen(true);
+			}
+		} else if (mode === 'add') {
+			// Add mode - use currently selected type
+			if (selectedType.value === 'main') {
+				setCurrentItem(null);
+				setIsMainModalOpen(true);
+			} else {
+				setCurrentItem(null);
+				setSelectedItemType(selectedType.value as 'side' | 'fruit' | 'drink' | 'addon' | 'platter');
+				setIsItemModalOpen(true);
+			}
+		}
 	};
 
 	if (!isAdmin) {
@@ -278,7 +317,7 @@ const ItemController: React.FC = () => {
 						className="bg-brand-dark-green text-brand-cream"
 					>
 						<PlusIcon className="h-5 w-5 mr-2" />
-						Add New Item
+						Add New {selectedType.label}
 					</Button>
 				</div>
 			</div>
@@ -290,9 +329,8 @@ const ItemController: React.FC = () => {
 							{columns.map((column) => (
 								<TableHead
 									key={column}
-									className={column === 'image' ? 'w-32' : ''}
 								>
-									{column === 'image' ? '' : column.charAt(0).toUpperCase() + column.slice(1)}
+									{column.charAt(0).toUpperCase() + column.slice(1)}
 								</TableHead>
 							))}
 						</TableRow>
@@ -325,11 +363,19 @@ const ItemController: React.FC = () => {
 				</Table>
 			</div>
 
+			<MainItemModal
+				isOpen={isMainModalOpen}
+				onClose={handleCloseMainModal}
+				onSubmit={handleSubmitMainItem}
+				item={currentItem as Main | null}
+				mode={modalMode}
+			/>
+
 			<ItemModal
 				isOpen={isItemModalOpen}
 				onClose={handleCloseModal}
 				onSubmit={handleSubmitItem}
-				item={currentItem}
+				item={currentItem instanceof Main ? null : currentItem}
 				mode={modalMode}
 				itemType={selectedItemType}
 			/>
