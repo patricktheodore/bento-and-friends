@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
-import { School } from '../models/school.model';
 import { getCurrentUser } from '../services/auth';
 import { getSchools, updateSchoolValidDates, updateSchoolMenuItems } from '../services/school-operations';
 import { useAppContext } from '../context/AppContext';
@@ -65,10 +64,12 @@ const Schools: React.FC = () => {
 					// Initialize selected dates for each school
 					const initialDates: Record<string, Date[]> = {};
 					const initialMenuItems: Record<string, string[]> = {};
+
 					response.data.forEach((school) => {
-						initialDates[school.id] = school.validDates || [];
+						initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
 						initialMenuItems[school.id] = school.menuItems || [];
 					});
+
 					setSchoolSelectedDates(initialDates);
 					setSchoolMenuItems(initialMenuItems);
 				} else {
@@ -97,8 +98,7 @@ const Schools: React.FC = () => {
 
 	const handleSchoolDateSelect = (schoolId: string, dates: Date[] | undefined) => {
 		if (!dates) return;
-		const weekdayDates = dates.filter((date) => date.getDay() !== 0 && date.getDay() !== 6);
-		const uniqueDates = removeDuplicateDates(weekdayDates);
+		const uniqueDates = removeDuplicateDates(dates);
 
 		setSchoolSelectedDates((prev) => ({
 			...prev,
@@ -116,10 +116,10 @@ const Schools: React.FC = () => {
 			const response = await updateSchoolValidDates(schoolId, uniqueSelectedDates);
 
 			if (response.success) {
-				// Update the school in the global state
 				const updatedSchools = state.schools.map((school) =>
-					school.id === schoolId ? { ...school, validDates: uniqueSelectedDates } : school
+					school.id === schoolId ? { ...school, validDates: response.data || [] } : school
 				);
+
 				dispatch({ type: 'SET_SCHOOLS', payload: updatedSchools });
 
 				setSchoolSelectedDates((prev) => ({
@@ -180,7 +180,7 @@ const Schools: React.FC = () => {
 	};
 
 	const removeDuplicateDates = (dates: Date[]): Date[] => {
-		return Array.from(new Set(dates.map((d) => d.toISOString()))).map((d) => new Date(d));
+        return Array.from(new Set(dates.map((d) => d.toISOString()))).map((d) => new Date(d));
 	};
 
 	const isWeekend = (date: Date) => {
@@ -322,7 +322,6 @@ const Schools: React.FC = () => {
 																)}
 															</div>
 
-															{/* Save button */}
 															<Button
 																onClick={() => handleSaveSchoolMenuItems(school.id)}
 																disabled={savingMenuStates[school.id]}
@@ -345,13 +344,10 @@ const Schools: React.FC = () => {
 													</p>
 
 													<div className="flex flex-col items-start gap-4">
-														{/* Responsive Multi-month Calendar */}
 														<Calendar
 															mode="multiple"
 															selected={schoolSelectedDates[school.id] || []}
-															onSelect={(dates) =>
-																handleSchoolDateSelect(school.id, dates)
-															}
+															onSelect={(dates) => handleSchoolDateSelect(school.id, dates)}
 															disabled={isWeekend}
 															numberOfMonths={getNumberOfMonths()}
 															className="rounded-md border w-fit"

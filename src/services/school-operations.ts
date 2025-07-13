@@ -58,15 +58,6 @@ export const getSchools = async (): Promise<{ success: boolean; data?: School[];
 				({
 					id: doc.id,
 					...doc.data(),
-					// Ensure validDates are converted to Date objects if they're stored as strings/timestamps
-					validDates: doc.data().validDates ? doc.data().validDates.map((date: any) => {
-						if (date && typeof date.toDate === 'function') {
-							return date.toDate(); // Firestore Timestamp
-						} else if (date && typeof date === 'string') {
-							return new Date(date);
-						}
-						return date;
-					}) : []
 				} as School)
 		);
 		return { success: true, data: schoolList };
@@ -79,11 +70,13 @@ export const getSchools = async (): Promise<{ success: boolean; data?: School[];
 export const updateSchoolValidDates = async (
 	schoolId: string,
 	validDates: Date[]
-): Promise<ApiResponse<Date[]>> => {
+): Promise<ApiResponse<string[]>> => {
 	try {
 		const schoolRef = doc(db, 'schools-test', schoolId);
-		await updateDoc(schoolRef, { validDates });
-		return { success: true, data: validDates };
+        // Convert Date objects to ISO strings
+        const validDatesStrings = validDates.map((date) => date.toISOString()); // Format as YYYY-MM-DD
+		await updateDoc(schoolRef, { validDates: validDatesStrings });
+		return { success: true, data: validDatesStrings };
 	} catch (error) {
 		return { success: false, error: handleApiError(error) };
 	}

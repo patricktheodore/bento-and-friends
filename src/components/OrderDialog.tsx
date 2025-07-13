@@ -1,383 +1,482 @@
-// src/components/OrderDialog.tsx
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'react-hot-toast';
-import { Main, AddOn } from '@/models/item.model';
-import { Child } from '@/models/user.model';
-import { School } from '@/models/school.model';
+import { Main, AddOn, Side, Fruit } from '@/models/item.model';
 import { Meal } from '@/models/order.model';
-import { v4 as uuidv4 } from 'uuid';
+import { Child } from '@/models/user.model';
+import { formatDate } from '@/utils/utils';
 import { useAppContext } from '@/context/AppContext';
-import { AlertTriangle, X } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from './ui/alert';
-import { Link } from 'react-router-dom';
+import { School } from '@/models/school.model';
+import { v4 as uuidv4 } from 'uuid';
+import { isValidDateCheck } from '@/utils/dateValidation';
 
 interface OrderDialogProps {
-    isOpen: boolean;
-    onClose: () => void;
-    selectedMain: Main | null;
-    addOns: AddOn[];
-    children: Child[];
-    schools: School[];
-    onAddToCart: (meals: Meal[]) => void;
-    initialSelectedAddons?: string[];
-    initialSelectedYogurt?: string;
-    initialSelectedFruit?: string;
-    initialSelectedChild?: string;
+	isOpen: boolean;
+	onClose: () => void;
+	selectedMain?: Main | null;
+	selectedSchool?: School | null;
+	editingMeal?: Meal | null;
+	onSave: (meals: Meal | Meal[]) => void;
 }
 
-const OrderDialog: React.FC<OrderDialogProps> = ({
-    isOpen,
-    onClose,
-    selectedMain,
-    addOns,
-    children,
-    schools,
-    onAddToCart,
-    initialSelectedAddons,
-    initialSelectedYogurt,
-    initialSelectedFruit,
-    initialSelectedChild,
+const OrderDialog: React.FC<OrderDialogProps> = ({ 
+    isOpen, 
+    onClose, 
+    selectedMain, 
+    selectedSchool, 
+    editingMeal, 
+    onSave 
 }) => {
-    const {state } = useAppContext();
-    const [selectedAddons, setSelectedAddons] = useState<string[]>(initialSelectedAddons || []);
-    const [isMainOnly, setIsMainOnly] = useState<boolean>(false);
-    const [selectedYogurt, setSelectedYogurt] = useState<string | null>(initialSelectedYogurt || null);
-    const [selectedFruit, setSelectedFruit] = useState<string | null>(initialSelectedFruit || null);
-    const [selectedChildren, setSelectedChildren] = useState<string[]>(initialSelectedChild ? [initialSelectedChild] : []);
-    const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+	const { state } = useAppContext();
+	
+	const [currentMain, setCurrentMain] = useState<Main | null>(null);
+	const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
+	const [selectedSide, setSelectedSide] = useState<Side | undefined>();
+	const [selectedFruit, setSelectedFruit] = useState<Fruit | undefined>();
+	const [selectedChildren, setSelectedChildren] = useState<Child[]>([]);
+	const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+	const [isMainOnly, setIsMainOnly] = useState<boolean>(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            setSelectedAddons(initialSelectedAddons || []);
-            setSelectedYogurt(initialSelectedYogurt || state.probiotics.find(yogurt => (yogurt.display.toLowerCase().includes('yoghurt') && yogurt.isActive ))?.id || null);
-            setSelectedFruit(initialSelectedFruit || state.fruits.find(fruit => (fruit.display.toLowerCase().includes('mixed') && fruit.isActive))?.id || null);
-            setSelectedChildren(initialSelectedChild ? [initialSelectedChild] : []);
-            setSelectedDates([]);
+	// Use the school from editingMeal if in edit mode and selectedSchool is not provided
+	const effectiveSchool = selectedSchool || editingMeal?.school;
+	
+    // Derived values
+    const isEditMode = !!editingMeal;
+
+    const availableMains = useMemo(() => {
+        if (!effectiveSchool?.menuItems) {
+            return [];
         }
-    }, [isOpen, initialSelectedAddons, initialSelectedYogurt, initialSelectedFruit, initialSelectedChild]);
-
-    const glutenFreeAddon = useMemo(() => 
-        addOns.find(addon => addon.display.toLowerCase().includes('gluten free')),
-        [addOns]
-    );
-
-    const handleAddToCart = () => {
-        if (!selectedMain) return;
-
-        let meals: Meal[] = [];
-        var hasGlutenAllergy:boolean = false;
-
-        selectedChildren.forEach(childId => {
-            const selectedChildData = children.find((child) => child.id === childId);
-            if (selectedChildData) {
-                hasGlutenAllergy = selectedChildData.allergens?.toLowerCase().includes('gluten') ||
-                                         selectedChildData.allergens?.toLowerCase().includes('celiac');
-                
-                let mealAddons = addOns.filter((addon) => selectedAddons.includes(addon.id));
-                let mealTotal = selectedMain.price + mealAddons.reduce((sum, addon) => sum + addon.price, 0);
-
-                if (hasGlutenAllergy && glutenFreeAddon && !selectedAddons.includes(glutenFreeAddon.id)) {
-                    mealAddons.push(glutenFreeAddon);
-                    mealTotal += glutenFreeAddon.price;
-                }
-
-                selectedDates.forEach(date => {
-                    meals.push({
-                        id: uuidv4(),
-                        main: selectedMain,
-                        probiotic: selectedYogurt && !isMainOnly ? state.probiotics.find((yogurt) => yogurt.id === selectedYogurt) : undefined,
-                        addOns: mealAddons,
-                        fruit: selectedFruit && !isMainOnly ? state.fruits.find((fruit) => fruit.id === selectedFruit) : undefined,
-                        drink: undefined,
-                        school: schools.find((school) => school.name === selectedChildData.school) as School,
-                        orderDate: date.toISOString(),
-                        child: selectedChildData,
-                        total: mealTotal,
-                    });
-                });
-            }
-        });
-
-        onAddToCart(meals);
-        toast.success(`Added ${meals.length} meal${meals.length !== 1 ? 's' : ''} to cart! ${hasGlutenAllergy ? 'Gluten-free option has been automatically added.' : ''}`, { duration: 5000 });
-        handleClose();
-    };
-
-    const orderAddOns = (addOns: AddOn[]): AddOn[] => {
-        const mainOnly = addOns.find(addon => addon.display.toLowerCase().includes('main only'));
-        if (mainOnly) {
-            return [mainOnly, ...addOns.filter(addon => addon.id !== mainOnly.id)];
-        } else {
-            return addOns;
-        }
-    }
-
-    const formatPrice = (price: number): string => {
-		if (price < 0) {
-			return `-$${price.toFixed(2).slice(1)}`;
-		} else {
-			return `$${price.toFixed(2)}`;
-		}
-	}
-
-    const handleClose = () => {
-        setSelectedAddons([]);
-        setSelectedYogurt(null);
-        setSelectedFruit(null);
-        setSelectedChildren([]);
-        setSelectedDates([]);
-        onClose();
-    };
-
-    const renderSummary = () => {
-        return (
-            <div className="bg-gray-100 p-4 rounded-md mb-4 space-y-2">
-                <h3 className="font-semibold">Order Summary</h3>
-                <p className='text-sm'>Main: {selectedMain?.display}</p>
-                {selectedAddons.length > 0 && (
-                    <p className='text-sm'>Add-ons: {addOns.filter(addon => selectedAddons.includes(addon.id)).map(addon => addon.display).join(', ')}</p>
-                )}
-                {!isMainOnly && selectedYogurt && (
-                    <p className='text-sm'>Side: {state.probiotics.find(yogurt => yogurt.id === selectedYogurt)?.display}</p>
-                )}
-                {!isMainOnly && selectedFruit && (
-                    <p className='text-sm'>Fruit: {state.fruits.find(fruit => fruit.id === selectedFruit)?.display}</p>
-                )}
-                <p className="text-sm text-gray-600 italic">
-                    Note: Gluten-free option will be automatically added (and charged) when adding to cart for children with gluten/celiac allergies.
-                </p>
-            </div>
+        return state.mains.filter(main => 
+            main.isActive && effectiveSchool.menuItems?.includes(main.id)
         );
-    };
+    }, [effectiveSchool, state.mains]);
 
-    const isValidDate = (date: Date) => {
-		const now = new Date();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const day = date.getDay();
-        const isWeekend = day === 0 || day === 6;
-        
-        let isPast;
-        if (now.getHours() < 7) {
-            isPast = date < today;
-        } else {
-            // 7am or later - today is considered past
-            isPast = date <= today;
+    const availableAddOns = useMemo(() => {
+        if (!currentMain?.addOns || !currentMain) {
+            return [];
         }
-		const isBlocked = state.blockedDates.some(
-			blockedDate => new Date(blockedDate).toDateString() === date.toDateString()
-		);
-        const school = state.user?.children.find(child => selectedChildren.includes(child.id))?.school;
-        const schoolDeiveryDays = state.schools.find(schoolData => schoolData.name === school)?.deliveryDays.map(day => day.toLowerCase());
-        const schoolDeliversOnDay = schoolDeiveryDays?.includes(date.toLocaleString('en-US', { weekday: 'long' }).toLowerCase());
-		return isWeekend || isPast || isBlocked || !schoolDeliversOnDay;
+        return state.addOns.filter(addon => 
+            addon.isActive && currentMain.addOns?.includes(addon.id)
+        );
+    }, [currentMain, state.addOns]);
+
+    const children = state.user?.children ?? [];
+    const sides = state.sides ?? [];
+    const fruits = state.fruits ?? [];
+
+	// Single initialization effect
+	useEffect(() => {
+		if (!isOpen) {
+			// Reset when closing
+			setCurrentMain(null);
+			setSelectedAddOns([]);
+			setSelectedSide(undefined);
+			setSelectedFruit(undefined);
+			setSelectedChildren([]);
+			setSelectedDates([]);
+			setIsMainOnly(false);
+			return;
+		}
+
+		if (isEditMode && editingMeal) {
+			// Edit mode - populate with existing meal data
+			setCurrentMain(editingMeal.main);
+			setSelectedAddOns(editingMeal.addOns);
+			setSelectedSide(editingMeal.side);
+			setSelectedFruit(editingMeal.fruit);
+			setSelectedChildren([editingMeal.child]);
+			setSelectedDates([new Date(editingMeal.deliveryDate)]);
+			setIsMainOnly(editingMeal.addOns.some(addon => 
+				addon.display.toLowerCase().includes('main only')
+			));
+		} else {
+			// Add mode - start fresh or with selected main
+			const initialMain = selectedMain || availableMains[0] || null;
+			setCurrentMain(initialMain);
+			setSelectedAddOns([]);
+			// Set default side and fruit if available
+			const activeSides = sides.filter(side => side.isActive);
+			const activeFruits = fruits.filter(fruit => fruit.isActive);
+			setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
+			setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
+			setSelectedChildren([]);
+			setSelectedDates([]);
+			setIsMainOnly(false);
+		}
+	}, [isOpen, sides, fruits]); // Minimal dependencies to prevent re-initialization
+
+	const handleAddOnToggle = (addonId: string) => {
+		const addon = availableAddOns.find(a => a.id === addonId);
+		if (!addon) return;
+
+		const isSelected = selectedAddOns.some(a => a.id === addonId);
+		const isMainOnlyAddon = addon.display.toLowerCase().includes('main only');
+
+		if (isSelected) {
+			setSelectedAddOns(selectedAddOns.filter(a => a.id !== addonId));
+			if (isMainOnlyAddon) {
+				setIsMainOnly(false);
+				// Re-set default selections when switching back from main only
+				const activeSides = sides.filter(side => side.isActive);
+				const activeFruits = fruits.filter(fruit => fruit.isActive);
+				setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
+				setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
+			}
+		} else {
+			setSelectedAddOns([...selectedAddOns, addon]);
+			if (isMainOnlyAddon) {
+				setIsMainOnly(true);
+				setSelectedSide(undefined);
+				setSelectedFruit(undefined);
+			}
+		}
 	};
 
-    if (children.length === 0) {
-        return (
-            <Dialog open={isOpen} onOpenChange={handleClose}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>No Children/Recipients Added Yet</DialogTitle>
-                    </DialogHeader>
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>You haven't added any children/recipients to your account yet</AlertTitle>
-                        <AlertDescription>
-                            To place an order, you need to add at least one recipient to your account.
-                        </AlertDescription>
-                    </Alert>
-                    <div className="mt-6 flex justify-between">
-                        <Button variant="outline" onClick={handleClose}>Close</Button>
-                        <Button asChild>
-                            <Link to="/account">Add</Link>
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        );
-    }
+	const handleChildToggle = (childId: string) => {
+		const child = children.find(c => c.id === childId);
+		if (!child) return;
 
-    return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="w-full sm:max-w-[425px] md:max-w-[600px] h-[90vh] sm:h-auto">
-                <DialogHeader>
+		if (isEditMode) {
+			setSelectedChildren([child]);
+		} else {
+			const isSelected = selectedChildren.some(c => c.id === childId);
+			if (isSelected) {
+				setSelectedChildren(selectedChildren.filter(c => c.id !== childId));
+			} else {
+				setSelectedChildren([...selectedChildren, child]);
+			}
+		}
+	};
 
-                <div className="flex flex-row justify-between items-center">
-                            <DialogTitle>Customise Your Meal/s</DialogTitle>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={handleClose}
+	const handleDateSelect = (date: Date | Date[] | undefined) => {
+        if (!date) return;
+
+        if (isEditMode) {
+            // Single date mode
+            const singleDate = Array.isArray(date) ? date[0] : date;
+            if (singleDate) {
+                setSelectedDates([singleDate]);
+            }
+        } else {
+            // Multiple date mode
+            const dates = Array.isArray(date) ? date : [date];
+            setSelectedDates(dates);
+        }
+	};
+
+	const isInvalidDate = (date: Date):boolean => {
+        if (!effectiveSchool || !effectiveSchool.validDates) {
+            return false; // No valid dates defined for the school
+        }
+
+		return !(isValidDateCheck(date, effectiveSchool.validDates));
+	};
+
+	const calculateTotal = (main: Main, addOns: AddOn[]) => {
+		return main.price + addOns.reduce((sum, addon) => sum + addon.price, 0);
+	};
+
+	const handleSave = () => {
+		// Validation
+		if (!currentMain) {
+			toast.error('Please select a main dish');
+			return;
+		}
+		if (selectedChildren.length === 0) {
+			toast.error('Please select at least one child');
+			return;
+		}
+		if (selectedDates.length === 0) {
+			toast.error('Please select at least one date');
+			return;
+		}
+        if (!effectiveSchool) {
+            toast.error('School information is missing');
+            return;
+        }
+		
+		// Validate sides and fruits if not main only
+		if (!isMainOnly) {
+			const activeSides = sides.filter(side => side.isActive);
+			const activeFruits = fruits.filter(fruit => fruit.isActive);
+			
+			if (activeSides.length > 0 && !selectedSide) {
+				toast.error('Please select a side');
+				return;
+			}
+			if (activeFruits.length > 0 && !selectedFruit) {
+				toast.error('Please select a fruit');
+				return;
+			}
+		}
+
+		try {
+			if (isEditMode && editingMeal) {
+				// Edit existing meal
+				const updatedMeal: Meal = {
+					...editingMeal,
+					main: currentMain,
+					addOns: selectedAddOns,
+					side: isMainOnly ? undefined : selectedSide,
+					fruit: isMainOnly ? undefined : selectedFruit,
+					child: selectedChildren[0],
+					deliveryDate: selectedDates[0].toISOString(),
+					total: calculateTotal(currentMain, selectedAddOns),
+					school: effectiveSchool,
+				};
+
+				onSave(updatedMeal);
+				toast.success('Order updated successfully');
+			} else {
+				// Create new meals
+				const newMeals: Meal[] = selectedChildren.flatMap(child =>
+					selectedDates.map(date => ({
+						id: uuidv4(),
+						main: currentMain,
+						addOns: selectedAddOns,
+						side: isMainOnly ? undefined : selectedSide,
+						fruit: isMainOnly ? undefined : selectedFruit,
+						child,
+						deliveryDate: date.toISOString(),
+						total: calculateTotal(currentMain, selectedAddOns),
+						school: effectiveSchool,
+					}))
+				);
+
+				onSave(newMeals);
+				toast.success(`${newMeals.length} meal(s) added to cart`);
+			}
+
+			onClose();
+		} catch (error) {
+			console.error('Error saving meal:', error);
+			toast.error('An error occurred while saving the meal');
+		}
+	};
+
+	return (
+		<Dialog open={isOpen} onOpenChange={onClose}>
+			<DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto">
+				<DialogHeader className="space-y-3">
+					<DialogTitle className="text-xl font-semibold">
+						{isEditMode ? 'Edit Meal Order' : 'Create Meal Order'}
+					</DialogTitle>
+					<DialogDescription className="px-4 py-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+						<span className="text-sm font-medium text-blue-800">
+							Delivering to: {effectiveSchool?.name}
+						</span>
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+					{/* Left Column - Food Selection */}
+					<div className="space-y-6">
+						{/* Main Dish Section */}
+						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+							<h3 className="text-lg font-semibold text-gray-900">Main Dish</h3>
+							<Select
+								value={currentMain?.id || ''}
+								onValueChange={(value) => {
+									const main = availableMains.find(m => m.id === value);
+									if (main) setCurrentMain(main);
+								}}
+								disabled={isEditMode}
 							>
-								<X className="h-4 w-4" />
-							</Button>
+								<SelectTrigger className="w-full bg-white">
+									<SelectValue placeholder="Select main dish" />
+								</SelectTrigger>
+								<SelectContent>
+									{availableMains.map(main => (
+										<SelectItem key={main.id} value={main.id}>
+											<span className="flex justify-between items-center w-full">
+												<span>{main.display}</span>
+												<span className="font-medium ml-2">${main.price.toFixed(2)}</span>
+											</span>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 
-                </DialogHeader>
-                <ScrollArea className="max-h-[calc(90vh-180px)] sm:max-h-[calc(100vh-240px)] pr-4">
-                    {renderSummary()}
-                    <div className="space-y-6">                        
-                        <div>
-                            <h4 className="font-semibold mb-2">1. Customisation</h4>
-                            <h4 className="mb-2">Add-ons</h4>
-                            <div className="space-y-2">
-                            {orderAddOns(addOns).map((addon) => {
-                                if (!addon.isActive) return null;
+						{/* Add-ons Section */}
+						{availableAddOns.length > 0 && (
+							<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+								<h3 className="text-lg font-semibold text-gray-900">Add-ons</h3>
+								<div className="space-y-3">
+									{availableAddOns.map(addon => (
+										<div key={addon.id} className="flex items-center space-x-3 p-2 hover:bg-white rounded">
+											<Checkbox
+												id={addon.id}
+												checked={selectedAddOns.some(a => a.id === addon.id)}
+												onCheckedChange={() => handleAddOnToggle(addon.id)}
+											/>
+											<Label htmlFor={addon.id} className="flex-1 cursor-pointer">
+												<span className="flex justify-between items-center">
+													<span>{addon.display}</span>
+													<span className="font-medium text-sm">
+														{addon.price >= 0 ? `+$${addon.price.toFixed(2)}` : `-$${Math.abs(addon.price).toFixed(2)}`}
+													</span>
+												</span>
+											</Label>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
 
-                                const isMainOnlyAddon = addon.display.toLowerCase().includes('main only');
-                                const isDisabled = isMainOnlyAddon && selectedMain?.isPromo === true;
-                                
-                                return (
-                                    <div key={addon.id} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={addon.id}
-                                            checked={selectedAddons.includes(addon.id)}
-                                            disabled={isDisabled}
-                                            onCheckedChange={(checked) => {
-                                                if (isDisabled) return;
-                                                
-                                                setIsMainOnly(checked && isMainOnlyAddon);
-                                                if (checked) {
-                                                    setSelectedAddons(prev => [...prev, addon.id]);
-                                                } else {
-                                                    setSelectedAddons(prev => prev.filter(id => id !== addon.id));
-                                                }
-                                            }}
-                                        />
-                                        <Label htmlFor={addon.id} className={`text-sm ${isDisabled ? 'text-gray-400' : ''}`}>
-                                            {addon.display} ({formatPrice(addon.price)})
-                                            {isDisabled && (
-                                                <span className="ml-2 text-xs text-red-500 italic">
-                                                    (Not available for promotional items)
-                                                </span>
-                                            )}
-                                        </Label>
-                                    </div>
-                                );
-                            })}
-                            </div>
-                            {!isMainOnly && (
-                                <>
-                                    <h4 className="mt-4 mb-2">Side</h4>
-                                    <div className="space-y-2 mb-2">
-                                        {state.probiotics && state.probiotics.map((yogurt) => (
-                                            yogurt.isActive && (
-                                                <div key={yogurt.id} className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id={`yogurt-${yogurt.id}`}
-                                                        checked={selectedYogurt === yogurt.id}
-                                                        onCheckedChange={(checked) => {
-                                                            if (checked) {
-                                                                setSelectedYogurt(yogurt.id);
-                                                            }
-                                                        }}
-                                                    />
-                                                    <Label htmlFor={`yogurt-${yogurt.id}`} className="text-sm">
-                                                        {yogurt.display}
-                                                    </Label>
-                                                </div>
-                                            )
-                                        ))}
-                                    </div>
-                                    <h4 className="mt-4 mb-2">Fruit</h4>
-                                    <div className="space-y-2 mb-2">
-                                        {state.fruits && state.fruits.map((fruit) => (
-                                            fruit.isActive && (
-                                                <div key={fruit.id} className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id={`fruit-${fruit.id}`}
-                                                        checked={selectedFruit === fruit.id}
-                                                        onCheckedChange={(checked) => {
-                                                            if (checked) {
-                                                                setSelectedFruit(fruit.id);
-                                                            }
-                                                        }}
-                                                    />
-                                                    <Label htmlFor={`fruit-${fruit.id}`} className="text-sm">
-                                                        {fruit.display}
-                                                    </Label>
-                                                </div>
-                                            )
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        
-                        <div>
-                            <h4 className="font-semibold mb-2">2. Select Recipients</h4>
-                            <div className="space-y-2">
-                                {children.map((child) => (
-                                    <div key={child.id} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`child-${child.id}`}
-                                            checked={selectedChildren.includes(child.id)}
-                                            onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                    setSelectedChildren(prev => [...prev, child.id]);
-                                                } else {
-                                                    setSelectedChildren(prev => prev.filter(id => id !== child.id));
-                                                }
-                                            }}
-                                        />
-                                        <Label htmlFor={`child-${child.id}`} className="text-sm">
-                                            {child.name}
-                                            {child.allergens && (
-                                                <span className="text-xs text-gray-500 ml-2">({child.allergens})</span>
-                                            )}
-                                            {(child.allergens?.toLowerCase().includes('gluten') || 
-                                              child.allergens?.toLowerCase().includes('celiac')) && (
-                                                <Badge variant="outline" className="ml-2">Gluten-free meal</Badge>
-                                            )}
-                                        </Label>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h4 className="font-semibold mb-2">3. Select Dates</h4>
-                            {selectedChildren.length < 1 && (
-                                <span className='text-sm text-gray-600 italic'>
-                                    Please select at least one recipient to enable date selection.
-                                </span>
-                            )}
-                            {selectedChildren.length > 0 && (
-                                <Calendar
-                                    mode="multiple"
-                                    selected={selectedDates}
-                                    onSelect={(dates) => setSelectedDates(dates || [])}
-                                    className="rounded-md border"
-                                    disabled={isValidDate}
-                                />
-                            )}
+						{/* Sides and Fruits */}
+						{!isMainOnly && (
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								{sides.length > 0 && (
+									<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+										<h3 className="text-lg font-semibold text-gray-900">Side</h3>
+										<RadioGroup 
+											value={selectedSide?.id || ''} 
+											onValueChange={(value) => {
+												const side = sides.find(s => s.id === value);
+												setSelectedSide(side);
+											}}
+											className="space-y-2"
+										>
+											{sides.filter(side => side.isActive).map(side => (
+												<div key={side.id} className="flex items-center space-x-2 p-1">
+													<RadioGroupItem value={side.id} id={`side-${side.id}`} />
+													<Label htmlFor={`side-${side.id}`} className="text-sm cursor-pointer">
+														{side.display}
+													</Label>
+												</div>
+											))}
+										</RadioGroup>
+									</div>
+								)}
 
-                        </div>
-                    </div>
-                </ScrollArea>
-                
-                <div className="mt-6">
-                    <Button 
-                        onClick={handleAddToCart} 
-                        disabled={selectedChildren.length === 0 || selectedDates.length === 0}
-                        className="w-full"
-                    >
-                        Add to Cart
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
+								{fruits.length > 0 && (
+									<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+										<h3 className="text-lg font-semibold text-gray-900">Fruit</h3>
+										<RadioGroup 
+											value={selectedFruit?.id || ''} 
+											onValueChange={(value) => {
+												const fruit = fruits.find(f => f.id === value);
+												setSelectedFruit(fruit);
+											}}
+											className="space-y-2"
+										>
+											{fruits.filter(fruit => fruit.isActive).map(fruit => (
+												<div key={fruit.id} className="flex items-center space-x-2 p-1">
+													<RadioGroupItem value={fruit.id} id={`fruit-${fruit.id}`} />
+													<Label htmlFor={`fruit-${fruit.id}`} className="text-sm cursor-pointer">
+														{fruit.display}
+													</Label>
+												</div>
+											))}
+										</RadioGroup>
+									</div>
+								)}
+							</div>
+						)}
+					</div>
+
+					{/* Right Column - Children and Dates */}
+					<div className="space-y-6">
+						{/* Children Selection */}
+						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+							<h3 className="text-lg font-semibold text-gray-900">
+								{isEditMode ? 'Child' : 'Children'}
+							</h3>
+							<div className="space-y-3">
+								{children.map(child => (
+									<div key={child.id} className="flex items-center space-x-3 p-2 hover:bg-white rounded">
+										<Checkbox
+											id={`child-${child.id}`}
+											checked={selectedChildren.some(c => c.id === child.id)}
+											onCheckedChange={() => handleChildToggle(child.id)}
+										/>
+										<Label htmlFor={`child-${child.id}`} className="text-sm cursor-pointer font-medium">
+											{child.name}
+										</Label>
+									</div>
+								))}
+							</div>
+						</div>
+
+						{/* Date Selection */}
+						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+							<h3 className="text-lg font-semibold text-gray-900">
+								{isEditMode ? 'Date' : 'Dates'}
+							</h3>
+							<div className="flex justify-center">
+								{isEditMode ? (
+									<Calendar
+										mode="single"
+										selected={selectedDates[0]}
+										onSelect={(date) => handleDateSelect(date)}
+										disabled={isInvalidDate}
+										className="rounded-md border bg-white"
+									/>
+								) : (
+									<Calendar
+										mode="multiple"
+										selected={selectedDates}
+										onSelect={(dates) => handleDateSelect(dates)}
+										disabled={isInvalidDate}
+										className="rounded-md border bg-white"
+									/>
+								)}
+							</div>
+							{selectedDates.length > 0 && (
+								<div className="mt-3 p-3 bg-white rounded border">
+									<p className="text-sm font-medium text-gray-700 mb-1">Selected Dates:</p>
+									<p className="text-sm text-gray-600">
+										{selectedDates.map(d => formatDate(d.toISOString())).join(', ')}
+									</p>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+
+				{/* Total Section */}
+				{currentMain && (
+					<div className="mt-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border">
+						<div className="flex justify-between items-center mb-2">
+							<span className="text-lg font-semibold text-gray-900">Total per meal:</span>
+							<span className="text-xl font-bold text-green-600">
+								${calculateTotal(currentMain, selectedAddOns).toFixed(2)}
+							</span>
+						</div>
+						{!isEditMode && selectedChildren.length > 0 && selectedDates.length > 0 && (
+							<div className="flex justify-between items-center pt-2 border-t border-gray-200">
+								<span className="text-sm text-gray-600">
+									Total for {selectedChildren.length * selectedDates.length} meal(s):
+								</span>
+								<span className="text-lg font-bold text-green-600">
+									${(calculateTotal(currentMain, selectedAddOns) * 
+									   selectedChildren.length * 
+									   selectedDates.length).toFixed(2)}
+								</span>
+							</div>
+						)}
+					</div>
+				)}
+
+				<DialogFooter className="mt-6 gap-3">
+					<Button variant="outline" onClick={onClose} className="px-6">
+						Cancel
+					</Button>
+					<Button onClick={handleSave} className="px-6">
+						{isEditMode ? 'Save Changes' : 'Add to Cart'}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
 };
 
 export default OrderDialog;

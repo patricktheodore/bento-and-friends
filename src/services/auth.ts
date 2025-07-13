@@ -36,7 +36,7 @@ export const signIn = async (email: string, password: string): Promise<User> => 
 	const userCredential = await signInWithEmailAndPassword(auth, email, password);
 	const user = userCredential.user;
 
-	const userDoc = await getDoc(doc(db, 'users', user.uid));
+	const userDoc = await getDoc(doc(db, 'users-test', user.uid));
 	const userData = userDoc.data() as User;
 
 	return userData;

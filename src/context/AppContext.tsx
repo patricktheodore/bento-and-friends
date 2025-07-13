@@ -6,7 +6,6 @@ import { Order, Meal } from '../models/order.model';
 import { School } from '../models/school.model';
 import { getMains, getSides, getAddOns, getFruits, getDrinks, getPlatters } from '../services/item-service';
 import { getCoupons } from '@/services/coupon-service';
-import { getBlockedDates } from '@/services/date-service';
 import { AddOn, Drink, Fruit, Main, Platter, Side, MenuItem } from '../models/item.model';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,9 +21,8 @@ type AppState = {
 	addOns: AddOn[];
 	schools: School[];
 	coupons: Coupon[];
-	items: MenuItem[]; // Updated to use MenuItem type
+	items: MenuItem[];
 	isLoading: boolean;
-	blockedDates: string[];
 };
 
 // Define action types
@@ -56,7 +54,6 @@ type Action =
 	| { type: 'ADD_COUPON'; payload: Coupon }
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
 	| { type: 'DELETE_COUPON'; payload: string }
-	| { type: 'SET_BLOCKED_DATES'; payload: string[] }
 	| { type: 'CONFIRM_ORDER'; payload: OrderHistorySummary }
 	| { type: 'SYNC_ITEMS' }; // New action to sync all items
 
@@ -74,7 +71,6 @@ const initialState: AppState = {
 	addOns: [],
 	items: [],
 	coupons: [],
-	blockedDates: [],
 	isLoading: true,
 };
 
@@ -291,8 +287,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 				...state,
 				coupons: state.coupons.filter(coupon => coupon.id !== action.payload),
 			};
-		case 'SET_BLOCKED_DATES':
-			return { ...state, blockedDates: action.payload };
 		case 'CONFIRM_ORDER':
 			if (!state.user) return state;
 			return {
@@ -315,17 +309,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 		const loadAllData = async () => {
 			dispatch({ type: 'SET_LOADING', payload: true });
 			try {
-				const [user, schools, mains, platters, sides, addOns, fruits, drinks, coupons, blockedDates] = await Promise.all([
+				const [user, schools, mains, platters, sides, addOns, fruits, drinks, coupons] = await Promise.all([
 					getCurrentUser(),
 					getSchools(),
 					getMains(),
 					getPlatters(),
-					getSides(), // Updated from getProbiotics to getSides
+					getSides(),
 					getAddOns(),
 					getFruits(),
 					getDrinks(),
 					getCoupons(),
-					getBlockedDates(),
 				]);
 
 				dispatch({ type: 'SET_USER', payload: user });
@@ -337,7 +330,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 				dispatch({ type: 'SET_FRUITS', payload: fruits.data ? fruits.data : [] });
 				dispatch({ type: 'SET_DRINKS', payload: drinks.data ? drinks.data : [] });
 				dispatch({ type: 'SET_COUPONS', payload: coupons.data ? coupons.data : [] });
-				dispatch({ type: 'SET_BLOCKED_DATES', payload: blockedDates ? blockedDates : [] });
 
 				// Load cart from localStorage
 				const savedCart = loadCartFromLocalStorage();

@@ -23,7 +23,7 @@ export interface OrderDetail {
 
 export const fetchOrderDetails = async (orderId: string): Promise<OrderDetail | null> => {
   try {
-    const orderRef = doc(db, 'orders', orderId);
+    const orderRef = doc(db, 'orders-test', orderId);
     const orderDoc = await getDoc(orderRef);
 
     if (!orderDoc.exists()) {

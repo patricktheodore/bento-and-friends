@@ -222,6 +222,3 @@ export const hasDescription = (item: MenuItem): item is DescribedMenuItem => {
 export const hasCode = (item: MenuItem): item is CodedMenuItem => {
 	return isSide(item) || isFruit(item);
 };
-
-// Legacy export for backward compatibility (remove after migration)
-export const Probiotic = Side;

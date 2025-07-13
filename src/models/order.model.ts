@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { AddOn, Drink, Fruit, Main, Probiotic } from './item.model';
+import { AddOn, Drink, Fruit, Main, Side } from './item.model';
 import { Child } from './user.model';
 import { School } from './school.model';
 
@@ -26,24 +26,24 @@ export class Meal {
     id: string;
     main: Main;
     addOns: AddOn[];
-    probiotic?: Probiotic;
+    side?: Side;
     fruit?: Fruit;
     drink?: Drink;
     child: Child;
     school: School;
     total: number;
-    orderDate: string;
+    deliveryDate: string;
 
-    constructor(main: Main, addOns: AddOn[], probiotic: Probiotic, fruit: Fruit, drink: Drink, child: Child, school: School, total: number, orderDate: string) {
+    constructor(main: Main, addOns: AddOn[], side: Side, fruit: Fruit, drink: Drink, child: Child, school: School, total: number, deliveryDate: string) {
         this.id = uuidv4();
         this.main = main;
         this.addOns = addOns;
-        this.probiotic = probiotic || null;
+        this.side = side || null;
         this.fruit = fruit || null;
         this.drink = drink || null;
         this.child = child;
         this.school = school;
         this.total = total;
-        this.orderDate = orderDate;
+        this.deliveryDate = deliveryDate;
     }
 }

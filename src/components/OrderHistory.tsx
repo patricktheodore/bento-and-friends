@@ -127,7 +127,7 @@ const OrderHistory: React.FC = () => {
 														<div key={index} className="bg-white p-3 rounded-md shadow-sm">
 															<p><strong>{meal.main.display}</strong> for {meal.child.name}</p>
 															<p className="text-sm">Add-ons: {meal.addOns.map((addon) => addon.display).join(', ')}</p>
-															<p className="text-sm">Date: {formatDate(meal.orderDate)}</p>
+															<p className="text-sm">Date: {formatDate(meal.deliveryDate)}</p>
 															<p className="text-sm font-medium">Price: ${meal.total.toFixed(2)}</p>
 															<div className="mt-2 flex justify-end">
 																<Button
@@ -155,7 +155,7 @@ const OrderHistory: React.FC = () => {
 			)}
 
 
-{selectedMeal && (
+{/* {selectedMeal && (
                 <OrderDialog
                     isOpen={isOrderAgainDialogOpen}
                     onClose={() => setIsOrderAgainDialogOpen(false)}
@@ -169,7 +169,7 @@ const OrderHistory: React.FC = () => {
 					initialSelectedFruit={selectedMeal.fruit ? selectedMeal.fruit.id : ''}
                     initialSelectedChild={selectedMeal.child.id}
                 />
-            )}
+            )} */}
 		</div>
 	);
 };

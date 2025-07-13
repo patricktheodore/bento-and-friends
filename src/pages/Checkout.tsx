@@ -1,25 +1,20 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { AlertTriangle, ChevronLeft, Edit2, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Meal } from '@/models/order.model';
-import { AddOn, Main } from '@/models/item.model';
 import { loadStripe } from '@stripe/stripe-js';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Coupon } from '@/models/user.model';
 import { validateCoupon } from '@/services/coupon-service';
 import { Input } from '@/components/ui/input';
 import DiscountMessage from '../components/DiscountMessage';
-import { formatDate } from '@/utils/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { calculateDiscounts } from '@/utils/calculate-discount';
+import { isValidDateCheck } from '@/utils/dateValidation';
+import OrderDialog from '@/components/OrderDialog';
 
 const stripePromise = loadStripe(
 	'pk_test_51RbbwMRtsoGEFZInbGrxGhn8cPi6bAX35Hqjj1dr6tx22Vsfaxm3aBNdDXGp1Si9VxuCzwjWEWjCKpEgGzlpU4Jo00VRwsQajl'
@@ -29,14 +24,24 @@ const CheckoutPage: React.FC = () => {
 	const { state, dispatch } = useAppContext();
 	const { cart, user } = state;
 
-	const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [isProcessing, setIsProcessing] = useState(false);
+	const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+    const [showOrderDialog, setShowOrderDialog] = useState(false);
 	const [couponCode, setCouponCode] = useState('');
 	const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 	const [clientSecret, setClientSecret] = useState('');
 	const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
 	const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+
+	// Sort meals by delivery date (earliest first)
+	const sortedMeals = useMemo(() => {
+		if (!cart?.meals) return [];
+		
+		return [...cart.meals].sort((a, b) => {
+			const dateA = new Date(a.deliveryDate);
+			const dateB = new Date(b.deliveryDate);
+			return dateA.getTime() - dateB.getTime();
+		});
+	}, [cart?.meals]);
 
 	const discountCalculation = useMemo(() => {
 		return calculateDiscounts(cart, appliedCoupon);
@@ -72,146 +77,46 @@ const CheckoutPage: React.FC = () => {
 		toast.success('Coupon removed');
 	};
 
-	const startEditing = (meal: Meal) => {
-		setEditingMeal({ ...meal });
-		setIsDialogOpen(true);
-	};
+    const editMeal = (meal: Meal) => {
+        setSelectedMeal(meal);
+        setShowOrderDialog(true);
+    };
 
-	const updateMeal = () => {
-		if (editingMeal) {
-			// Verify school data is present
-			if (!editingMeal.school?.id) {
-				const school = state.schools.find((s) => s.name === editingMeal.child.school);
-
-				if (!school) {
-					toast.error('Error: School information is missing');
-					return;
-				}
-
-				// Ensure school data is complete before updating
-				editingMeal.school = {
-					id: school.id,
-					name: school.name,
-					address: school.address,
-					isActive: school.isActive,
-					deliveryDays: school.deliveryDays,
-				};
-			}
-
-			dispatch({
-				type: 'UPDATE_MEAL',
-				payload: editingMeal,
-			});
-			toast.success('Order updated');
-		}
-		setEditingMeal(null);
-		setIsDialogOpen(false);
-	};
-
-	const cancelEdit = () => {
-		setEditingMeal(null);
-		setIsDialogOpen(false);
-	};
+    const handleCloseModal = () => {
+        setShowOrderDialog(false);
+        setSelectedMeal(null);
+    };
 
 	const removeMeal = (mealId: string) => {
 		dispatch({ type: 'REMOVE_FROM_CART', payload: mealId });
 		toast.success('Item removed from cart');
 	};
 
-	const handleAddOnToggle = (addonId: string) => {
-		if (editingMeal) {
-			const updatedAddOns = editingMeal.addOns.some((addon) => addon.id === addonId)
-				? editingMeal.addOns.filter((addon) => addon.id !== addonId)
-				: [...editingMeal.addOns, state.addOns.find((addon) => addon.id === addonId)!];
+    const isInvalidDate = (meal: Meal):boolean => {
+        return !(isValidDateCheck(new Date(meal.deliveryDate), meal.school?.validDates));
+    };
 
-			setEditingMeal({
-				...editingMeal,
-				addOns: updatedAddOns,
-				total: calculateTotal(editingMeal.main, updatedAddOns),
-			});
-		}
-	};
+    const handleUpdate = (meals: Meal | Meal[]) => {
+        if (!state.cart) {
+            toast.error('Your cart is empty');
+            return;
+        }
 
-	const calculateTotal = (main: Main, addOns: AddOn[]) => {
-		return main.price + addOns.reduce((sum, addon) => sum + addon.price, 0);
-	};
+        const mealsArray = Array.isArray(meals) ? meals : [meals];
+        
+        mealsArray.forEach(meal => {
+            dispatch({
+                type: 'UPDATE_MEAL',
+                payload: meal,
+            });
+        });
+        
+        toast.success('Meal updated successfully');
+        handleCloseModal();
+    }
 
 	const handleCheckout = async () => {
 		if (!cart || !state.cart || !cart.meals || cart.meals.length === 0) return;
-
-		const now = new Date();
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-
-		const invalidDates = cart.meals.filter((meal) => {
-			const orderDate = new Date(meal.orderDate);
-
-			if (now.getHours() < 7) {
-				return orderDate < today;
-			} else {
-				return orderDate <= today;
-			}
-		});
-
-		if (invalidDates.length > 0) {
-			toast.error(
-				<div>
-					<p>Some meals have invalid delivery dates:</p>
-					<ul className="list-disc pl-4 mt-2">
-						{invalidDates.map((meal, index) => (
-							<li key={index}>
-								{meal.child.name} - {formatDate(meal.orderDate)}
-							</li>
-						))}
-					</ul>
-					<p className="mt-2">Please update or remove these meals to continue.</p>
-				</div>
-			);
-			return;
-		}
-
-		// Validate all meals have complete school data
-		const invalidMeals = cart.meals.filter((meal) => !meal.school?.id);
-		if (invalidMeals.length > 0) {
-			// Try to recover missing school data
-			const updatedMeals = cart.meals.map((meal) => {
-				if (!meal.school?.id) {
-					const school = state.schools.find((s) => s.name === meal.child.school);
-					if (school) {
-						return {
-							...meal,
-							school: {
-								id: school.id,
-								name: school.name,
-								address: school.address,
-								isActive: school.isActive,
-								deliveryDays: school.deliveryDays,
-							},
-						};
-					}
-				}
-				return meal;
-			});
-
-			// Check if recovery was successful
-			const stillInvalid = updatedMeals.filter((meal) => !meal.school?.id);
-			if (stillInvalid.length > 0) {
-				toast.error('Some orders have missing school information. Please try again or contact support.');
-				console.error('Invalid meals:', stillInvalid);
-				return;
-			}
-
-			// Update cart with recovered data
-			dispatch({
-				type: 'SET_CART',
-				payload: {
-					...cart,
-					meals: updatedMeals,
-				},
-			});
-		}
-
-		setIsProcessing(true);
 
 		try {
 			localStorage.setItem('cart', JSON.stringify(cart));
@@ -225,7 +130,7 @@ const CheckoutPage: React.FC = () => {
                     currency: 'aud',
                     product_data: {
                         name: `${meal.main.display} - ${meal.child.name}`,
-                        description: `Main: ${meal.main.display}, For: ${meal.child.name} (${meal.school.name}), On: ${new Date(meal.orderDate).toLocaleDateString('en-AU')}`,
+                        description: `Main: ${meal.main.display}, For: ${meal.child.name} (${meal.school.name}), On: ${new Date(meal.deliveryDate).toLocaleDateString('en-AU')}`,
                     },
                     unit_amount: Math.round(meal.total * 100), // Convert to cents
                 },
@@ -255,27 +160,7 @@ const CheckoutPage: React.FC = () => {
 		} catch (error) {
 			console.error('Checkout Error:', error);
 			toast.error('An error occurred during checkout. Please try again.');
-		} finally {
-			setIsProcessing(false);
 		}
-	};
-
-	const isValidDate = (date: Date) => {
-		const now = new Date();
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-
-		const day = date.getDay();
-		const isWeekend = day === 0 || day === 6;
-
-		let isPast;
-		if (now.getHours() < 7) {
-			isPast = date < today;
-		} else {
-			isPast = date <= today;
-		}
-
-		return isWeekend || isPast;
 	};
 
 	// Callback for EmbeddedCheckoutProvider
@@ -309,207 +194,69 @@ const CheckoutPage: React.FC = () => {
 			)}
 
 			<div className="space-y-6 mt-3">
-				{cart.meals.map((meal) => (
+				{sortedMeals.map((meal) => (
 					<div
 						key={meal.id}
 						className="bg-white border p-4 rounded-md shadow-sm">
 						<div className="flex flex-wrap justify-between items-start">
 							<div className="w-full sm:w-2/3">
 								<h3 className="font-semibold text-lg">{meal.main.display}</h3>
-								{(() => {
-									const now = new Date();
-									const today = new Date();
-									today.setHours(0, 0, 0, 0);
-									const orderDate = new Date(meal.orderDate);
-
-									let isPast;
-									if (now.getHours() < 7) {
-										isPast = orderDate < today;
-									} else {
-										isPast = orderDate <= today;
-									}
-
-									return isPast;
-								})() && (
-									<Alert
-										variant="destructive"
-										className="mt-2 mb-2">
-										<AlertTriangle className="h-4 w-4" />
-										<AlertDescription>
-											This meal's delivery date has passed. Please update or remove it.
-										</AlertDescription>
-									</Alert>
-								)}
-								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')}
+								{isInvalidDate(meal) && (
+                                    <Alert
+                                        variant="destructive"
+                                        className="mt-2 mb-2">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDescription>
+                                            This meal's delivery date in invalid. Either it has passed, or the school does not offer service for this date. Please update or remove it.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+								<p className="text-sm">
+                                    <strong>Details: </strong>
+									{meal.addOns.map((addon) => addon.display).join(', ')} -{' '}
+									{meal.side ? meal.side.display : ' No side '} -{' '}
+									{meal.fruit ? meal.fruit.display : ' No fruit '}
 								</p>
 								<p className="text-sm">
-									{meal.child.name} - {new Date(meal.orderDate).toLocaleDateString()}
+									<strong>For:</strong> {meal.child.name}
 								</p>
+                                <p className='text-sm'>
+                                    <strong>Delivered to: </strong> {meal.school.name}
+                                </p>
+                                <p className='text-sm'>
+                                    <strong>Delivery date: </strong> {new Date(meal.deliveryDate).toLocaleDateString()}
+                                </p>
 							</div>
 							<div className="w-full sm:w-1/3 mt-2 sm:mt-0 text-right">
 								<p className="text-lg font-medium">${meal.total.toFixed(2)}</p>
 							</div>
 						</div>
 
-						{/* Only show edit/delete buttons when not in checkout mode */}
-						{!showEmbeddedCheckout && (
-							<div className="flex justify-end space-x-2 mt-4">
-								<Dialog
-									open={isDialogOpen}
-									onOpenChange={setIsDialogOpen}>
-									<DialogTrigger asChild>
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => startEditing(meal)}>
-											<Edit2 className="h-4 w-4 mr-1" /> Edit
-										</Button>
-									</DialogTrigger>
-									<DialogContent className="sm:max-w-[425px]">
-										<DialogHeader>
-											<DialogTitle>Edit Order</DialogTitle>
-										</DialogHeader>
-										{editingMeal && (
-											<div className="space-y-4 mt-4">
-												{/* Main Dish */}
-												<div>
-													<label className="text-sm font-medium">Main Dish</label>
-													<Select
-														value={editingMeal.main.id}
-														onValueChange={(value) => {
-															const newMain = state.mains.find(
-																(main) => main.id === value
-															)!;
-															setEditingMeal({
-																...editingMeal,
-																main: newMain,
-																total: calculateTotal(newMain, editingMeal.addOns),
-															});
-														}}>
-														<SelectTrigger>
-															<SelectValue placeholder="Select main dish" />
-														</SelectTrigger>
-														<SelectContent>
-															{state.mains.map((main) => (
-																<SelectItem
-																	key={main.id}
-																	value={main.id}>
-																	{main.display}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												</div>
-												{/* Add-ons */}
-												<div>
-													<label className="text-sm font-medium">Add-ons</label>
-													{state.addOns.map(
-														(addon) =>
-															addon.isActive && (
-																<div
-																	key={addon.id}
-																	className="flex items-center space-x-2 mb-2">
-																	<Checkbox
-																		id={addon.id}
-																		checked={editingMeal.addOns.some(
-																			(a) => a.id === addon.id
-																		)}
-																		onCheckedChange={() =>
-																			handleAddOnToggle(addon.id)
-																		}
-																	/>
-																	<Label htmlFor={addon.id}>{addon.display}</Label>
-																</div>
-															)
-													)}
-												</div>
-												{/* Child */}
-												<div>
-													<label className="text-sm font-medium">Child</label>
-													<Select
-														value={editingMeal.child.id}
-														onValueChange={(value) => {
-															const newChild = user?.children.find(
-																(child) => child.id === value
-															);
-															if (newChild) {
-																const newSchool = state.schools.find(
-																	(school) => school.name === newChild.school
-																);
+                        <div className='mt-2 flex justify-start items-center gap-2'>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => editMeal(meal)}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeMeal(meal.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Remove
+                            </Button>
+                        </div>
 
-																if (!newSchool) {
-																	console.error(
-																		`School not found for child ${newChild.name}`
-																	);
-																	toast.error('Error: School information not found');
-																	return;
-																}
+                        {showOrderDialog && (
+                            <OrderDialog
+                                key={`${selectedMeal?.id}-dialog`}
+                                isOpen={showOrderDialog}
+                                onClose={handleCloseModal}
+                                editingMeal={selectedMeal}
+                                onSave={handleUpdate}
+                            />
+                        )}
 
-																setEditingMeal({
-																	...editingMeal,
-																	child: newChild,
-																	school: {
-																		id: newSchool.id,
-																		name: newSchool.name,
-																		address: newSchool.address,
-																		isActive: newSchool.isActive,
-																		deliveryDays: newSchool.deliveryDays,
-																	},
-																});
-															}
-														}}>
-														<SelectTrigger>
-															<SelectValue placeholder="Select a child" />
-														</SelectTrigger>
-														<SelectContent>
-															{user?.children.map((child) => (
-																<SelectItem
-																	key={child.id}
-																	value={child.id}>
-																	{child.name}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												</div>
-												{/* Date */}
-												<div>
-													<label className="text-sm font-medium">Date</label>
-													<Calendar
-														mode="single"
-														selected={new Date(editingMeal.orderDate)}
-														onSelect={(date) =>
-															date &&
-															setEditingMeal({
-																...editingMeal,
-																orderDate: date.toISOString(),
-															})
-														}
-														disabled={isValidDate}
-														className="rounded-md border"
-													/>
-												</div>
-											</div>
-										)}
-										<DialogFooter>
-											<Button
-												variant="outline"
-												onClick={cancelEdit}>
-												Cancel
-											</Button>
-											<Button onClick={updateMeal}>Save Changes</Button>
-										</DialogFooter>
-									</DialogContent>
-								</Dialog>
-								<Button
-									variant="destructive"
-									size="sm"
-									onClick={() => removeMeal(meal.id)}>
-									<Trash2 className="h-4 w-4 mr-1" /> Remove
-								</Button>
-							</div>
-						)}
 					</div>
 				))}
 			</div>
@@ -539,7 +286,6 @@ const CheckoutPage: React.FC = () => {
 					</div>
 				</div>
 
-				{/* Coupon Section - Only show when not in checkout mode */}
 				{!showEmbeddedCheckout && (
 					<>
 						{appliedCoupon ? (
@@ -569,9 +315,8 @@ const CheckoutPage: React.FC = () => {
 						)}
 						<Button
 							onClick={handleCheckout}
-							className="w-full sm:w-auto sm:min-w-[200px] sm:float-right"
-							disabled={isProcessing}>
-							{isProcessing ? 'Processing...' : 'Proceed to Payment'}
+							className="w-full sm:w-auto sm:min-w-[200px] sm:float-right">
+							Proceed to Payment
 						</Button>
 					</>
 				)}
