@@ -111,7 +111,6 @@ const CheckoutPage: React.FC = () => {
             });
         });
         
-        toast.success('Meal updated successfully');
         handleCloseModal();
     }
 

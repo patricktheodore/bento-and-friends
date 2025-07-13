@@ -1,175 +1,215 @@
-import * as functions from "firebase-functions";
+import { onCall } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
+import { defineSecret } from "firebase-functions/params";
 
-const stripe = new Stripe(functions.config().stripe.secret_key, {
-  apiVersion: "2024-06-20",
-});
-
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 interface CheckoutData {
-	lineItems: any[];
-	returnUrl: string;
-	customerId?: string;
-	customerEmail: string;
-	couponCode?: string;
-	discountAmount?: number;
-	cartData?: any;
+  lineItems: any[];
+  returnUrl: string;
+  customerId?: string;
+  customerEmail: string;
+  couponCode?: string;
+  discountAmount?: number;
+  cartData?: any;
 }
 
 interface OptimizedOrderData {
-	orderId: string;
-	userId: string;
-    stripeSessionId: string;
+  orderId: string;
+  userId: string;
+  stripeSessionId: string;
 
-	meals: Array<{
-		id: string;
+  meals: Array<{
+    id: string;
 
-		main: {
-			id: string;
-			display: string;
-			price: number;
-		};
-		addOns: Array<{
-			id: string;
-			display: string;
-			price: number;
-		}>;
+    main: {
+      id: string;
+      display: string;
+      price: number;
+    };
+    addOns: Array<{
+      id: string;
+      display: string;
+      price: number;
+    }>;
 
-        fruit?: {
-            id: string;
-            display: string;
-        }
-
-        probiotic?: {
-            id: string;
-            display: string;
-        };
-
-		child: {
-			id: string;
-			name: string;
-		};
-
-		school: {
-			id: string;
-			name: string;
-			address: string;
-		};
-
-		deliveryDate: string;
-		total: number;
-	}>;
-
-	pricing: {
-		subtotal: number;
-		finalTotal: number;
-		appliedCoupon?: {
-			code: string;
-			discountAmount: number;
-		};
-	};
-
-	status: "pending" | "completed" | "failed";
-	createdAt: string;
-	expiresAt: string;
-}
-
-export const createCheckout = functions.https.onCall(async (data: CheckoutData, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "User must be authenticated to create checkout session."
-    );
-  }
-
-  const userId = context.auth.uid;
-  const { lineItems, returnUrl, customerId, customerEmail, couponCode, discountAmount, cartData } = data;
-
-  if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
-    throw new functions.https.HttpsError("invalid-argument", "Valid lineItems array is required");
-  }
-
-  if (!returnUrl || typeof returnUrl !== "string") {
-    throw new functions.https.HttpsError("invalid-argument", "Valid returnUrl is required");
-  }
-
-  if (!customerEmail || typeof customerEmail !== "string" || !customerEmail.includes("@")) {
-    throw new functions.https.HttpsError("invalid-argument", "Valid customerEmail is required");
-  }
-
-  try {
-    const orderId = generateOrderId();
-
-    let coupon;
-    if (discountAmount && discountAmount > 0) {
-      coupon = await stripe.coupons.create({
-        amount_off: discountAmount,
-        currency: "aud",
-        duration: "once",
-        name: couponCode ? `Bundle + Coupon (${couponCode})` : "Bundle Discount",
-        metadata: {
-          appliedBy: userId,
-          couponCode: couponCode || "",
-          createdAt: new Date().toISOString(),
-          orderId,
-        },
-      });
+    fruit?: {
+      id: string;
+      display: string;
     }
 
-    const createPaymentDescription = () => {
-      return `Order ${orderId} - ${customerId} - ${lineItems.length} meal${lineItems.length > 1 ? "s" : ""}`;
+    side?: {
+      id: string;
+      display: string;
     };
 
-    // Create the checkout session
-    const session = await stripe.checkout.sessions.create({
-      line_items: lineItems,
-      mode: "payment",
-      ui_mode: "embedded",
-      payment_method_types: ["card"],
-      return_url: returnUrl,
-      customer_email: customerEmail,
-      discounts: coupon ? [{ coupon: coupon.id }] : [],
-      metadata: {
-        user_id: userId,
-        order_id: orderId,
-        created_at: new Date().toISOString(),
-        total_items: lineItems.length.toString(),
-        coupon_code: couponCode || "",
-        discount_amount: discountAmount ? discountAmount.toString() : "0",
-        sub_total: cartData?.total,
-      },
-      payment_intent_data: {
-        description: createPaymentDescription(),
+    child: {
+      id: string;
+      name: string;
+    };
+
+    school: {
+      id: string;
+      name: string;
+      address: string;
+    };
+
+    deliveryDate: string;
+    total: number;
+  }>;
+
+  pricing: {
+    subtotal: number;
+    finalTotal: number;
+    appliedCoupon?: {
+      code: string;
+      discountAmount: number;
+    };
+  };
+
+  status: "pending" | "paid";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export const createCheckout = onCall(
+  {
+    memory: "512MiB",
+    timeoutSeconds: 60,
+    region: "us-central1",
+    secrets: [stripeSecretKey],
+  },
+  async (request) => {
+    // Initialize Stripe - v2 uses environment variables
+
+    if (!stripeSecretKey) {
+      throw new Error("STRIPE_SECRET_KEY environment variable is required");
+    }
+
+    const stripe = new Stripe(stripeSecretKey.value(), {
+      apiVersion: "2024-06-20",
+    });
+
+
+    // v2 onCall provides request.auth directly
+    if (!request.auth) {
+      throw new Error("User must be authenticated to create checkout session.");
+    }
+
+    const userId = request.auth.uid;
+    const {
+      lineItems,
+      returnUrl,
+      customerId,
+      customerEmail,
+      couponCode,
+      discountAmount,
+      cartData
+    } = request.data as CheckoutData;
+
+    logger.info("Creating checkout session", {
+      userId,
+      itemCount: lineItems?.length,
+      customerEmail
+    });
+
+    if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
+      throw new Error("Valid lineItems array is required");
+    }
+
+    if (!returnUrl || typeof returnUrl !== "string") {
+      throw new Error("Valid returnUrl is required");
+    }
+
+    if (!customerEmail || typeof customerEmail !== "string" || !customerEmail.includes("@")) {
+      throw new Error("Valid customerEmail is required");
+    }
+
+    try {
+      const orderId = generateOrderId();
+
+      let coupon;
+      if (discountAmount && discountAmount > 0) {
+        coupon = await stripe.coupons.create({
+          amount_off: discountAmount,
+          currency: "aud",
+          duration: "once",
+          name: couponCode ? `Bundle + Coupon (${couponCode})` : "Bundle Discount",
+          metadata: {
+            appliedBy: userId,
+            couponCode: couponCode || "",
+            createdAt: new Date().toISOString(),
+            orderId,
+          },
+        });
+      }
+
+      const createPaymentDescription = () => {
+        return `Order ${orderId} - ${customerId} - ${lineItems.length} meal${lineItems.length > 1 ? "s" : ""}`;
+      };
+
+      // Create the checkout session
+      const session = await stripe.checkout.sessions.create({
+        line_items: lineItems,
+        mode: "payment",
+        ui_mode: "embedded",
+        payment_method_types: ["card"],
+        return_url: returnUrl,
+        customer_email: customerEmail,
+        discounts: coupon ? [{ coupon: coupon.id }] : [],
         metadata: {
           user_id: userId,
           order_id: orderId,
+          created_at: new Date().toISOString(),
+          total_items: lineItems.length.toString(),
+          coupon_code: couponCode || "",
+          discount_amount: discountAmount ? discountAmount.toString() : "0",
+          sub_total: cartData?.total,
         },
-      },
-    });
+        payment_intent_data: {
+          description: createPaymentDescription(),
+          metadata: {
+            user_id: userId,
+            order_id: orderId,
+          },
+        },
+      });
 
-    await createTempOrder(
-      orderId,
-      userId,
-      session.id,
-      cartData,
-      coupon
-    );
+      await createTempOrder(
+        orderId,
+        userId,
+        session.id,
+        cartData,
+        coupon
+      );
 
-    return {
-      clientSecret: session.client_secret,
-      sessionId: session.id,
-      orderId: orderId,
-    };
-  } catch (error: any) {
-    console.error("Error creating checkout session:", error);
+      logger.info("Checkout session created successfully", {
+        orderId,
+        sessionId: session.id,
+        userId
+      });
 
-    if (error.type === "StripeInvalidRequestError") {
-      throw new functions.https.HttpsError("invalid-argument", `Stripe error: ${error.message}`);
+      return {
+        clientSecret: session.client_secret,
+        sessionId: session.id,
+        orderId: orderId,
+      };
+    } catch (error: any) {
+      logger.error("Error creating checkout session", {
+        error: error.message,
+        userId,
+        customerEmail
+      });
+
+      if (error.type === "StripeInvalidRequestError") {
+        throw new Error(`Stripe error: ${error.message}`);
+      }
+
+      throw new Error("Unable to create checkout session");
     }
-
-    throw new functions.https.HttpsError("internal", "Unable to create checkout session");
   }
-});
+);
 
 export async function createTempOrder(
   orderId: string,
@@ -180,7 +220,7 @@ export async function createTempOrder(
 ) {
   const db = admin.firestore();
 
-  console.log("cart:", cartData);
+  logger.info("Creating temp order", { orderId, userId, sessionId });
 
   const tempOrderData: OptimizedOrderData = {
     orderId,
@@ -199,18 +239,18 @@ export async function createTempOrder(
         display: addon.display,
         price: addon.price,
       })),
-      ...meal.fruit && {
+      ...(meal.fruit && {
         fruit: {
           id: meal.fruit.id,
           display: meal.fruit.display,
         }
-      },
-      ...meal.probiotic && {
-        probiotic: {
-          id: meal.probiotic.id,
-          display: meal.probiotic.display,
+      }),
+      ...(meal.side && {
+        side: {
+          id: meal.side.id,
+          display: meal.side.display,
         }
-      },
+      }),
       child: {
         id: meal.child.id,
         name: meal.child.name,
@@ -241,6 +281,8 @@ export async function createTempOrder(
   };
 
   await db.collection("tempOrders").doc(orderId).set(tempOrderData);
+
+  logger.info("Temp order created successfully", { orderId, mealCount: tempOrderData.meals.length });
 
   return tempOrderData;
 }

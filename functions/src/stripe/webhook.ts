@@ -1,42 +1,32 @@
-import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import Stripe from "stripe";
+import { defineSecret } from "firebase-functions/params";
 
-const stripe = new Stripe(functions.config().stripe.secret_key, {
-  apiVersion: "2024-06-20",
-});
-const webhookSecret = functions.config().stripe.webhook_secret;
-
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+const webhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 interface Order {
     orderId: string;
     userId: string;
-
-    meals: Array<{
-        id: string;
-        main: { id: string; display: string; price: number };
-        addOns: Array<{ id: string; display: string; price: number }>;
-        fruit: { id: string; display: string } | null;
-        probiotic: { id: string; display: string } | null;
-        child: { id: string; name: string };
-        school: { id: string; name: string; address: string };
-        deliveryDate: string;
-        total: number;
-    }>;
+    mealIds: string[];
 
     pricing: {
         subtotal: number;
         finalTotal: number;
         appliedCoupon?: { code: string; amount: number };
     };
-
     payment: {
         stripeSessionId: string;
         paidAt?: string;
         amount: number;
     };
 
-    status: "pending" | "completed" | "cancelled";
+    // Order-level metadata
+    itemCount: number;
+    totalAmount: number;
+    status: "pending" | "paid";
     createdAt: string;
     updatedAt: string;
 }
@@ -46,114 +36,127 @@ interface UserOrderSummary {
     totalPaid: number;
     itemCount: number;
     orderedOn: string;
-    status: "processing" | "paid";
 }
 
 interface MealRecord {
     mealId: string;
     orderId: string;
     userId: string;
+
     deliveryDate: string;
     schoolId: string;
     schoolName: string;
     schoolAddress: string;
+
     childId: string;
     childName: string;
+
     mainId: string;
     mainName: string;
     addOns: Array<{ id: string; display: string }>;
     fruitId: string | null;
     fruitName: string | null;
-    probioticId: string | null;
-    probioticName: string | null;
-    status: "ordered" | "delivered" | "cancelled";
+    sideId: string | null;
+    sideName: string | null;
+
     totalAmount: number;
     orderedOn: string;
     createdAt: string;
     updatedAt: string;
 }
 
-export const stripeWebhook = functions.https.onRequest(async (req, res) => {
-  if (req.method !== "POST") {
-    console.warn("Webhook received non-POST request");
-    res.status(405).send("Method Not Allowed");
-    return;
-  }
+export const stripeWebhook = onRequest(
+  {
+    memory: "512MiB",
+    timeoutSeconds: 60,
+    region: "us-central1",
+    secrets: [stripeSecretKey, webhookSecret],
+    cors: false,
+    invoker: "public"
+  },
+  async (req, res) => {
 
-  const sig = req.get("stripe-signature");
-
-  if (!sig) {
-    console.error("Missing stripe-signature header");
-    res.status(400).send("Missing stripe-signature header");
-    return;
-  }
-
-  let event: Stripe.Event;
-
-  try {
-    let rawBody: string | Buffer;
-
-    if (req.rawBody) {
-      rawBody = req.rawBody;
-    } else if (Buffer.isBuffer(req.body)) {
-      rawBody = req.body;
-    } else if (typeof req.body === "string") {
-      rawBody = req.body;
-    } else {
-      rawBody = JSON.stringify(req.body);
+    if (!stripeSecretKey) {
+      throw new Error("STRIPE_SECRET_KEY environment variable is required");
     }
 
-    console.log("Webhook signature:", sig);
-    console.log("Raw body type:", typeof rawBody);
-    console.log("Raw body length:", rawBody ? rawBody.length : "undefined");
-
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-
-    console.log("Webhook event constructed successfully:", event.type);
-  } catch (err: any) {
-    console.error("Webhook signature verification failed", {
-      error: err.message,
-      type: err.type,
-      signature: sig,
-      webhookSecret: webhookSecret ? "SET" : "NOT SET"
-    });
-    res.status(400).send(`Webhook Error: ${err.message}`);
-    return;
-  }
-
-  try {
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handlePaymentSuccess(event.data.object as Stripe.Checkout.Session);
-        break;
-
-      default:
-        console.info(`Unhandled event type: ${event.type}`);
+    if (!webhookSecret) {
+      throw new Error("STRIPE_WEBHOOK_SECRET environment variable is required");
     }
 
-    res.json({ received: true });
-  } catch (error) {
-    console.error("Error processing webhook event", {
-      eventType: event.type,
-      eventId: event.id,
-      error,
+    const stripe = new Stripe(stripeSecretKey.value(), {
+      apiVersion: "2024-06-20",
     });
 
-    res.status(500).send("Internal Server Error");
+    if (req.method !== "POST") {
+      logger.warn("Webhook received non-POST request");
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const sig = req.get("stripe-signature");
+
+    if (!sig) {
+      logger.error("Missing stripe-signature header");
+      res.status(400).send("Missing stripe-signature header");
+      return;
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      // v2 functions properly provide req.rawBody as Buffer
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret.value());
+      logger.info("Webhook signature verified successfully", {
+        eventType: event.type,
+        eventId: event.id
+      });
+    } catch (err: any) {
+      logger.error("Webhook signature verification failed", {
+        error: err.message,
+        type: err.type,
+        signature: sig ? "present" : "missing"
+      });
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+
+    try {
+      // Handle the event
+      switch (event.type) {
+        case "checkout.session.completed":
+          await handlePaymentSuccess(event.data.object as Stripe.Checkout.Session);
+          break;
+
+        default:
+          logger.info(`Unhandled event type: ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      logger.error("Error processing webhook event", {
+        eventType: event.type,
+        eventId: event.id,
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
+      res.status(500).send("Internal Server Error");
+    }
   }
-});
+);
 
 async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
   const db = admin.firestore();
 
-  console.info("Processing payment success", {
+  logger.info("Processing payment success", {
     sessionId: session.id,
     paymentStatus: session.payment_status,
     amount: session.amount_total
   });
 
   if (session.payment_status !== "paid") {
-    console.warn("Payment not completed", {
+    logger.warn("Payment not completed", {
       sessionId: session.id,
       status: session.payment_status
     });
@@ -166,71 +169,74 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
     .get();
 
   if (tempOrderQuery.empty) {
-    console.error("No temp order found for session", { sessionId: session.id });
+    logger.error("No temp order found for session", { sessionId: session.id });
     throw new Error(`No temp order found for session ${session.id}`);
   }
 
   const tempOrderDoc = tempOrderQuery.docs[0];
   const tempOrder = tempOrderDoc.data();
 
-  console.info("Found temp order", {
+  logger.info("Found temp order", {
     orderId: tempOrder.orderId,
     userId: tempOrder.userId,
     mealCount: tempOrder.meals?.length,
   });
 
   if (!tempOrder.meals || !Array.isArray(tempOrder.meals)) {
-    console.error("Invalid temp order - no meals array", { orderId: tempOrder.orderId });
+    logger.error("Invalid temp order - no meals array", { orderId: tempOrder.orderId });
     throw new Error("Invalid temp order structure - no meals");
   }
+
+  const mealIds: string[] = [];
+  const mealRecords: MealRecord[] = [];
+
+  tempOrder.meals.forEach((meal: any, index: number) => {
+    const mealId = `${tempOrder.orderId}-${String(index + 1).padStart(3, "0")}`;
+    mealIds.push(mealId);
+
+    const mealRecord: MealRecord = {
+      mealId,
+      orderId: tempOrder.orderId,
+      userId: tempOrder.userId,
+
+      deliveryDate: meal.deliveryDate || meal.orderDate,
+      schoolId: meal.school.id,
+      schoolName: meal.school.name,
+      schoolAddress: meal.school.address,
+
+      childId: meal.child.id,
+      childName: meal.child.name,
+
+      mainId: meal.main.id,
+      mainName: meal.main.display,
+
+      addOns: meal.addOns ? meal.addOns.map((addon: any) => ({
+        id: addon.id,
+        display: addon.display,
+        price: parseFloat(addon.price) || 0,
+      })) : [],
+
+      fruitId: meal.fruit ? meal.fruit.id : null,
+      fruitName: meal.fruit ? meal.fruit.display : null,
+
+      sideId: meal.side ? meal.side.id : null,
+      sideName: meal.side ? meal.side.display : null,
+
+      totalAmount: parseFloat(meal.total) || 0,
+
+      orderedOn: tempOrder.createdAt,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    mealRecords.push(mealRecord);
+  });
 
   const completedOrder: Order = {
     orderId: tempOrder.orderId,
     userId: tempOrder.userId,
 
-    meals: tempOrder.meals.map((meal: any, index: number) => {
-      if (!meal.main || !meal.child || !meal.school) {
-        console.error("Invalid meal data", {
-          orderId: tempOrder.orderId,
-          mealIndex: index,
-          meal: JSON.stringify(meal, null, 2)
-        });
-        throw new Error(`Invalid meal data at index ${index}`);
-      }
-
-      return {
-        id: meal.id || `${tempOrder.orderId}-meal-${index}`,
-        main: {
-          id: meal.main.id || "unknown",
-          display: meal.main.display || "Unknown Meal",
-          price: parseFloat(meal.main.price) || 0,
-        },
-        addOns: Array.isArray(meal.addOns) ? meal.addOns.map((addon: any) => ({
-          id: addon.id || "unknown",
-          display: addon.display || "Unknown Add-on",
-          price: parseFloat(addon.price) || 0,
-        })) : [],
-        fruit: meal.fruit ? {
-          id: meal.fruit.id,
-          display: meal.fruit.display,
-        } : null,
-        probiotic: meal.probiotic ? {
-          id: meal.probiotic.id,
-          display: meal.probiotic.display,
-        } : null,
-        child: {
-          id: meal.child.id || "unknown",
-          name: meal.child.name || "Unknown Child",
-        },
-        school: {
-          id: meal.school.id || "unknown",
-          name: meal.school.name || "Unknown School",
-          address: meal.school.address || "",
-        },
-        deliveryDate: meal.deliveryDate || meal.orderDate,
-        total: parseFloat(meal.total) || 0,
-      };
-    }),
+    mealIds, // Just references to meal documents
 
     pricing: {
       subtotal: tempOrder.pricing.subtotal,
@@ -246,7 +252,9 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
       amount: (session.amount_total || 0) / 100,
     },
 
-    status: "completed",
+    itemCount: mealRecords.length,
+    totalAmount: tempOrder.pricing.finalTotal,
+    status: "paid",
     createdAt: tempOrder.createdAt,
     updatedAt: new Date().toISOString(),
   };
@@ -256,51 +264,17 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
     totalPaid: tempOrder.pricing.finalTotal,
     itemCount: tempOrder.meals.length,
     orderedOn: tempOrder.createdAt,
-    status: "paid",
   };
 
-  const mealRecords: MealRecord[] = (tempOrder.meals || []).map((meal: any, index: number) => ({
-    mealId: `${tempOrder.orderId}-${index + 1}`,
+  logger.info("Built order data successfully", {
     orderId: tempOrder.orderId,
-    userId: tempOrder.userId,
-
-    deliveryDate: meal.deliveryDate || meal.orderDate,
-    schoolId: meal.school.id,
-    schoolName: meal.school.name,
-    schoolAddress: meal.school.address,
-
-    childId: meal.child.id,
-    childName: meal.child.name,
-
-    mainId: meal.main.id,
-    mainName: meal.main.display,
-    fruitId: meal.fruit ? meal.fruit.id : null,
-    fruitName: meal.fruit ? meal.fruit.display : null,
-    probioticId: meal.probiotic ? meal.probiotic.id : null,
-    probioticName: meal.probiotic ? meal.probiotic.display : null,
-
-    addOns: meal.addOns ? meal.addOns.map((addon: any) => ({
-      id: addon.id,
-      display: addon.display,
-    })) : [],
-
-    status: "ordered" as const,
-    totalAmount: meal.total,
-
-    orderedOn: tempOrder.createdAt,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
-
-  console.info("Built order data successfully", {
-    orderId: tempOrder.orderId,
-    mealCount: completedOrder.meals.length,
+    mealCount: completedOrder.mealIds.length,
     mealRecordCount: mealRecords.length,
   });
 
   try {
     await db.runTransaction(async (transaction) => {
-      console.info("Starting transaction", { orderId: tempOrder.orderId });
+      logger.info("Starting transaction", { orderId: tempOrder.orderId });
 
       transaction.set(
         db.collection("order-test2").doc(tempOrder.orderId),
@@ -322,10 +296,11 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
         );
       });
 
+      // Delete temp order
       transaction.delete(tempOrderDoc.ref);
     });
 
-    console.info("Order processing completed successfully", {
+    logger.info("Order processing completed successfully", {
       orderId: tempOrder.orderId,
       userId: tempOrder.userId,
       mealCount: mealRecords.length,
@@ -333,7 +308,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
     });
 
   } catch (error) {
-    console.error("Error saving completed order", {
+    logger.error("Error saving completed order", {
       orderId: tempOrder.orderId,
       error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
