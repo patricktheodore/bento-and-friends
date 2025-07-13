@@ -18,9 +18,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const functions = getFunctions(app);
 
-if (process.env.NODE_ENV === 'development') {
-    connectFunctionsEmulator(functions, 'localhost', 5001);
-}
+// Uncomment the following lines to connect to the Firebase Functions emulator during development
+// if (process.env.NODE_ENV === 'development') {
+//     connectFunctionsEmulator(functions, 'localhost', 5001);
+// }
 
 // Initialize services
 export const db = getFirestore(app);

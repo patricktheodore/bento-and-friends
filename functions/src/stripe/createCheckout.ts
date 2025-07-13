@@ -84,7 +84,6 @@ export const createCheckout = functions.https.onCall(async (data: CheckoutData, 
 
   const userId = context.auth.uid;
   const { lineItems, returnUrl, customerId, customerEmail, couponCode, discountAmount, cartData } = data;
-  console.log(cartData);
 
   if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
     throw new functions.https.HttpsError("invalid-argument", "Valid lineItems array is required");
@@ -181,7 +180,7 @@ export async function createTempOrder(
 ) {
   const db = admin.firestore();
 
-  console.log(cartData);
+  console.log("cart:", cartData);
 
   const tempOrderData: OptimizedOrderData = {
     orderId,

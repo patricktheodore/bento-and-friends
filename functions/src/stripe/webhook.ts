@@ -73,7 +73,6 @@ interface MealRecord {
     updatedAt: string;
 }
 
-// Convert to v1 syntax
 export const stripeWebhook = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") {
     console.warn("Webhook received non-POST request");
@@ -92,15 +91,37 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
-  } catch (err) {
-    console.error("Webhook signature verification failed", { error: err });
-    res.status(400).send(`Webhook Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+    let rawBody: string | Buffer;
+
+    if (req.rawBody) {
+      rawBody = req.rawBody;
+    } else if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body;
+    } else if (typeof req.body === "string") {
+      rawBody = req.body;
+    } else {
+      rawBody = JSON.stringify(req.body);
+    }
+
+    console.log("Webhook signature:", sig);
+    console.log("Raw body type:", typeof rawBody);
+    console.log("Raw body length:", rawBody ? rawBody.length : "undefined");
+
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+
+    console.log("Webhook event constructed successfully:", event.type);
+  } catch (err: any) {
+    console.error("Webhook signature verification failed", {
+      error: err.message,
+      type: err.type,
+      signature: sig,
+      webhookSecret: webhookSecret ? "SET" : "NOT SET"
+    });
+    res.status(400).send(`Webhook Error: ${err.message}`);
     return;
   }
 
   try {
-    // Handle the event
     switch (event.type) {
       case "checkout.session.completed":
         await handlePaymentSuccess(event.data.object as Stripe.Checkout.Session);
@@ -301,7 +322,6 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
         );
       });
 
-      // Delete temp order
       transaction.delete(tempOrderDoc.ref);
     });
 

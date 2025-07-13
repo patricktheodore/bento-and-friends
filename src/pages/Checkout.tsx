@@ -333,7 +333,7 @@ const CheckoutPage: React.FC = () => {
 	);
 
 	return (
-		<div className="container mx-auto px-4 py-8">
+		<div className="container mx-auto px-4 py-12">
 			{showEmbeddedCheckout && clientSecret ? (
 				<>
                     <div className='w-full flex justify-between items-center'>
