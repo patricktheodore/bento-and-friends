@@ -22,7 +22,6 @@ const ChildrenManagement: React.FC<ChildrenManagementProps> = ({ user, onAddChil
 	const [selectedChild, setSelectedChild] = useState<Child | null>(null);
     const [schools] = useState<School[]>(state.schools);
 
-	// Helper function to get school name by schoolId
 	const getSchoolName = (schoolId: string | undefined): string => {
 		if (!schoolId) return 'No school selected';
 		

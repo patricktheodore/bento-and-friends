@@ -47,3 +47,55 @@ export class Meal {
         this.deliveryDate = deliveryDate;
     }
 }
+
+export interface OrderRecord {
+    orderId: string;
+    userId: string;
+    meals: MealRecord[];
+
+    pricing: {
+        subtotal: number;
+        finalTotal: number;
+        appliedCoupon?: { code: string; discountAmount: number };
+    };
+
+    payment: {
+        stripeSessionId: string;
+        paidAt?: string;
+        amount: number;
+    };
+
+    // Order-level metadata
+    itemCount: number;
+    totalAmount: number;
+    status: "pending" | "paid";
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface MealRecord {
+    mealId: string;
+    orderId: string;
+    userId: string;
+
+    deliveryDate: string;
+    schoolId: string;
+    schoolName: string;
+    schoolAddress: string;
+
+    childId: string;
+    childName: string;
+
+    mainId: string;
+    mainName: string;
+    addOns: Array<{ id: string; display: string }>;
+    fruitId: string | null;
+    fruitName: string | null;
+    sideId: string | null;
+    sideName: string | null;
+
+    totalAmount: number;
+    orderedOn: string;
+    createdAt: string;
+    updatedAt: string;
+}

@@ -1,65 +1,79 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Order, Meal } from '../models/order.model';
-import { OrderHistorySummary } from '../models/user.model';
+import { OrderRecord, Meal, MealRecord } from '../models/order.model';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { ChevronDown, ChevronUp, Loader2, Utensils } from 'lucide-react';
-import { fetchOrderDetails } from '../services/user-service';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { fetchOrderDetails } from '@/services/order-service';
 import OrderDialog from './OrderDialog';
 
 const OrderHistory: React.FC = () => {
 	const { state, dispatch } = useAppContext();
     const navigate = useNavigate();
-    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-    const [expandedOrderDetails, setExpandedOrderDetails] = useState<Order | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    
+    // Changed to Set to track multiple expanded orders
+    const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
+    
+    // Cache to store fetched order details
+    const [orderDetailsCache, setOrderDetailsCache] = useState<Map<string, OrderRecord>>(new Map());
+    
+    // Track loading states for individual orders
+    const [loadingOrders, setLoadingOrders] = useState<Set<string>>(new Set());
+    
     const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
     const [isOrderAgainDialogOpen, setIsOrderAgainDialogOpen] = useState(false);
 
-	const handleOrderClick = async (orderSummary: OrderHistorySummary) => {
-		if (expandedOrderId === orderSummary.orderId) {
-			setExpandedOrderId(null);
-			setExpandedOrderDetails(null);
+	const handleOrderClick = async (orderId: string) => {
+		// Check if order is currently expanded
+		const isExpanded = expandedOrderIds.has(orderId);
+		
+		if (isExpanded) {
+			// Collapse the order
+			setExpandedOrderIds(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(orderId);
+				return newSet;
+			});
 		} else {
-			setIsLoading(true);
-			setExpandedOrderId(orderSummary.orderId);
-			try {
-				const orderDetails = await fetchOrderDetails(orderSummary.orderId);
-				setExpandedOrderDetails(orderDetails);
-			} catch (error) {
-				console.error('Error fetching order details:', error);
-				toast.error('Failed to fetch order details');
-			} finally {
-				setIsLoading(false);
+			// Expand the order
+			setExpandedOrderIds(prev => new Set(prev).add(orderId));
+			
+			// Check if we already have the data cached
+			if (!orderDetailsCache.has(orderId)) {
+				// Add to loading state
+				setLoadingOrders(prev => new Set(prev).add(orderId));
+				
+				try {
+					const orderDetails = await fetchOrderDetails(orderId);
+					
+					// Cache the order details
+					setOrderDetailsCache(prev => new Map(prev).set(orderId, orderDetails));
+				} catch (error) {
+					console.error('Error fetching order details:', error);
+					toast.error('Failed to fetch order details');
+					
+					// Remove from expanded if fetch failed
+					setExpandedOrderIds(prev => {
+						const newSet = new Set(prev);
+						newSet.delete(orderId);
+						return newSet;
+					});
+				} finally {
+					// Remove from loading state
+					setLoadingOrders(prev => {
+						const newSet = new Set(prev);
+						newSet.delete(orderId);
+						return newSet;
+					});
+				}
 			}
 		}
 	};
 
-	const handleOrderAgain = (meal: Meal) => {
-        setSelectedMeal(meal);
-        setIsOrderAgainDialogOpen(true);
-    };
-
-	const handleAddToCart = (meals: Meal[]) => {
-        meals.forEach(meal => {
-            dispatch({ type: 'ADD_TO_CART', payload: meal });
-        });
-        setIsOrderAgainDialogOpen(false);
-    };
-
-	const formatDate = (dateString: string): string => {
-		const date = new Date(dateString);
-		const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-		const dayOfWeek = dayNames[date.getDay()];
-		return `${dayOfWeek}, ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-	};
-
-
-	const NoOrdersCallToAction = () => (
+	const RenderNoOrderHistory = () => (
 		<Card className="mt-8">
 			<CardHeader>
 				<CardTitle className="text-2xl font-bold text-center">No Orders Yet</CardTitle>
@@ -79,33 +93,48 @@ const OrderHistory: React.FC = () => {
 		</Card>
 	);
 
+	// Helper function to get order details from cache
+	const getOrderDetails = (orderId: string): OrderRecord | null => {
+		return orderDetailsCache.get(orderId) || null;
+	};
+
+	// Helper function to check if order is loading
+	const isOrderLoading = (orderId: string): boolean => {
+		return loadingOrders.has(orderId);
+	};
+
+	// Helper function to check if order is expanded
+	const isOrderExpanded = (orderId: string): boolean => {
+		return expandedOrderIds.has(orderId);
+	};
+
 	return (
 		<div className="w-full space-y-4">
 			<h2 className="text-2xl font-bold">Order History</h2>
 
-			{state.user?.orderHistory.length === 0 ? (
-				<NoOrdersCallToAction />
+			{state.user?.orders.length === 0 ? (
+				<RenderNoOrderHistory />
 			) : (
 				<div className="rounded-md border overflow-x-auto">
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-[50px]">Order Number</TableHead>
+								<TableHead className="w-[50px]">Order Id</TableHead>
 								<TableHead className="w-[150px]">Ordered On</TableHead>
 								<TableHead className="w-[100px]">Meals</TableHead>
 								<TableHead className="w-[100px]">Order Total</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{state.user?.orderHistory.map((orderSummary) => (
-								<React.Fragment key={orderSummary.orderId}>
+							{state.user?.orders.map((order) => (
+								<React.Fragment key={order.orderId}>
 									<TableRow
-										className="cursor-pointer"
-										onClick={() => handleOrderClick(orderSummary)}
+										className="cursor-pointer hover:bg-gray-50"
+										onClick={() => handleOrderClick(order.orderId)}
 									>
 										<TableCell className='flex justify-start items-center gap-2'>
-											{expandedOrderId === orderSummary.orderId ? (
-												isLoading ? (
+											{isOrderExpanded(order.orderId) ? (
+												isOrderLoading(order.orderId) ? (
 													<Loader2 className="h-4 w-4 animate-spin" />
 												) : (
 													<ChevronUp className="h-4 w-4" />
@@ -113,37 +142,106 @@ const OrderHistory: React.FC = () => {
 											) : (
 												<ChevronDown className="h-4 w-4" />
 											)}
-											{orderSummary.customOrderNumber}
+											{order.orderId}
 										</TableCell>
-										<TableCell>{formatDate(orderSummary.createdAt)}</TableCell>
-										<TableCell>{orderSummary.items}</TableCell>
-										<TableCell>${orderSummary.total.toFixed(2)}</TableCell>
+										<TableCell>{new Date(order.orderedOn).toLocaleDateString()}</TableCell>
+										<TableCell>{order.itemCount}</TableCell>
+										<TableCell>${order.totalPaid}</TableCell>
 									</TableRow>
-									{expandedOrderId === orderSummary.orderId && expandedOrderDetails && (
+									
+									{isOrderExpanded(order.orderId) && (
 										<TableRow>
 											<TableCell colSpan={4}>
-												<div className="p-4 bg-gray-50 space-y-4">
-													{expandedOrderDetails.meals.map((meal, index) => (
-														<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-															<p><strong>{meal.main.display}</strong> for {meal.child.name}</p>
-															<p className="text-sm">Add-ons: {meal.addOns.map((addon) => addon.display).join(', ')}</p>
-															<p className="text-sm">Date: {formatDate(meal.deliveryDate)}</p>
-															<p className="text-sm font-medium">Price: ${meal.total.toFixed(2)}</p>
-															<div className="mt-2 flex justify-end">
-																<Button
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		handleOrderAgain(meal);
-																	}}
-																	variant="outline"
-																	size="sm"
-																>
-																	Order Again
-																</Button>
+												{isOrderLoading(order.orderId) ? (
+													<div className="p-4 bg-gray-50 flex justify-center items-center">
+														<Loader2 className="h-6 w-6 animate-spin mr-2" />
+														<span>Loading order details...</span>
+													</div>
+												) : (
+													(() => {
+														const orderDetails = getOrderDetails(order.orderId);
+														if (!orderDetails) {
+															return (
+																<div className="p-4 bg-gray-50 text-center text-red-500">
+																	Failed to load order details
+																</div>
+															);
+														}
+
+														return (
+															<div className="p-4 bg-gray-50 space-y-4">
+																<div className="mb-4">
+																	<h4 className="font-semibold text-lg mb-2">Order Details</h4>
+																	<div className="grid grid-cols-2 gap-4 text-sm">
+																		<div>
+																			<span className="font-medium">Status:</span> {orderDetails.status}
+																		</div>
+																		<div>
+																			<span className="font-medium">Total Items:</span> {orderDetails.itemCount}
+																		</div>
+																		<div>
+																			<span className="font-medium">Subtotal:</span> ${orderDetails.pricing.subtotal}
+																		</div>
+																		<div>
+																			<span className="font-medium">Final Total:</span> ${orderDetails.pricing.finalTotal}
+																		</div>
+																		{orderDetails.pricing.appliedCoupon && (
+																			<div className="col-span-2">
+																				<span className="font-medium">Coupon Applied:</span> {orderDetails.pricing.appliedCoupon.code} (-${orderDetails.pricing.appliedCoupon.discountAmount})
+																			</div>
+																		)}
+																	</div>
+																</div>
+
+																<div>
+																	<h5 className="font-semibold mb-3">Meals:</h5>
+                                                                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                                                        {orderDetails.meals.map((meal) => (
+                                                                            <div key={meal.mealId} className="bg-white p-3 rounded-md shadow-sm mb-3">
+                                                                                <div className="flex justify-between items-start">
+                                                                                    <div className="flex-1">
+                                                                                        <p className="font-medium text-lg">{meal.mainName}</p>
+                                                                                        <p className="text-sm text-gray-600 mb-1">
+                                                                                            <span className="font-medium">For:</span> {meal.childName}
+                                                                                        </p>
+                                                                                        <p className="text-sm text-gray-600 mb-1">
+                                                                                            <span className="font-medium">School:</span> {meal.schoolName}
+                                                                                        </p>
+                                                                                        <p className="text-sm text-gray-600 mb-1">
+                                                                                            <span className="font-medium">Delivery Date:</span> {new Date(meal.deliveryDate).toLocaleDateString()}
+                                                                                        </p>
+                                                                                        
+                                                                                        {meal.addOns.length > 0 && (
+                                                                                            <p className="text-sm text-gray-600 mb-1">
+                                                                                                <span className="font-medium">Add-ons:</span> {meal.addOns.map((addon) => addon.display).join(', ')}
+                                                                                            </p>
+                                                                                        )}
+                                                                                        
+                                                                                        {meal.fruitName && (
+                                                                                            <p className="text-sm text-gray-600 mb-1">
+                                                                                                <span className="font-medium">Fruit:</span> {meal.fruitName}
+                                                                                            </p>
+                                                                                        )}
+                                                                                        
+                                                                                        {meal.sideName && (
+                                                                                            <p className="text-sm text-gray-600 mb-1">
+                                                                                                <span className="font-medium">Side:</span> {meal.sideName}
+                                                                                            </p>
+                                                                                        )}
+                                                                                        
+                                                                                        <p className="text-sm font-medium text-green-600 mt-2">
+                                                                                            Price: ${meal.totalAmount}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+																</div>
 															</div>
-														</div>
-													))}
-												</div>
+														);
+													})()
+												)}
 											</TableCell>
 										</TableRow>
 									)}
@@ -153,23 +251,6 @@ const OrderHistory: React.FC = () => {
 					</Table>
 				</div>
 			)}
-
-
-{/* {selectedMeal && (
-                <OrderDialog
-                    isOpen={isOrderAgainDialogOpen}
-                    onClose={() => setIsOrderAgainDialogOpen(false)}
-                    selectedMain={selectedMeal.main}
-                    addOns={state.addOns}
-                    children={state.user?.children || []}
-                    schools={state.schools}
-                    onAddToCart={handleAddToCart}
-                    initialSelectedAddons={selectedMeal.addOns.map(addon => addon.id)}
-					initialSelectedYogurt={selectedMeal.probiotic ? selectedMeal.probiotic.id : ''}
-					initialSelectedFruit={selectedMeal.fruit ? selectedMeal.fruit.id : ''}
-                    initialSelectedChild={selectedMeal.child.id}
-                />
-            )} */}
 		</div>
 	);
 };

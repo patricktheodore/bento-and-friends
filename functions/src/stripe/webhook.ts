@@ -15,7 +15,7 @@ interface Order {
     pricing: {
         subtotal: number;
         finalTotal: number;
-        appliedCoupon?: { code: string; amount: number };
+        appliedCoupon?: { code: string; discountAmount: number };
     };
     payment: {
         stripeSessionId: string;
@@ -33,6 +33,7 @@ interface Order {
 
 interface UserOrderSummary {
     orderId: string;
+    mealIds: string[];
     totalPaid: number;
     itemCount: number;
     orderedOn: string;
@@ -261,6 +262,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
 
   const userOrder: UserOrderSummary = {
     orderId: tempOrder.orderId,
+    mealIds: mealIds,
     totalPaid: tempOrder.pricing.finalTotal,
     itemCount: tempOrder.meals.length,
     orderedOn: tempOrder.createdAt,

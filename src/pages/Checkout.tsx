@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ChevronLeft, Edit, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Meal } from '@/models/order.model';
 import { loadStripe } from '@stripe/stripe-js';
@@ -31,6 +31,7 @@ const CheckoutPage: React.FC = () => {
 	const [clientSecret, setClientSecret] = useState('');
 	const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
 	const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+	const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
 	// Sort meals by delivery date (earliest first)
 	const sortedMeals = useMemo(() => {
@@ -117,6 +118,8 @@ const CheckoutPage: React.FC = () => {
 	const handleCheckout = async () => {
 		if (!cart || !state.cart || !cart.meals || cart.meals.length === 0) return;
 
+		setIsCheckoutLoading(true);
+
 		try {
 			localStorage.setItem('cart', JSON.stringify(cart));
 
@@ -158,6 +161,8 @@ const CheckoutPage: React.FC = () => {
 		} catch (error) {
 			console.error('Checkout Error:', error);
 			toast.error('An error occurred during checkout. Please try again.');
+		} finally {
+			setIsCheckoutLoading(false);
 		}
 	};
 
@@ -234,13 +239,15 @@ const CheckoutPage: React.FC = () => {
                             <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() => editMeal(meal)}>
+                                onClick={() => editMeal(meal)}
+                                disabled={isCheckoutLoading}>
                                 <Edit className="h-4 w-4 mr-2" /> Edit
                             </Button>
                             <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => removeMeal(meal.id)}>
+                                onClick={() => removeMeal(meal.id)}
+                                disabled={isCheckoutLoading}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Remove
                             </Button>
                         </div>
@@ -292,7 +299,8 @@ const CheckoutPage: React.FC = () => {
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={handleRemoveCoupon}>
+									onClick={handleRemoveCoupon}
+									disabled={isCheckoutLoading}>
 									Remove Coupon
 								</Button>
 							</div>
@@ -303,18 +311,28 @@ const CheckoutPage: React.FC = () => {
 									placeholder="Enter coupon code"
 									value={couponCode}
 									onChange={(e) => setCouponCode(e.target.value)}
+									disabled={isCheckoutLoading}
 								/>
 								<Button
 									variant={'outline'}
-									onClick={() => handleApplyCoupon(couponCode)}>
+									onClick={() => handleApplyCoupon(couponCode)}
+									disabled={isCheckoutLoading || !couponCode.trim()}>
 									Apply Coupon
 								</Button>
 							</div>
 						)}
 						<Button
 							onClick={handleCheckout}
+							disabled={isCheckoutLoading}
 							className="w-full sm:w-auto sm:min-w-[200px] sm:float-right">
-							Proceed to Payment
+							{isCheckoutLoading ? (
+								<>
+									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+									Processing...
+								</>
+							) : (
+								'Proceed to Payment'
+							)}
 						</Button>
 					</>
 				)}

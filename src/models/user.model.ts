@@ -6,16 +6,16 @@ export class User {
     email: string;
     isAdmin: boolean;
     children: Child[];
-    orderHistory: OrderHistorySummary[];
+    orders: OrderHistory[];
     activeCoupons: Coupon[];
     phone?: string;
     hasReviewedTermDetails?: boolean;
-    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orderHistory: OrderHistorySummary[], phone?: string, hasReviewedTermDetails?: boolean) {
+    constructor(displayName: string, email: string, isAdmin: boolean, children: Child[], orders: OrderHistory[], phone?: string, hasReviewedTermDetails?: boolean) {
         this.id = uuidv4();
         this.displayName = displayName;
         this.email = email;
         this.isAdmin = isAdmin ?? false;
-        this.orderHistory = orderHistory;
+        this.orders = orders ?? [];
         this.children = children ?? [];
         this.activeCoupons = [];
         this.phone = phone ?? '';
@@ -23,22 +23,11 @@ export class User {
     }
 }
 
-export class OrderHistorySummary {
+export interface OrderHistory {
     orderId: string;
-    customOrderNumber?: string;
-    createdAt: string;
-    originalTotal: number;
-    total: number;
-    items: number;
-
-    constructor(orderId: string, createdAt: string, originalTotal: number, total: number, items: number, customOrderNumber?: string) {
-        this.orderId = orderId;
-        this.customOrderNumber = customOrderNumber ?? '';
-        this.createdAt = createdAt;
-        this.total = total;
-        this.originalTotal = originalTotal;
-        this.items = items;
-    }
+    itemCount: number;
+    orderedOn: string;
+    totalPaid: number;
 }
 
 export class Child {
