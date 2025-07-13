@@ -1,76 +1,90 @@
-// export const resetTermDetailsReview = functions.https.onCall(
-//   async (data: unknown, context) => {
-//   // Verify admin status
-//     if (!context.auth) {
-//       throw new functions.https.HttpsError(
-//         "unauthenticated",
-//         "User must be authenticated to create admin orders."
-//       );
-//     }
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions/v2";
+import * as admin from "firebase-admin";
 
-//     const adminUid = context.auth.uid;
-//     const adminRef = admin.firestore().collection("users").doc(adminUid);
-//     const adminDoc = await adminRef.get();
+export const scheduleTermDetailsReset = onSchedule({
+    schedule: "0 6 1 1 *", // January 1st at 6 AM
+    memory: "512MiB",
+    timeoutSeconds: 600, // 10 minutes for large user bases
+    region: "us-central1",
+}, async (event) => {
+    logger.info("Starting scheduled term details reset");
 
-//     if (!adminDoc.exists || !adminDoc.data()?.isAdmin) {
-//       throw new functions.https.HttpsError(
-//         "permission-denied",
-//         "Only admins can create orders for other users.",
-//       );
-//     }
+    try {
+        const usersRef = admin.firestore().collection("users");
+        
+        // Get total count for logging
+        const snapshot = await usersRef.get();
+        const totalUsers = snapshot.size;
 
-//     try {
-//       const usersRef = admin.firestore().collection("users");
+        logger.info("Processing term reset for users", { totalUsers });
 
-//       // Get all users - we"ll process them in batches
-//       const snapshot = await usersRef.get();
+        // Process in batches to avoid memory issues with large datasets
+        const batchSize = 500;
+        let processedUsers = 0;
+        let hasMore = true;
+        let lastDoc = null;
 
-//       // Process in batches of 500 (Firestore batch limit)
-//       const batchSize = 500;
-//       const batches = [];
-//       let batch = admin.firestore().batch();
-//       let operationCount = 0;
+        while (hasMore) {
+            // Build query with pagination
+            let query = usersRef.orderBy("__name__").limit(batchSize);
+            if (lastDoc) {
+                query = query.startAfter(lastDoc);
+            }
 
-//       snapshot.docs.forEach((doc) => {
-//         batch.update(doc.ref, {
-//           hasReviewedTermDetails: false,
-//           lastTermResetDate: admin.firestore.FieldValue.serverTimestamp(),
-//         });
-//         operationCount++;
+            const batchSnapshot = await query.get();
+            
+            if (batchSnapshot.empty) {
+                hasMore = false;
+                break;
+            }
 
-//         if (operationCount === batchSize) {
-//           batches.push(batch.commit());
-//           batch = admin.firestore().batch();
-//           operationCount = 0;
-//         }
-//       });
+            // Update this batch
+            const batch = admin.firestore().batch();
+            
+            batchSnapshot.docs.forEach((doc) => {
+                batch.update(doc.ref, {
+                    hasReviewedTermDetails: false,
+                    lastTermResetDate: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            });
 
-//       // Commit any remaining operations
-//       if (operationCount > 0) {
-//         batches.push(batch.commit());
-//       }
+            await batch.commit();
+            
+            processedUsers += batchSnapshot.docs.length;
+            lastDoc = batchSnapshot.docs[batchSnapshot.docs.length - 1];
+            
+            logger.info("Batch processed", { 
+                processedUsers, 
+                totalUsers,
+                batchSize: batchSnapshot.docs.length 
+            });
 
-//       // Wait for all batches to complete
-//       await Promise.all(batches);
+            // Check if we've processed all users
+            if (batchSnapshot.docs.length < batchSize) {
+                hasMore = false;
+            }
+        }
 
-//       // Log the action for audit purposes
-//       await admin.firestore().collection("adminLogs").add({
-//         action: "resetTermDetails",
-//         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-//         adminUid: context.auth.uid,
-//         affectedUsers: snapshot.size,
-//       });
+        logger.info("Scheduled term details reset completed successfully", {
+            usersUpdated: processedUsers
+        });
 
-//       return {
-//         success: true,
-//         usersUpdated: snapshot.size,
-//       };
-//     } catch (error) {
-//       console.error("Error resetting term details:", error);
-//       throw new functions.https.HttpsError(
-//         "internal",
-//         "Failed to reset term details."
-//       );
-//     }
-//   }
-// );
+    } catch (error: any) {
+        logger.error("Error in scheduled term details reset", {
+            error: error.message,
+            stack: error.stack
+        });
+        
+        // Log the failure for monitoring
+        await admin.firestore().collection("adminLogs").add({
+            action: "scheduledTermDetailsReset",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            status: "failed",
+            error: error.message,
+            triggerType: "scheduled",
+        });
+        
+        throw error;
+    }
+});

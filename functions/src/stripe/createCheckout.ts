@@ -18,6 +18,7 @@ interface CheckoutData {
 interface OptimizedOrderData {
   orderId: string;
   userId: string;
+  userEmail: string;
   stripeSessionId: string;
 
   meals: Array<{
@@ -179,6 +180,7 @@ export const createCheckout = onCall(
       await createTempOrder(
         orderId,
         userId,
+        customerEmail,
         session.id,
         cartData,
         coupon
@@ -214,6 +216,7 @@ export const createCheckout = onCall(
 export async function createTempOrder(
   orderId: string,
   userId: string,
+  userEmail: string,
   sessionId: string,
   cartData?: any,
   couponData?: any
@@ -225,6 +228,7 @@ export async function createTempOrder(
   const tempOrderData: OptimizedOrderData = {
     orderId,
     userId,
+    userEmail,
     stripeSessionId: sessionId,
 
     meals: cartData.meals.map((meal: any) => ({
@@ -277,7 +281,7 @@ export async function createTempOrder(
 
     status: "pending",
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
   };
 
   await db.collection("tempOrders").doc(orderId).set(tempOrderData);

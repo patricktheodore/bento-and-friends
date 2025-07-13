@@ -10,6 +10,7 @@ const webhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 interface Order {
     orderId: string;
     userId: string;
+    userEmail: string;
     mealIds: string[];
 
     pricing: {
@@ -236,6 +237,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
   const completedOrder: Order = {
     orderId: tempOrder.orderId,
     userId: tempOrder.userId,
+    userEmail: tempOrder.userEmail,
 
     mealIds, // Just references to meal documents
 

@@ -24,7 +24,7 @@ export const signUp = async (email: string, password: string, displayName: strin
 		isAdmin: false,
 		activeCoupons: [],
 		children: [],
-		orderHistory: [],
+		orders: [],
 	};
 
 	await setDoc(doc(db, 'users', user.uid), newUser);

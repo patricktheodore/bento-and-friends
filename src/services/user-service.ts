@@ -1,5 +1,5 @@
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '@/firebase';
 import { User, Child } from '../models/user.model';
 
 interface FetchUsersResponse {

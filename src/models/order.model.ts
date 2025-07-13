@@ -51,6 +51,7 @@ export class Meal {
 export interface OrderRecord {
     orderId: string;
     userId: string;
+    userEmail: string;
     meals: MealRecord[];
 
     pricing: {

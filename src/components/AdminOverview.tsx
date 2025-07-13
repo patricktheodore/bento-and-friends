@@ -1,31 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getAllDailyAnalytics, getCumulativeAnalytics, calculateMetrics } from '../services/analytics';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog"
   
 import { useAppContext } from '@/context/AppContext';
-import { Button } from './ui/button';
-import toast from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 type GroupingOption = 'daily' | 'weekly' | 'monthly';
 
 const AdminOverview: React.FC = () => {
 	const { state } = useAppContext();
-	const [isResetting, setIsResetting] = useState(false);
 	const [dailyAnalytics, setDailyAnalytics] = useState<any[]>([]);
 	const [groupedAnalytics, setGroupedAnalytics] = useState<any[]>([]);
 	const [metrics, setMetrics] = useState<any>(null);
@@ -54,24 +38,6 @@ const AdminOverview: React.FC = () => {
 			setGroupedAnalytics(groupData(dailyAnalytics, groupingOption));
 		}
 	}, [dailyAnalytics, groupingOption]);
-
-	const handleResetTermDetails = async () => {
-		setIsResetting(true);
-		try {
-			const functions = getFunctions();
-			const resetTermDetails = httpsCallable(functions, 'resetTermDetailsReview');
-
-			const result = await resetTermDetails();
-			const { usersUpdated } = result.data as { success: boolean; usersUpdated: number };
-
-			toast.success(`Successfully reset term details for ${usersUpdated} users`);
-		} catch (error) {
-			console.error('Error resetting term details:', error);
-			toast.error('Failed to reset term details. Please try again.');
-		} finally {
-			setIsResetting(false);
-		}
-	};
 
 	const groupData = (data: any[], option: GroupingOption) => {
 		if (option === 'daily') return data;
@@ -254,53 +220,6 @@ const AdminOverview: React.FC = () => {
 						</BarChart>
 					</ResponsiveContainer>
 				</CardContent>
-			</Card>
-
-			<Card>
-				<CardHeader>
-					<CardTitle>Reset Term Details Review</CardTitle>
-					<CardDescription>
-						Reset the term details review flag for all users. This will prompt them to review their details
-						when they next log in.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm text-muted-foreground">
-						Use this at the start of each new term to ensure all users review and update their details.
-					</p>
-				</CardContent>
-				<CardFooter>
-					<AlertDialog>
-						<AlertDialogTrigger asChild>
-							<Button
-								variant="default"
-								disabled={isResetting}
-							>
-								{isResetting ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										Resetting...
-									</>
-								) : (
-									'Reset Term Details'
-								)}
-							</Button>
-						</AlertDialogTrigger>
-						<AlertDialogContent>
-							<AlertDialogHeader>
-								<AlertDialogTitle>Are you sure?</AlertDialogTitle>
-								<AlertDialogDescription>
-									This will reset the term details review flag for all users. They will be prompted to
-									review their details when they next log in.
-								</AlertDialogDescription>
-							</AlertDialogHeader>
-							<AlertDialogFooter>
-								<AlertDialogCancel>Cancel</AlertDialogCancel>
-								<AlertDialogAction onClick={handleResetTermDetails}>Continue</AlertDialogAction>
-							</AlertDialogFooter>
-						</AlertDialogContent>
-					</AlertDialog>
-				</CardFooter>
 			</Card>
 		</div>
 	);

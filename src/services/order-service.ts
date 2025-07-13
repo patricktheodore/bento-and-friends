@@ -17,6 +17,7 @@ export const fetchOrderDetails = async (orderId: string): Promise<OrderRecord> =
         return {
             orderId: orderData.orderId,
             userId: orderData.userId,
+            userEmail: orderData.userEmail,
             meals,
             pricing: orderData.pricing,
             payment: orderData.payment,

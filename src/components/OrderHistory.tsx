@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { OrderRecord, Meal, MealRecord } from '../models/order.model';
+import { OrderRecord } from '../models/order.model';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { ChevronDown, ChevronUp, Loader2, Utensils } from 'lucide-react';
@@ -8,10 +8,9 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { fetchOrderDetails } from '@/services/order-service';
-import OrderDialog from './OrderDialog';
 
 const OrderHistory: React.FC = () => {
-	const { state, dispatch } = useAppContext();
+	const { state } = useAppContext();
     const navigate = useNavigate();
     
     // Changed to Set to track multiple expanded orders
@@ -22,9 +21,6 @@ const OrderHistory: React.FC = () => {
     
     // Track loading states for individual orders
     const [loadingOrders, setLoadingOrders] = useState<Set<string>>(new Set());
-    
-    const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
-    const [isOrderAgainDialogOpen, setIsOrderAgainDialogOpen] = useState(false);
 
 	const handleOrderClick = async (orderId: string) => {
 		// Check if order is currently expanded

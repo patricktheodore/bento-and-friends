@@ -1,152 +1,108 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, startAfter, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Loader2, CalendarIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, CalendarIcon, Search, Utensils, Edit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Search } from 'lucide-react';
 import debounce from 'lodash/debounce';
-import { where } from 'firebase/firestore';
+import { fetchOrders, PaginatedOrdersResponse } from '@/services/admin-service';
+import { OrderRecord } from '@/models/order.model';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
-interface Meal {
-	id: string;
-	main: { display: string };
-	addOns: Array<{ display: string }>;
-	child: { name: string };
-	orderDate: string;
-	total: number;
-}
-
-interface Order {
-	id: string;
-	customOrderNumber: string;
-	userEmail: string;
-	createdAt: Timestamp;
-	total: number;
-	finalTotal: number;
-	status: string;
-	meals: Meal[];
-}
-
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 const OrdersComponent: React.FC = () => {
-	const [orders, setOrders] = useState<Order[]>([]);
-	const [lastVisible, setLastVisible] = useState<any>(null);
+	const [orders, setOrders] = useState<OrderRecord[]>([]);
+	const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [hasMore, setHasMore] = useState(true);
-	const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+	const [searchTerm, setSearchTerm] = useState('');
+	
+	// Changed to Set to track multiple expanded orders (like OrderHistory)
+	const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
+	
+	// Date change dialog state
 	const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 	const [selectedMeal, setSelectedMeal] = useState<{ orderId: string; mealId: string } | null>(null);
-	const [searchTerm, setSearchTerm] = useState('');
 
-const fetchOrders = async (lastDoc?: any) => {
-    setLoading(true);
-    try {
-        let ordersQuery;
-        
-        if (searchTerm) {
-            // Query for matching order numbers
-            ordersQuery = query(
-                collection(db, 'orders'),
-                where('customOrderNumber', '==', searchTerm.toUpperCase()),
-                limit(PAGE_SIZE)
-            );
-        } else {
-            // Default query
-            ordersQuery = query(
-                collection(db, 'orders'),
-                orderBy('createdAt', 'desc'),
-                limit(PAGE_SIZE)
-            );
-        }
+	const loadOrders = async (isLoadMore: boolean = false) => {
+		setLoading(true);
+		try {
+			const options = {
+				pageSize: PAGE_SIZE,
+				lastVisible: isLoadMore ? lastVisible : null,
+				searchTerm: searchTerm
+			};
 
-        if (lastDoc) {
-            ordersQuery = query(ordersQuery, startAfter(lastDoc));
-        }
-
-        const querySnapshot = await getDocs(ordersQuery);
-        const newOrders = querySnapshot.docs.map(
-            (doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            } as Order)
-        );
-
-        setOrders(lastDoc ? [...orders, ...newOrders] : newOrders);
-        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
-        setHasMore(querySnapshot.docs.length === PAGE_SIZE);
-    } catch (error) {
-        console.error('Error fetching orders: ', error);
-        toast.error('Failed to fetch orders');
-    } finally {
-        setLoading(false);
-    }
-};
-
-// Add the debounced search handler
-const debouncedSearch = debounce((term: string) => {
-    setSearchTerm(term);
-    setLastVisible(null); // Reset pagination when searching
-}, 300);
-
-const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setOrders([]); // Clear current results
-    debouncedSearch(value);
-};
-
-// Update useEffect to include searchTerm dependency
-useEffect(() => {
-    fetchOrders();
-}, [searchTerm]);
-
-	const loadMore = () => {
-		if (!loading && hasMore) {
-			fetchOrders(lastVisible);
+			const response: PaginatedOrdersResponse = await fetchOrders(options);
+			
+			if (isLoadMore) {
+				setOrders(prev => [...prev, ...response.orders]);
+			} else {
+				setOrders(response.orders);
+			}
+			
+			setLastVisible(response.lastVisible);
+			setHasMore(response.hasMore);
+		} catch (error) {
+			console.error('Error fetching orders: ', error);
+			toast.error('Failed to fetch orders');
+		} finally {
+			setLoading(false);
 		}
 	};
 
+	// Debounced search handler
+	const debouncedSearch = debounce((term: string) => {
+		setSearchTerm(term);
+		setLastVisible(null);
+		setOrders([]); // Clear current results when searching
+	}, 300);
+
+	const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const value = event.target.value;
+		debouncedSearch(value);
+	};
+
+	useEffect(() => {
+		loadOrders(false);
+	}, [searchTerm]);
+
+	const loadMore = () => {
+		if (!loading && hasMore) {
+			loadOrders(true);
+		}
+	};
+
+	// Updated to use Set-based expansion like OrderHistory
 	const handleOrderClick = (orderId: string) => {
-		setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+		const isExpanded = expandedOrderIds.has(orderId);
+		
+		if (isExpanded) {
+			// Collapse the order
+			setExpandedOrderIds(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(orderId);
+				return newSet;
+			});
+		} else {
+			// Expand the order
+			setExpandedOrderIds(prev => new Set(prev).add(orderId));
+		}
 	};
-
-	const formatDate = (timestamp: Timestamp): string => {
-		const date = timestamp.toDate();
-		const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-		const dayOfWeek = dayNames[date.getDay()];
-		return `${dayOfWeek}, ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-	};
-
-	// const isValidDate = (date: Date) => {
-	// 	const today = new Date();
-	// 	today.setHours(0, 0, 0, 0);
-	// 	const tomorrow = new Date(today);
-	// 	tomorrow.setDate(tomorrow.getDate() + 1);
-
-	// 	const day = date.getDay();
-	// 	const isWeekend = day === 0 || day === 6;
-	// 	const isPast = date <= today;
-	// 	const isBlocked = state.blockedDates.some(
-	// 		(blockedDate) => new Date(blockedDate).toDateString() === date.toDateString()
-	// 	);
-
-	// 	return !(isWeekend || isPast || isBlocked);
-	// };
 
 	const handleDateChange = (orderId: string, mealId: string) => {
 		setSelectedMeal({ orderId, mealId });
 		setIsDateDialogOpen(true);
 	};
 
-	const updateMealDate = async () => {
+	const editMeal = async () => {
 		if (!selectedMeal || !selectedDate) return;
 
 		const { orderId, mealId } = selectedMeal;
@@ -166,10 +122,10 @@ useEffect(() => {
 			if (data.success) {
 				// Update local state
 				const updatedOrders = orders.map((order) => {
-					if (order.id === orderId) {
+					if (order.orderId === orderId) {
 						const updatedMeals = order.meals.map((meal) => {
-							if (meal.id === mealId) {
-								return { ...meal, orderDate: selectedDate.toISOString() };
+							if (meal.mealId === mealId) {
+								return { ...meal, deliveryDate: selectedDate.toISOString() };
 							}
 							return meal;
 						});
@@ -194,11 +150,11 @@ useEffect(() => {
 		}
 	};
 
-	const getMealStatus = (orderDate: string) => {
+	const getMealStatus = (deliveryDate: string) => {
 		const today = new Date();
 		const yesterday = new Date(today);
 		yesterday.setDate(yesterday.getDate() - 1);
-		const mealDate = new Date(orderDate);
+		const mealDate = new Date(deliveryDate);
 
 		if (mealDate < yesterday) {
 			return 'delivered';
@@ -222,123 +178,194 @@ useEffect(() => {
 		}
 	};
 
+	// Helper functions like OrderHistory
+	const isOrderExpanded = (orderId: string): boolean => {
+		return expandedOrderIds.has(orderId);
+	};
+
+	const RenderNoOrders = () => (
+		<Card className="mt-8">
+			<CardHeader>
+				<CardTitle className="text-2xl font-bold text-center">No Orders Found</CardTitle>
+			</CardHeader>
+			<CardContent className="text-center">
+				<Utensils className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
+				<p className="text-lg mb-4">
+					{searchTerm ? `No orders found matching "${searchTerm}"` : 'No orders available.'}
+				</p>
+			</CardContent>
+		</Card>
+	);
+
 	return (
-		<div className="space-y-4">
+		<div className="w-full space-y-4">
 			<div className="flex justify-between items-center">
 				<h2 className="text-2xl font-bold">Orders</h2>
 				<div className="relative max-w-sm w-full">
 					<Input
 						type="text"
-						placeholder="Search by order number..."
+						placeholder="Search by order ID..."
 						onChange={handleSearch}
 						className="pl-10"
 					/>
 					<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
 				</div>
 			</div>
-			<div className="rounded-md border overflow-x-auto">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead className="w-[50px] px-2 py-3 text-xs sm:text-sm">Order #</TableHead>
-							<TableHead className="hidden sm:table-cell">User Email</TableHead>
-							<TableHead className="px-2 py-3 text-xs sm:text-sm">Date</TableHead>
-							<TableHead className="px-2 py-3 text-xs sm:text-sm">Meals</TableHead>
-							<TableHead className="px-2 py-3 text-xs sm:text-sm">Total</TableHead>
-							<TableHead className="px-2 py-3 text-xs sm:text-sm">After Discount</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{orders.map((order) => (
-							<React.Fragment key={order.id}>
-								<TableRow
-									className="cursor-pointer"
-									onClick={() => handleOrderClick(order.id)}
-								>
-									<TableCell className="flex justify-start items-center gap-1 px-2 py-3 text-xs sm:text-sm">
-										{expandedOrderId === order.id ? (
-											<ChevronUp className="h-4 w-4 flex-shrink-0" />
-										) : (
-											<ChevronDown className="h-4 w-4 flex-shrink-0" />
-										)}
-										<span className="truncate">{order.customOrderNumber}</span>
-									</TableCell>
-									<TableCell className="hidden sm:table-cell">{order.userEmail}</TableCell>
-									<TableCell className="px-2 py-3 text-xs sm:text-sm">
-										{formatDate(order.createdAt)}
-									</TableCell>
-									<TableCell className="px-2 py-3 text-xs sm:text-sm">{order.meals.length}</TableCell>
-									<TableCell className="px-2 py-3 text-xs sm:text-sm">
-										${order.total ? order.total.toFixed(2) : '0'}
-									</TableCell>
-									<TableCell className="px-2 py-3 text-xs sm:text-sm">	
-										${order.finalTotal && order.finalTotal > 0 ? order.finalTotal.toFixed(2) : '0'}
-									</TableCell>
-								</TableRow>
-								{expandedOrderId === order.id && (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="p-0"
-										>
-											<div className="p-2 sm:p-4 bg-gray-50 space-y-2 sm:space-y-4">
-												<div className='w-full flex flex-wrap gap-2'>
-													{order.meals.map((meal) => {
-														const mealStatus = getMealStatus(meal.orderDate);
-														return (
-															<div
-																key={meal.id}
-																className="bg-white p-2 sm:p-3 rounded-md shadow-sm text-xs sm:text-sm relative"
-															>
-																<div className="absolute top-2 sm:top-3 right-2 sm:right-3">
-																	{getStatusBadge(mealStatus)}
-																</div>
-																<p className='pr-[120px]'>
-																	<strong>{meal.main.display}</strong> for{' '}
-																	{meal.child.name}
-																</p>
-																<p>
-																	Add-ons:{' '}
-																	{meal.addOns.map((addon) => addon.display).join(', ')}
-																</p>
-																<div className="flex justify-between items-center mt-2">
-																	<p>
-																		Date:{' '}
-																		{formatDate(
-																			Timestamp.fromDate(new Date(meal.orderDate))
-																		)}
-																	</p>
-																	{mealStatus !== 'delivered' && (
-																		<Button
-																			variant="outline"
-																			size="sm"
-																			onClick={(e) => {
-																				e.stopPropagation();
-																				handleDateChange(order.id, meal.id);
-																			}}
-																		>
-																			<CalendarIcon className="h-4 w-4 mr-2" />
-																			Change Date
-																		</Button>
-																	)}
-																</div>
-																<p className="font-medium mt-2">
-																	Price: ${meal.total.toFixed(2)}
-																</p>
-															</div>
-														);
-													})}
 
-												</div>
-											</div>
+			{orders.length === 0 && !loading ? (
+				<RenderNoOrders />
+			) : (
+				<div className="rounded-md border overflow-x-auto">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead className="w-[120px]">Order ID</TableHead>
+								<TableHead className="hidden sm:table-cell">User</TableHead>
+								<TableHead className="w-[150px]">Ordered On</TableHead>
+								<TableHead className="w-[80px]">Meals</TableHead>
+								<TableHead className="w-[100px]">Total</TableHead>
+								<TableHead className="w-[120px]">Status</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{orders.map((order) => (
+								<React.Fragment key={order.orderId}>
+									<TableRow
+										className="cursor-pointer hover:bg-gray-50"
+										onClick={() => handleOrderClick(order.orderId)}
+									>
+										<TableCell className="flex justify-start items-center gap-2">
+											{isOrderExpanded(order.orderId) ? (
+												<ChevronUp className="h-4 w-4" />
+											) : (
+												<ChevronDown className="h-4 w-4" />
+											)}
+											<span className="truncate">{order.orderId}</span>
+										</TableCell>
+										<TableCell className="hidden sm:table-cell">{order.userEmail}</TableCell>
+										<TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+										<TableCell>{order.meals.length}</TableCell>
+										<TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+										<TableCell>
+											<Badge variant={order.status === 'paid' ? 'success' : 'secondary'}>
+												{order.status}
+											</Badge>
 										</TableCell>
 									</TableRow>
-								)}
-							</React.Fragment>
-						))}
-					</TableBody>
-				</Table>
-			</div>
+									
+									{isOrderExpanded(order.orderId) && (
+										<TableRow>
+											<TableCell colSpan={6}>
+												<div className="p-4 bg-gray-50 space-y-4">
+													<div className="mb-4">
+														<h4 className="font-semibold text-lg mb-2">Order Details</h4>
+														<div className="grid grid-cols-2 gap-4 text-sm">
+															<div>
+																<span className="font-medium">Order ID:</span> {order.orderId}
+															</div>
+															<div>
+																<span className="font-medium">User:</span> {order.userEmail}
+															</div>
+															<div>
+																<span className="font-medium">Total Meals:</span> {order.meals.length}
+															</div>
+															<div>
+																<span className="font-medium">Order Date:</span> {new Date(order.createdAt).toLocaleDateString()}
+															</div>
+															<div>
+																<span className="font-medium">Subtotal:</span> ${order.pricing?.subtotal || order.totalAmount}
+															</div>
+															<div>
+																<span className="font-medium">Final Total:</span> ${order.pricing?.finalTotal || order.totalAmount}
+															</div>
+															{order.pricing?.appliedCoupon && (
+																<div className="col-span-2">
+																	<span className="font-medium">Coupon Applied:</span> {order.pricing.appliedCoupon.code} (-${order.pricing.appliedCoupon.discountAmount})
+																</div>
+															)}
+														</div>
+													</div>
+
+													<div>
+														<h5 className="font-semibold mb-3">Meals:</h5>
+														<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+															{order.meals.map((meal) => {
+																const mealStatus = getMealStatus(meal.deliveryDate);
+																return (
+																	<div key={meal.mealId} className="bg-white p-4 rounded-md shadow-sm mb-3 relative">
+																		<div className="absolute top-2 right-2">
+																			{getStatusBadge(mealStatus)}
+																		</div>
+																		
+																		<div className="flex-1 pr-20">
+																			<p className="font-medium text-lg mb-2">{meal.mainName}</p>
+																			<p className="text-sm text-gray-600 mb-1">
+																				<span className="font-medium">For:</span> {meal.childName}
+																			</p>
+																			
+																			{meal.schoolName && (
+																				<p className="text-sm text-gray-600 mb-1">
+																					<span className="font-medium">School:</span> {meal.schoolName}
+																				</p>
+																			)}
+																			
+																			<p className="text-sm text-gray-600 mb-1">
+																				<span className="font-medium">Delivery Date:</span> {new Date(meal.deliveryDate).toLocaleDateString()}
+																			</p>
+																			
+																			{meal.addOns.length > 0 && (
+																				<p className="text-sm text-gray-600 mb-1">
+																					<span className="font-medium">Add-ons:</span> {meal.addOns.map((addon) => addon.display).join(', ')}
+																				</p>
+																			)}
+																			
+																			{meal.fruitName && (
+																				<p className="text-sm text-gray-600 mb-1">
+																					<span className="font-medium">Fruit:</span> {meal.fruitName}
+																				</p>
+																			)}
+																			
+																			{meal.sideName && (
+																				<p className="text-sm text-gray-600 mb-1">
+																					<span className="font-medium">Side:</span> {meal.sideName}
+																				</p>
+																			)}
+																			
+																			<p className="text-sm font-medium text-green-600 mt-2">
+																				Price: ${meal.totalAmount.toFixed(2)}
+																			</p>
+																			
+																			{mealStatus !== 'delivered' && (
+																				<Button
+																					variant="outline"
+																					size="sm"
+																					className="mt-2"
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						editMeal(meal);
+																					}}
+																				>
+																					<Edit className="h-4 w-4 mr-2" />
+																					Edit Meal
+																				</Button>
+																			)}
+																		</div>
+																	</div>
+																);
+															})}
+														</div>
+													</div>
+												</div>
+											</TableCell>
+										</TableRow>
+									)}
+								</React.Fragment>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+			)}
+
 			{hasMore && (
 				<div className="flex justify-center mt-4">
 					<Button
@@ -357,47 +384,6 @@ useEffect(() => {
 					</Button>
 				</div>
 			)}
-
-			<Dialog
-				open={isDateDialogOpen}
-				onOpenChange={setIsDateDialogOpen}
-			>
-				<DialogContent className="sm:max-w-[425px]">
-					<DialogHeader>
-						<DialogTitle>Change Delivery Date</DialogTitle>
-					</DialogHeader>
-					<div className="py-4">
-						<Calendar
-							mode="single"
-							selected={selectedDate}
-							onSelect={setSelectedDate}
-							// disabled={(date) => !isValidDate(date)}
-							className="rounded-md border"
-						/>
-					</div>
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setIsDateDialogOpen(false)}
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={updateMealDate}
-							disabled={!selectedDate || loading}
-						>
-							{loading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Updating...
-								</>
-							) : (
-								'Update Date'
-							)}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
 		</div>
 	);
 };
