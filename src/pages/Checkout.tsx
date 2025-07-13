@@ -124,7 +124,6 @@ const CheckoutPage: React.FC = () => {
 			const functions = getFunctions();
 			const createCheckoutSession = httpsCallable(functions, 'createCheckout');
 
-			// TODO: Update this for new table configuration
             const lineItems = cart.meals.map((meal) => ({
                 price_data: {
                     currency: 'aud',
