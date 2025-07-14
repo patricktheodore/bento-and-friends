@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Coupon, OrderHistorySummary, User } from '../models/user.model';
+import { Coupon, OrderHistory, User } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
 import { Order, Meal } from '../models/order.model';
@@ -54,7 +54,7 @@ type Action =
 	| { type: 'ADD_COUPON'; payload: Coupon }
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
 	| { type: 'DELETE_COUPON'; payload: string }
-	| { type: 'CONFIRM_ORDER'; payload: OrderHistorySummary }
+	| { type: 'CONFIRM_ORDER'; payload: OrderHistory }
 	| { type: 'SYNC_ITEMS' }; // New action to sync all items
 
 // Initial state
@@ -293,7 +293,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 				...state,
 				user: {
 					...state.user,
-					orderHistory: [action.payload, ...state.user.orderHistory]
+					orders: [action.payload, ...state.user.orders]
 				}
 			};
 		default:

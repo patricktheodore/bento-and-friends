@@ -3,88 +3,88 @@ import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 
 export const scheduleTermDetailsReset = onSchedule({
-    schedule: "0 6 1 1 *", // January 1st at 6 AM
-    memory: "512MiB",
-    timeoutSeconds: 600, // 10 minutes for large user bases
-    region: "us-central1",
-}, async (event) => {
-    logger.info("Starting scheduled term details reset");
+  schedule: "0 6 1 1 *", // January 1st at 6 AM
+  memory: "512MiB",
+  timeoutSeconds: 600,
+  region: "us-central1",
+}, async () => {
+  logger.info("Starting scheduled term details reset");
 
-    try {
-        const usersRef = admin.firestore().collection("users");
-        
-        // Get total count for logging
-        const snapshot = await usersRef.get();
-        const totalUsers = snapshot.size;
+  try {
+    const usersRef = admin.firestore().collection("users");
 
-        logger.info("Processing term reset for users", { totalUsers });
+    // Get total count for logging
+    const snapshot = await usersRef.get();
+    const totalUsers = snapshot.size;
 
-        // Process in batches to avoid memory issues with large datasets
-        const batchSize = 500;
-        let processedUsers = 0;
-        let hasMore = true;
-        let lastDoc = null;
+    logger.info("Processing term reset for users", { totalUsers });
 
-        while (hasMore) {
-            // Build query with pagination
-            let query = usersRef.orderBy("__name__").limit(batchSize);
-            if (lastDoc) {
-                query = query.startAfter(lastDoc);
-            }
+    // Process in batches to avoid memory issues with large datasets
+    const batchSize = 500;
+    let processedUsers = 0;
+    let hasMore = true;
+    let lastDoc = null;
 
-            const batchSnapshot = await query.get();
-            
-            if (batchSnapshot.empty) {
-                hasMore = false;
-                break;
-            }
+    while (hasMore) {
+      // Build query with pagination
+      let query = usersRef.orderBy("__name__").limit(batchSize);
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
 
-            // Update this batch
-            const batch = admin.firestore().batch();
-            
-            batchSnapshot.docs.forEach((doc) => {
-                batch.update(doc.ref, {
-                    hasReviewedTermDetails: false,
-                    lastTermResetDate: admin.firestore.FieldValue.serverTimestamp(),
-                });
-            });
+      const batchSnapshot = await query.get();
 
-            await batch.commit();
-            
-            processedUsers += batchSnapshot.docs.length;
-            lastDoc = batchSnapshot.docs[batchSnapshot.docs.length - 1];
-            
-            logger.info("Batch processed", { 
-                processedUsers, 
-                totalUsers,
-                batchSize: batchSnapshot.docs.length 
-            });
+      if (batchSnapshot.empty) {
+        hasMore = false;
+        break;
+      }
 
-            // Check if we've processed all users
-            if (batchSnapshot.docs.length < batchSize) {
-                hasMore = false;
-            }
-        }
+      // Update this batch
+      const batch = admin.firestore().batch();
 
-        logger.info("Scheduled term details reset completed successfully", {
-            usersUpdated: processedUsers
+      batchSnapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          hasReviewedTermDetails: false,
+          lastTermResetDate: admin.firestore.FieldValue.serverTimestamp(),
         });
+      });
 
-    } catch (error: any) {
-        logger.error("Error in scheduled term details reset", {
-            error: error.message,
-            stack: error.stack
-        });
-        
-        // Log the failure for monitoring
-        await admin.firestore().collection("adminLogs").add({
-            action: "scheduledTermDetailsReset",
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            status: "failed",
-            error: error.message,
-            triggerType: "scheduled",
-        });
-        
-        throw error;
+      await batch.commit();
+
+      processedUsers += batchSnapshot.docs.length;
+      lastDoc = batchSnapshot.docs[batchSnapshot.docs.length - 1];
+
+      logger.info("Batch processed", {
+        processedUsers,
+        totalUsers,
+        batchSize: batchSnapshot.docs.length
+      });
+
+      // Check if we've processed all users
+      if (batchSnapshot.docs.length < batchSize) {
+        hasMore = false;
+      }
     }
+
+    logger.info("Scheduled term details reset completed successfully", {
+      usersUpdated: processedUsers
+    });
+
+  } catch (error: any) {
+    logger.error("Error in scheduled term details reset", {
+      error: error.message,
+      stack: error.stack
+    });
+
+    // Log the failure for monitoring
+    await admin.firestore().collection("adminLogs").add({
+      action: "scheduledTermDetailsReset",
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      status: "failed",
+      error: error.message,
+      triggerType: "scheduled",
+    });
+
+    throw error;
+  }
 });

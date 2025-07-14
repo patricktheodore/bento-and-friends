@@ -22,6 +22,7 @@ interface OrderDialogProps {
 	selectedMain?: Main | null;
 	selectedSchool?: School | null;
 	editingMeal?: Meal | null;
+    adminState?: Child[] | null; // Admin state to override available items,
 	onSave: (meals: Meal | Meal[]) => void;
 }
 
@@ -30,7 +31,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     onClose, 
     selectedMain, 
     selectedSchool, 
-    editingMeal, 
+    editingMeal,
+    adminState,
     onSave 
 }) => {
 	const { state } = useAppContext();
@@ -48,6 +50,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 	
     // Derived values
     const isEditMode = !!editingMeal;
+    const overrideWithAdminState = !!adminState;
 
     const availableMains = useMemo(() => {
         if (!effectiveSchool?.menuItems) {
@@ -67,7 +70,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         );
     }, [currentMain, state.addOns]);
 
-    const children = state.user?.children ?? [];
+    const children = overrideWithAdminState ? adminState : state.user?.children ?? [];
     const sides = state.sides ?? [];
     const fruits = state.fruits ?? [];
 
@@ -233,7 +236,6 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 				};
 
 				onSave(updatedMeal);
-				toast.success('Order updated successfully');
 			} else {
 				// Create new meals
 				const newMeals: Meal[] = selectedChildren.flatMap(child =>
@@ -265,14 +267,27 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto">
 				<DialogHeader className="space-y-3">
-					<DialogTitle className="text-xl font-semibold">
-						{isEditMode ? 'Edit Meal Order' : 'Create Meal Order'}
+					<DialogTitle className="text-xl font-semibold flex items-center justify-between">
+                        {isEditMode ? 'Edit Meal Order' : 'Create Meal Order'}
+                        {overrideWithAdminState && (
+                            <span className="ml-2 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                                Admin Mode
+                            </span>
+                        )}
 					</DialogTitle>
-					<DialogDescription className="px-4 py-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-						<span className="text-sm font-medium text-blue-800">
-							Delivering to: {effectiveSchool?.name}
-						</span>
-					</DialogDescription>
+                    <DialogDescription className="mx-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div>
+                                <span className="text-sm font-semibold text-blue-900 block">
+                                    Delivering to
+                                </span>
+                                <span className="text-base font-bold text-blue-800">
+                                    {effectiveSchool?.name}
+                                </span>
+                            </div>
+                        </div>
+                    </DialogDescription>
 				</DialogHeader>
 
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">

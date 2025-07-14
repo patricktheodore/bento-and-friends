@@ -28,6 +28,7 @@ export interface OrderHistory {
     itemCount: number;
     orderedOn: string;
     totalPaid: number;
+    mealIds: string[];
 }
 
 export class Child {

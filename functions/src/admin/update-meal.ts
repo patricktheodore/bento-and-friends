@@ -1,20 +1,25 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { isUserAdmin } from "./is-admin-validator";
+import { MealRecord } from "../stripe/webhook";
 
 interface UpdateMealRequest {
   mealId: string;
   updates: {
     deliveryDate?: string;
+    schoolId?: string;
+    schoolName?: string;
+    schoolAddress?: string;
+    childId?: string;
+    childName?: string;
     mainId?: string;
     mainName?: string;
-    addOns?: Array<{ id: string; display: string; price: number }>;
+    addOns?: Array<{ id: string; display: string }>;
     fruitId?: string | null;
     fruitName?: string | null;
     sideId?: string | null;
     sideName?: string | null;
-    childId?: string;
-    childName?: string;
     totalAmount?: number;
   };
 }
@@ -28,9 +33,13 @@ export const updateMealRecord = onCall<UpdateMealRequest>(
   async (request) => {
     const { auth, data } = request;
 
-    // Check if user is authenticated (you might want to add admin role check)
     if (!auth) {
-      throw new HttpsError("unauthenticated", "Must be authenticated to update meals");
+      throw new HttpsError("unauthenticated", "User must be authenticated to update meals.");
+    }
+
+    const isAdmin = await isUserAdmin(auth.uid);
+    if (!isAdmin) {
+      throw new HttpsError("permission-denied", "User does not have permission to update meals.");
     }
 
     const { mealId, updates } = data;
@@ -40,7 +49,7 @@ export const updateMealRecord = onCall<UpdateMealRequest>(
     }
 
     if (!updates || Object.keys(updates).length === 0) {
-      throw new HttpsError("invalid-argument", "Updates object cannot be empty");
+      throw new HttpsError("invalid-argument", "Updates object is required and cannot be empty");
     }
 
     const db = admin.firestore();
@@ -56,26 +65,79 @@ export const updateMealRecord = onCall<UpdateMealRequest>(
         throw new HttpsError("not-found", `Meal with ID ${mealId} not found`);
       }
 
-      const currentMeal = mealDoc.data();
-      
-      // Prepare the update object
-      const updateData = {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
+      // Validate and sanitize updates to match MealRecord interface
+      const sanitizedUpdates: Partial<MealRecord> = {};
 
-      // Update the meal record
-      await mealRef.update(updateData);
+      // Only update fields that are provided and valid
+      if (updates.deliveryDate !== undefined) {
+        // Ensure deliveryDate is a valid ISO string
+        const date = new Date(updates.deliveryDate);
+        if (isNaN(date.getTime())) {
+          throw new HttpsError("invalid-argument", "deliveryDate must be a valid date");
+        }
+        sanitizedUpdates.deliveryDate = date.toISOString();
+      }
 
-      logger.info("Meal record updated successfully", { 
-        mealId, 
-        updatedFields: Object.keys(updates) 
+      if (updates.schoolId !== undefined) sanitizedUpdates.schoolId = updates.schoolId;
+      if (updates.schoolName !== undefined) sanitizedUpdates.schoolName = updates.schoolName;
+      if (updates.schoolAddress !== undefined) sanitizedUpdates.schoolAddress = updates.schoolAddress;
+      if (updates.childId !== undefined) sanitizedUpdates.childId = updates.childId;
+      if (updates.childName !== undefined) sanitizedUpdates.childName = updates.childName;
+      if (updates.mainId !== undefined) sanitizedUpdates.mainId = updates.mainId;
+      if (updates.mainName !== undefined) sanitizedUpdates.mainName = updates.mainName;
+
+      // Validate addOns structure
+      if (updates.addOns !== undefined) {
+        if (!Array.isArray(updates.addOns)) {
+          throw new HttpsError("invalid-argument", "addOns must be an array");
+        }
+
+        const validatedAddOns = updates.addOns.map(addon => {
+          if (!addon.id || !addon.display) {
+            throw new HttpsError("invalid-argument", "addOns must have id and display properties");
+          }
+          return {
+            id: addon.id,
+            display: addon.display
+          };
+        });
+
+        sanitizedUpdates.addOns = validatedAddOns;
+      }
+
+      if (updates.fruitId !== undefined) sanitizedUpdates.fruitId = updates.fruitId;
+      if (updates.fruitName !== undefined) sanitizedUpdates.fruitName = updates.fruitName;
+      if (updates.sideId !== undefined) sanitizedUpdates.sideId = updates.sideId;
+      if (updates.sideName !== undefined) sanitizedUpdates.sideName = updates.sideName;
+
+      if (updates.totalAmount !== undefined) {
+        if (typeof updates.totalAmount !== "number" || updates.totalAmount < 0) {
+          throw new HttpsError("invalid-argument", "totalAmount must be a positive number");
+        }
+        sanitizedUpdates.totalAmount = updates.totalAmount;
+      }
+
+      // Always update the updatedAt timestamp
+      sanitizedUpdates.updatedAt = new Date().toISOString();
+
+      // Perform the update
+      await mealRef.update(sanitizedUpdates);
+
+      logger.info("Meal record updated successfully", {
+        mealId,
+        updatedFields: Object.keys(sanitizedUpdates),
+        userId: auth.uid
       });
+
+      // Return the updated meal data
+      const updatedMealDoc = await mealRef.get();
+      const updatedMeal = updatedMealDoc.data() as MealRecord;
 
       return {
         success: true,
         message: "Meal updated successfully",
         mealId: mealId,
+        updatedMeal: updatedMeal
       };
 
     } catch (error) {
@@ -83,6 +145,7 @@ export const updateMealRecord = onCall<UpdateMealRequest>(
         mealId,
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
+        userId: auth.uid
       });
 
       if (error instanceof HttpsError) {

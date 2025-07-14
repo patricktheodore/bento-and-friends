@@ -40,7 +40,7 @@ interface UserOrderSummary {
     orderedOn: string;
 }
 
-interface MealRecord {
+export interface MealRecord {
     mealId: string;
     orderId: string;
     userId: string;
