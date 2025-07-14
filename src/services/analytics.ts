@@ -35,7 +35,7 @@ export const getAnalytics = async (date: string) => {
     const averagePricePerMeal = data.mealCount > 0 ? data.revenue / data.mealCount : 0;
 
     // Get the current user count
-    const usersCollection = collection(db, 'users');
+    const usersCollection = collection(db, 'users-test2');
     const userCountSnapshot = await getCountFromServer(usersCollection);
     const currentUserCount = userCountSnapshot.data().count;
 
@@ -85,7 +85,7 @@ export const getCumulativeAnalytics = async () => {
       const cumulativeData = cumulativeSnap.data() as CumulativeAnalytics;
   
       // Get the current user count
-      const usersCollection = collection(db, 'users');
+      const usersCollection = collection(db, 'users-test2');
       const userCountSnapshot = await getCountFromServer(usersCollection);
       const currentUserCount = userCountSnapshot.data().count;
   

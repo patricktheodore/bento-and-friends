@@ -22,7 +22,7 @@ export function UpdateDetailsDialog() {
     const schools = state.schools || []
 
     useEffect(() => {
-        if (state.user && !state.user.hasReviewedTermDetails) {
+        if (state.user && !state.user.hasReviewedTermDetails && state.user.children?.length > 0) {
             setOpen(true)
         }
     }, [state.user])

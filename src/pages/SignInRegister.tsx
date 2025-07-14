@@ -180,6 +180,7 @@ const UserloginPage: React.FC = () => {
 								<input
 									id="display-name"
 									name="displayName"
+                                    autoComplete='name'
 									type="text"
 									required
 									className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green focus:z-10 sm:text-sm"
@@ -189,27 +190,27 @@ const UserloginPage: React.FC = () => {
 								/>
 							</div>
 						)}
-						<div>
-							<label
-								htmlFor="email-address"
-								className="sr-only"
-							>
-								Email address
-							</label>
-							<input
-								id="email-address"
-								name="email"
-								type="email"
-								autoComplete="email"
-								required
-								className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
-									isNewUserSignup ? '' : 'rounded-t-md'
-								} focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green focus:z-10 sm:text-sm`}
-								placeholder="Email address"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-							/>
-						</div>
+                        <div>
+                            <label
+                                htmlFor="email-address"
+                                className="sr-only"
+                            >
+                                Email address
+                            </label>
+                            <input
+                                id="email-address"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
+                                    isNewUserSignup ? '' : 'rounded-t-md'
+                                } focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green focus:z-10 sm:text-sm`}
+                                placeholder="Email address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
 						<div>
 							<label
 								htmlFor="password"
@@ -240,6 +241,7 @@ const UserloginPage: React.FC = () => {
 								<input
 									id="confirm-password"
 									name="confirmPassword"
+                                    autoComplete='new-password'
 									type="password"
 									required
 									className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-brand-dark-green focus:border-brand-dark-green focus:z-10 sm:text-sm"

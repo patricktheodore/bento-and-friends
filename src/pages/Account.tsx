@@ -12,7 +12,21 @@ import AccountDetails from '@/components/AccountDetails';
 import toast from 'react-hot-toast';
 
 const AccountPage: React.FC = () => {
-	const { state, dispatch } = useAppContext();
+	const { state, refreshUserData, dispatch } = useAppContext();
+
+    // refreesh user data when the component mounts
+    React.useEffect(() => {
+        const fetchData = async () => {
+            try {
+                await refreshUserData();
+            } catch (error) {
+                console.error('Error refreshing user data:', error);
+                toast.error('Failed to load account data');
+            }
+        };
+
+        fetchData();
+    }, []);
 
 	const handleAddChild = async (childData: Omit<Child, 'id'>) => {
         if (!state.user) return;

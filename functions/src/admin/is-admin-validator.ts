@@ -2,7 +2,7 @@ import { getFirestore } from "firebase-admin/firestore";
 
 export const isUserAdmin = async (uid: string): Promise<boolean> => {
   try {
-    const userDoc = await getFirestore().collection("users").doc(uid).get();
+    const userDoc = await getFirestore().collection("users-test2").doc(uid).get();
 
     if (!userDoc.exists) {
       return false;

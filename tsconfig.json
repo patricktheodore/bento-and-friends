@@ -11,11 +11,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-
       "@/*": ["src/*"],
-
       "@/components/ui/calendar": ["src/components/ui/calendar.tsx"]
-
     }
   }
 }

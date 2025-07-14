@@ -11,7 +11,7 @@ export const scheduleTermDetailsReset = onSchedule({
   logger.info("Starting scheduled term details reset");
 
   try {
-    const usersRef = admin.firestore().collection("users");
+    const usersRef = admin.firestore().collection("users-test2");
 
     // Get total count for logging
     const snapshot = await usersRef.get();

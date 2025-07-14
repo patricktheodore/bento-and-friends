@@ -5,9 +5,12 @@ import {
 	onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../firebase';
 import { User } from '../models/user.model';
 import { sendPasswordResetEmail as firebaseSendPasswordResetEmail } from 'firebase/auth';
+
+const functions = getFunctions();
 
 export const sendPasswordResetEmail = (email: string) => {
 	return firebaseSendPasswordResetEmail(auth, email);
@@ -27,7 +30,19 @@ export const signUp = async (email: string, password: string, displayName: strin
 		orders: [],
 	};
 
-	await setDoc(doc(db, 'users', user.uid), newUser);
+	await setDoc(doc(db, 'users-test2', user.uid), newUser);
+
+    try {
+		const sendWelcomeEmail = httpsCallable(functions, 'sendWelcomeEmail');
+		const result = await sendWelcomeEmail({
+			email: email,
+			displayName: displayName
+		});
+		
+		console.log('Welcome email sent successfully:', result.data);
+	} catch (error) {
+		console.error('Failed to send welcome email:', error);
+	}
 
 	return newUser;
 };
