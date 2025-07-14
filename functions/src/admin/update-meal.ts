@@ -1,7 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import { isUserAdmin } from "./is-admin-validator";
 import { MealRecord } from "../stripe/webhook";
 
 interface UpdateMealRequest {
@@ -35,11 +34,6 @@ export const updateMealRecord = onCall<UpdateMealRequest>(
 
     if (!auth) {
       throw new HttpsError("unauthenticated", "User must be authenticated to update meals.");
-    }
-
-    const isAdmin = await isUserAdmin(auth.uid);
-    if (!isAdmin) {
-      throw new HttpsError("permission-denied", "User does not have permission to update meals.");
     }
 
     const { mealId, updates } = data;

@@ -1,11 +1,14 @@
+// First, update the AppContext to handle detailed order information
+
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Coupon, OrderHistory, User } from '../models/user.model';
 import { getSchools } from '../services/school-operations';
 import { getCurrentUser } from '../services/auth';
-import { Order, Meal } from '../models/order.model';
+import { Order, Meal, OrderRecord } from '../models/order.model';
 import { School } from '../models/school.model';
 import { getMains, getSides, getAddOns, getFruits, getDrinks, getPlatters } from '../services/item-service';
 import { getCoupons } from '@/services/coupon-service';
+import { fetchOrderDetails } from '@/services/order-service';
 import { AddOn, Drink, Fruit, Main, Platter, Side, MenuItem } from '../models/item.model';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,12 +26,16 @@ type AppState = {
 	coupons: Coupon[];
 	items: MenuItem[];
 	isLoading: boolean;
+	// Add detailed order storage
+	orderDetails: Map<string, OrderRecord>;
+	loadingOrderIds: Set<string>;
 };
 
 // Define action types
 type Action =
 	| { type: 'SET_USER'; payload: User | null }
 	| { type: 'UPDATE_USER'; payload: Partial<User> }
+	| { type: 'REFRESH_USER_DATA' }
 	| { type: 'ADD_MENU_ITEM'; payload: MenuItem }
 	| { type: 'UPDATE_MENU_ITEM'; payload: MenuItem }
 	| { type: 'SET_MENU_ITEMS'; payload: MenuItem[] }
@@ -55,7 +62,12 @@ type Action =
 	| { type: 'UPDATE_COUPON'; payload: Coupon }
 	| { type: 'DELETE_COUPON'; payload: string }
 	| { type: 'CONFIRM_ORDER'; payload: OrderHistory }
-	| { type: 'SYNC_ITEMS' }; // New action to sync all items
+	| { type: 'SYNC_ITEMS' }
+	// New actions for order details
+	| { type: 'SET_ORDER_DETAILS'; payload: { orderId: string; details: OrderRecord } }
+	| { type: 'SET_ORDER_LOADING'; payload: { orderId: string; loading: boolean } }
+	| { type: 'UPDATE_MEAL_IN_ORDER'; payload: { orderId: string; mealId: string; updatedMeal: any } }
+	| { type: 'CLEAR_ORDER_DETAILS'; payload: string };
 
 // Initial state
 const initialState: AppState = {
@@ -72,6 +84,8 @@ const initialState: AppState = {
 	items: [],
 	coupons: [],
 	isLoading: true,
+	orderDetails: new Map(),
+	loadingOrderIds: new Set(),
 };
 
 const loadCartFromLocalStorage = (): Order | null => {
@@ -111,8 +125,6 @@ const updateItemInArrays = (state: AppState, updatedItem: MenuItem): AppState =>
 		newState.sides = state.sides.map(item => item.id === updatedItem.id ? updatedItem : item);
 	} else if (updatedItem instanceof Fruit) {
 		newState.fruits = state.fruits.map(item => item.id === updatedItem.id ? updatedItem : item);
-	} else if (updatedItem instanceof Drink) {
-		newState.drinks = state.drinks.map(item => item.id === updatedItem.id ? updatedItem : item);
 	} else if (updatedItem instanceof AddOn) {
 		newState.addOns = state.addOns.map(item => item.id === updatedItem.id ? updatedItem : item);
 	}
@@ -150,6 +162,9 @@ const AppContext = createContext<
 	| {
 			state: AppState;
 			dispatch: React.Dispatch<Action>;
+			refreshUserData: () => Promise<void>;
+			loadOrderDetails: (orderId: string) => Promise<void>;
+			updateMealInOrder: (orderId: string, mealId: string, updatedMeal: any) => void;
 	  }
 	| undefined
 >(undefined);
@@ -161,7 +176,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 		case 'SET_USER':
 			return { ...state, user: action.payload };
 		case 'SIGN_OUT':
-			return { ...state, user: null, cart: null };
+			return { ...state, user: null, cart: null, orderDetails: new Map(), loadingOrderIds: new Set() };
 		case 'UPDATE_USER':
 			if (!state.user) return state;
 			return { ...state, user: { ...state.user, ...action.payload } };
@@ -296,6 +311,39 @@ const appReducer = (state: AppState, action: Action): AppState => {
 					orders: [action.payload, ...state.user.orders]
 				}
 			};
+		// New order details cases
+		case 'SET_ORDER_DETAILS':
+			const newOrderDetails = new Map(state.orderDetails);
+			newOrderDetails.set(action.payload.orderId, action.payload.details);
+			return { ...state, orderDetails: newOrderDetails };
+		case 'SET_ORDER_LOADING':
+			const newLoadingSet = new Set(state.loadingOrderIds);
+			if (action.payload.loading) {
+				newLoadingSet.add(action.payload.orderId);
+			} else {
+				newLoadingSet.delete(action.payload.orderId);
+			}
+			return { ...state, loadingOrderIds: newLoadingSet };
+		case 'UPDATE_MEAL_IN_ORDER':
+			const orderToUpdate = state.orderDetails.get(action.payload.orderId);
+			if (!orderToUpdate) return state;
+			
+			const updatedOrder = {
+				...orderToUpdate,
+				meals: orderToUpdate.meals.map(meal =>
+					meal.mealId === action.payload.mealId 
+						? { ...meal, ...action.payload.updatedMeal }
+						: meal
+				)
+			};
+			
+			const updatedOrderDetails = new Map(state.orderDetails);
+			updatedOrderDetails.set(action.payload.orderId, updatedOrder);
+			return { ...state, orderDetails: updatedOrderDetails };
+		case 'CLEAR_ORDER_DETAILS':
+			const clearedOrderDetails = new Map(state.orderDetails);
+			clearedOrderDetails.delete(action.payload);
+			return { ...state, orderDetails: clearedOrderDetails };
 		default:
 			return state;
 	}
@@ -304,6 +352,42 @@ const appReducer = (state: AppState, action: Action): AppState => {
 // Context provider component
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	const [state, dispatch] = useReducer(appReducer, initialState);
+
+	// Function to refresh user data
+	const refreshUserData = async () => {
+		try {
+			const user = await getCurrentUser();
+			dispatch({ type: 'SET_USER', payload: user });
+		} catch (error) {
+			console.error('Error refreshing user data:', error);
+		}
+	};
+
+	// Function to load order details
+	const loadOrderDetails = async (orderId: string) => {
+		// Don't load if already loading
+		if (state.loadingOrderIds.has(orderId)) return;
+		
+		// Don't load if already cached
+		if (state.orderDetails.has(orderId)) return;
+
+		dispatch({ type: 'SET_ORDER_LOADING', payload: { orderId, loading: true } });
+		
+		try {
+			const orderDetails = await fetchOrderDetails(orderId);
+			dispatch({ type: 'SET_ORDER_DETAILS', payload: { orderId, details: orderDetails } });
+		} catch (error) {
+			console.error('Error fetching order details:', error);
+			throw error;
+		} finally {
+			dispatch({ type: 'SET_ORDER_LOADING', payload: { orderId, loading: false } });
+		}
+	};
+
+	// Function to update meal in order (optimistic update)
+	const updateMealInOrder = (orderId: string, mealId: string, updatedMeal: any) => {
+		dispatch({ type: 'UPDATE_MEAL_IN_ORDER', payload: { orderId, mealId, updatedMeal } });
+	};
 
 	useEffect(() => {
 		const loadAllData = async () => {
@@ -346,7 +430,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 		loadAllData();
 	}, []);
 
-	return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
+	return (
+		<AppContext.Provider value={{ state, dispatch, refreshUserData, loadOrderDetails, updateMealInOrder }}>
+			{children}
+		</AppContext.Provider>
+	);
 };
 
 // Custom hook to use the AppContext

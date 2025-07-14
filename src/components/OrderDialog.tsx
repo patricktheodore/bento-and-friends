@@ -6,6 +6,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-hot-toast';
 import { Main, AddOn, Side, Fruit } from '@/models/item.model';
 import { Meal } from '@/models/order.model';
@@ -15,6 +16,7 @@ import { useAppContext } from '@/context/AppContext';
 import { School } from '@/models/school.model';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidDateCheck } from '@/utils/dateValidation';
+import { Lock, AlertCircle } from 'lucide-react';
 
 interface OrderDialogProps {
 	isOpen: boolean;
@@ -22,7 +24,8 @@ interface OrderDialogProps {
 	selectedMain?: Main | null;
 	selectedSchool?: School | null;
 	editingMeal?: Meal | null;
-    adminState?: Child[] | null; // Admin state to override available items,
+    adminState?: Child[] | null; // Admin state to override available items
+    customerEdit?: boolean; // Flag for customer-restricted editing
 	onSave: (meals: Meal | Meal[]) => void;
 }
 
@@ -33,6 +36,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     selectedSchool, 
     editingMeal,
     adminState,
+    customerEdit = false,
     onSave 
 }) => {
 	const { state } = useAppContext();
@@ -51,6 +55,10 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     // Derived values
     const isEditMode = !!editingMeal;
     const overrideWithAdminState = !!adminState;
+
+    // Determine if main and add-ons should be disabled
+    const isMainDisabled = isEditMode && (customerEdit || !adminState);
+    const areAddOnsDisabled = isEditMode && customerEdit;
 
     const availableMains = useMemo(() => {
         if (!effectiveSchool?.menuItems) {
@@ -116,6 +124,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 	}, [isOpen, sides, fruits]); // Minimal dependencies to prevent re-initialization
 
 	const handleAddOnToggle = (addonId: string) => {
+        if (areAddOnsDisabled) return;
+
 		const addon = availableAddOns.find(a => a.id === addonId);
 		if (!addon) return;
 
@@ -231,7 +241,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 					fruit: isMainOnly ? undefined : selectedFruit,
 					child: selectedChildren[0],
 					deliveryDate: selectedDates[0].toISOString(),
-					total: calculateTotal(currentMain, selectedAddOns),
+					// For customer edits, keep original total to prevent price manipulation
+					total: customerEdit ? editingMeal.total : calculateTotal(currentMain, selectedAddOns),
 					school: effectiveSchool,
 				};
 
@@ -269,11 +280,18 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 				<DialogHeader className="space-y-3">
 					<DialogTitle className="text-xl font-semibold flex items-center justify-between">
                         {isEditMode ? 'Edit Meal Order' : 'Create Meal Order'}
-                        {overrideWithAdminState && (
-                            <span className="ml-2 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
-                                Admin Mode
-                            </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {customerEdit && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                    Customer Edit
+                                </Badge>
+                            )}
+                            {overrideWithAdminState && !customerEdit && (
+                                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                    Admin Mode
+                                </Badge>
+                            )}
+                        </div>
 					</DialogTitle>
                     <DialogDescription className="mx-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
                         <div className="flex items-center gap-3">
@@ -287,6 +305,15 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                 </span>
                             </div>
                         </div>
+                        {customerEdit && (
+                            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-amber-800">
+                                    <strong>Limited editing:</strong> You can only change the recipient, delivery date, side, and fruit. 
+                                    The main dish and add-ons cannot be modified to ensure pricing accuracy.
+                                </p>
+                            </div>
+                        )}
                     </DialogDescription>
 				</DialogHeader>
 
@@ -294,17 +321,20 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 					{/* Left Column - Food Selection */}
 					<div className="space-y-6">
 						{/* Main Dish Section */}
-						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
-							<h3 className="text-lg font-semibold text-gray-900">Main Dish</h3>
+						<div className={`rounded-lg p-4 space-y-3 ${isMainDisabled ? 'bg-gray-100' : 'bg-gray-50'}`}>
+							<div className="flex items-center gap-2">
+								<h3 className="text-lg font-semibold text-gray-900">Main Dish</h3>
+								{isMainDisabled && <Lock className="h-4 w-4 text-gray-500" />}
+							</div>
 							<Select
 								value={currentMain?.id || ''}
 								onValueChange={(value) => {
 									const main = availableMains.find(m => m.id === value);
 									if (main) setCurrentMain(main);
 								}}
-								disabled={isEditMode}
+								disabled={isMainDisabled}
 							>
-								<SelectTrigger className="w-full bg-white">
+								<SelectTrigger className={`w-full ${isMainDisabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}>
 									<SelectValue placeholder="Select main dish" />
 								</SelectTrigger>
 								<SelectContent>
@@ -322,17 +352,21 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 
 						{/* Add-ons Section */}
 						{availableAddOns.length > 0 && (
-							<div className="bg-gray-50 rounded-lg p-4 space-y-3">
-								<h3 className="text-lg font-semibold text-gray-900">Add-ons</h3>
+							<div className={`rounded-lg p-4 space-y-3 ${areAddOnsDisabled ? 'bg-gray-100' : 'bg-gray-50'}`}>
+								<div className="flex items-center gap-2">
+									<h3 className="text-lg font-semibold text-gray-900">Add-ons</h3>
+									{areAddOnsDisabled && <Lock className="h-4 w-4 text-gray-500" />}
+								</div>
 								<div className="space-y-3">
 									{availableAddOns.map(addon => (
-										<div key={addon.id} className="flex items-center space-x-3 p-2 hover:bg-white rounded">
+										<div key={addon.id} className={`flex items-center space-x-3 p-2 rounded ${areAddOnsDisabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-white cursor-pointer'}`}>
 											<Checkbox
 												id={addon.id}
 												checked={selectedAddOns.some(a => a.id === addon.id)}
 												onCheckedChange={() => handleAddOnToggle(addon.id)}
+												disabled={areAddOnsDisabled}
 											/>
-											<Label htmlFor={addon.id} className="flex-1 cursor-pointer">
+											<Label htmlFor={addon.id} className={`flex-1 ${areAddOnsDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
 												<span className="flex justify-between items-center">
 													<span>{addon.display}</span>
 													<span className="font-medium text-sm">
@@ -403,7 +437,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 						{/* Children Selection */}
 						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
 							<h3 className="text-lg font-semibold text-gray-900">
-								{isEditMode ? 'Child' : 'Children'}
+								{isEditMode ? 'Child / Recipient' : 'Children / Recipients'}
 							</h3>
 							<div className="space-y-3">
 								{children.map(child => (
@@ -461,11 +495,18 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 				{currentMain && (
 					<div className="mt-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border">
 						<div className="flex justify-between items-center mb-2">
-							<span className="text-lg font-semibold text-gray-900">Total per meal:</span>
+							<span className="text-lg font-semibold text-gray-900">
+								{customerEdit && isEditMode ? 'Original total per meal:' : 'Total per meal:'}
+							</span>
 							<span className="text-xl font-bold text-green-600">
-								${calculateTotal(currentMain, selectedAddOns).toFixed(2)}
+								${customerEdit && isEditMode ? editingMeal?.total.toFixed(2) : calculateTotal(currentMain, selectedAddOns).toFixed(2)}
 							</span>
 						</div>
+						{customerEdit && isEditMode && (
+							<p className="text-xs text-gray-600 mt-1">
+								* Price remains unchanged when editing existing orders
+							</p>
+						)}
 						{!isEditMode && selectedChildren.length > 0 && selectedDates.length > 0 && (
 							<div className="flex justify-between items-center pt-2 border-t border-gray-200">
 								<span className="text-sm text-gray-600">
