@@ -91,7 +91,7 @@ export const getSchools = async (): Promise<{ success: boolean; data?: School[];
 // Function to get children enrollment data for all schools
 export const getSchoolEnrollmentData = async (): Promise<ApiResponse<SchoolEnrollmentData>> => {
 	try {
-		const usersCollection = collection(db, 'users-test');
+		const usersCollection = collection(db, 'users-test2');
 		const usersSnapshot = await getDocs(usersCollection);
 		
 		const enrollmentData: SchoolEnrollmentData = {};

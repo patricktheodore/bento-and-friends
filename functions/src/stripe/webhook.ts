@@ -281,12 +281,12 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
       logger.info("Starting transaction", { orderId: tempOrder.orderId });
 
       transaction.set(
-        db.collection("order-test2").doc(tempOrder.orderId),
+        db.collection("orders-test2").doc(tempOrder.orderId),
         completedOrder
       );
 
       transaction.set(
-        db.collection("users-test").doc(tempOrder.userId),
+        db.collection("users-test2").doc(tempOrder.userId),
         {
           orders: FieldValue.arrayUnion(userOrder)
         },

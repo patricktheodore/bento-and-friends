@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import { fetchOrderDetails } from '@/services/order-service';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import OrderDialog from './OrderDialog';
-import { Main, Side, Fruit } from '@/models/item.model';
+import { Main } from '@/models/item.model';
 
 interface GroupedMeals {
     [date: string]: MealRecord[];

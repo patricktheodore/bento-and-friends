@@ -38,7 +38,7 @@ export const getUserById = onCall(
       const db = admin.firestore();
 
       // Get user document from users-test2 collection
-      const userDoc = await db.collection("users-test").doc(userId).get();
+      const userDoc = await db.collection("users-test2").doc(userId).get();
 
       if (!userDoc.exists) {
         throw new Error("User not found");
@@ -93,7 +93,7 @@ export const fetchAllUsers = onCall(
 
     try {
       const db = admin.firestore();
-      const usersSnapshot = await db.collection("users-test").get();
+      const usersSnapshot = await db.collection("users-test2").get();
 
       if (usersSnapshot.empty) {
         return { success: true, users: [] };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail, School, Users, FileText, Calendar, DollarSign, GraduationCap, Filter, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Search, UserCog, Phone, Mail, School, Users, Calendar, DollarSign, Filter, X } from 'lucide-react';
 import { fetchUserDetails, updateUserInFirebase } from '../services/user-service';
 import { User as UserType, OrderHistory, Child } from '../models/user.model';
 import toast from 'react-hot-toast';
@@ -34,7 +34,6 @@ const UsersComponent: React.FC = () => {
 	const [isChildDialogOpen, setIsChildDialogOpen] = useState(false);
 	const [isEditingPhone, setIsEditingPhone] = useState(false);
 	const [editedPhone, setEditedPhone] = useState('');
-	const [isManualOrderDialogOpen, setIsManualOrderDialogOpen] = useState(false);
 
     const schools = state.schools || [];
 
@@ -108,7 +107,7 @@ const UsersComponent: React.FC = () => {
 	const fetchUsers = async (lastDoc?: any) => {
 		setIsLoading(true);
 		try {
-			let usersQuery = query(collection(db, 'users-test'), orderBy('displayName', 'asc'));
+			let usersQuery = query(collection(db, 'users-test2'), orderBy('displayName', 'asc'));
 
 			if (lastDoc) {
 				usersQuery = query(usersQuery, startAfter(lastDoc));

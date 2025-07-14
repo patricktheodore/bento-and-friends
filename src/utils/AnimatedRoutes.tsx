@@ -18,7 +18,6 @@ const ContactPage = lazy(() => import('../pages/Contact'));
 const AdminDashboardPage = lazy(() => import('../pages/AdminDashboard'));
 const SchoolsPage = lazy(() => import('../pages/Schools'));
 const CheckoutPage = lazy(() => import('@/pages/Checkout'));
-const OrderSuccessPage = lazy(() => import('@/pages/OrderSuccess'));
 const RunSheet = lazy(() => import('@/pages/RunSheet'));
 const MaintenancePage = lazy(() => import('../pages/Maintenance'));
 
@@ -170,16 +169,6 @@ const AnimatedRoutes: React.FC = () => {
 						<PageTransition>
 							<Suspense fallback={<AnimatedLoadingScreen />}>
 								<PaymentSuccessPage />
-							</Suspense>
-						</PageTransition>
-					}
-				/>
-				<Route
-					path="/order-success"
-					element={
-						<PageTransition>
-							<Suspense fallback={<AnimatedLoadingScreen />}>
-								<OrderSuccessPage />
 							</Suspense>
 						</PageTransition>
 					}

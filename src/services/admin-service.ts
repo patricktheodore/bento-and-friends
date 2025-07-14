@@ -1,7 +1,5 @@
 import { db } from '@/firebase';
-import { 
-    doc, 
-    getDoc, 
+import {
     getDocs, 
     query, 
     where, 
@@ -46,7 +44,7 @@ export const fetchOrders = async (options: FetchOrdersOptions = {}): Promise<Pag
             // Try to search by both orderId and customOrderNumber
             // First try orderId (exact match)
             ordersQuery = query(
-                collection(db, 'order-test2'),
+                collection(db, 'orders-test2'),
                 where('orderId', '==', searchTerm.toUpperCase()),
                 limit(pageSize)
             );
@@ -56,7 +54,7 @@ export const fetchOrders = async (options: FetchOrdersOptions = {}): Promise<Pag
             
             if (querySnapshot.empty && !searchTerm.startsWith('ORD-')) {
                 ordersQuery = query(
-                    collection(db, 'order-test2'),
+                    collection(db, 'orders-test2'),
                     where('customOrderNumber', '==', searchTerm.toUpperCase()),
                     limit(pageSize)
                 );
@@ -93,7 +91,7 @@ export const fetchOrders = async (options: FetchOrdersOptions = {}): Promise<Pag
         } else {
             // Default query - ordered by createdAt descending
             ordersQuery = query(
-                collection(db, 'order-test2'),
+                collection(db, 'orders-test2'),
                 orderBy('createdAt', 'desc'),
                 limit(pageSize)
             );

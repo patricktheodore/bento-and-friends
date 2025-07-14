@@ -3,14 +3,14 @@ import { useAppContext } from '../context/AppContext';
 import { Meal, MealRecord } from '../models/order.model';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
-import { ChevronDown, ChevronUp, Loader2, Utensils, Edit, Calendar, Clock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Utensils, Edit, Calendar } from 'lucide-react';
 import { Badge } from './ui/badge';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import OrderDialog from './OrderDialog';
-import { Main, Side, Fruit } from '@/models/item.model';
+import { Main } from '@/models/item.model';
 
 const OrderHistory: React.FC = () => {
 	const { state, refreshUserData, loadOrderDetails, updateMealInOrder } = useAppContext();
@@ -363,9 +363,8 @@ const OrderHistory: React.FC = () => {
                                                                             </div>
                                                                             {orderDetails.pricing.appliedCoupon && (
                                                                                 <div className="col-span-2 md:col-span-4 pt-2 border-t">
-                                                                                    <span className="font-medium text-gray-500">Coupon Applied: </span>
+                                                                                    <span className="font-medium text-gray-500">Discount Applied: </span>
                                                                                     <span className="text-green-600 font-medium">
-                                                                                        {orderDetails.pricing.appliedCoupon.code} 
                                                                                         (-${orderDetails.pricing.appliedCoupon.discountAmount})
                                                                                     </span>
                                                                                 </div>

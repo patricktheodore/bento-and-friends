@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Loader2, CalendarIcon, Search, Utensils, Edit } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
+import { ChevronDown, ChevronUp, Loader2, Search, Utensils, Edit } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -15,7 +13,7 @@ import { Meal, MealRecord, OrderRecord } from '@/models/order.model';
 import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import OrderDialog from './OrderDialog';
 import { useAppContext } from '@/context/AppContext';
-import { Fruit, Main, Side } from '@/models/item.model';
+import { Main } from '@/models/item.model';
 import { Child, User } from '@/models/user.model';
 
 const PAGE_SIZE = 25;

@@ -4,7 +4,7 @@ import { MealRecord, OrderRecord } from '../models/order.model';
 
 export const fetchOrderDetails = async (orderId: string): Promise<OrderRecord> => {
     try {
-        const orderRef = doc(db, 'order-test2', orderId);
+        const orderRef = doc(db, 'orders-test2', orderId);
         const orderDoc = await getDoc(orderRef);
     
         if (!orderDoc.exists()) {

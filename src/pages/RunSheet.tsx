@@ -21,7 +21,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import RunSheetSummary from '@/components/RunSheetSummary';
-import { Fruit, Probiotic } from '@/models/item.model';
+import { Fruit, Side } from '@/models/item.model';
 
 interface jsPDFWithPlugin extends jsPDF {
 	autoTable: (options: UserOptions) => jsPDF;
@@ -38,7 +38,7 @@ const RunSheet: React.FC = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [quickSelect, setQuickSelect] = useState('today');
 	const [sortedMeals, setSortedMeals] = useState<any[]>([]);
-	const [sides, setSides] = useState<Probiotic[]>([]);
+	const [sides, setSides] = useState<Side[]>([]);
 	const [fruits, setFruits] = useState<Fruit[]>([]);
 
 
@@ -65,7 +65,7 @@ const RunSheet: React.FC = () => {
 	useEffect(() => {
 		handleQuickSelect('today');
 
-		setSides(state.probiotics);
+		setSides(state.sides);
 		setFruits(state.fruits);
 	}, []);
 

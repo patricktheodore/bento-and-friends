@@ -98,11 +98,7 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 						>
 							<MenuItemCard
 								key={item.id}
-								title={item.display}
-								allergens={item.allergens}
-								description={item.description}
-								isVegetarian={item.isVegetarian}
-								item={item}
+                                item={item}
 								onOrderNow={() => handleOrderNow(item.id)}
 							/>
 						</div>

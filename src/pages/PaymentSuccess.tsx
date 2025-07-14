@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, AlertCircle, Loader2, ShoppingCart, Receipt, ArrowRight, Home } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, ShoppingCart, Receipt, Home } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 
 type PageStatus = 'loading' | 'success' | 'already-processed' | 'error';
 

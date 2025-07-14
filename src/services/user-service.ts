@@ -30,14 +30,14 @@ const serializeChild = (child: Child): Record<string, any> => {
 // TODO: rename collections removing '-test' suffix when ready for production
 
 export const updateUserInFirebase = async (user: User): Promise<void> => {
-	const userRef = doc(db, 'users-test', user.id);
+	const userRef = doc(db, 'users-test2', user.id);
 	const serializedUser = serializeUser(user);
 	await setDoc(userRef, serializedUser, { merge: true });
 };
 
 export const fetchUsers = async (pageSize: number = 25, lastDoc?: any): Promise<FetchUsersResponse> => {
 	try {
-		const usersCollection = collection(db, 'users-test');
+		const usersCollection = collection(db, 'users-test2');
 		let usersQuery = query(usersCollection, orderBy('displayName'), limit(pageSize));
 
 		if (lastDoc) {
@@ -65,7 +65,7 @@ export const fetchUsers = async (pageSize: number = 25, lastDoc?: any): Promise<
 };
 
 export const fetchUserDetails = async (userId: string): Promise<User> => {
-	const userDoc = await getDoc(doc(db, 'users-test', userId));
+	const userDoc = await getDoc(doc(db, 'users-test2', userId));
 	if (!userDoc.exists()) {
 		throw new Error('User not found');
 	}

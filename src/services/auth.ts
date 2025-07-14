@@ -36,7 +36,7 @@ export const signIn = async (email: string, password: string): Promise<User> => 
 	const userCredential = await signInWithEmailAndPassword(auth, email, password);
 	const user = userCredential.user;
 
-	const userDoc = await getDoc(doc(db, 'users-test', user.uid));
+	const userDoc = await getDoc(doc(db, 'users-test2', user.uid));
 	const userData = userDoc.data() as User;
 
 	return userData;
@@ -51,7 +51,7 @@ export const getCurrentUser = (): Promise<User | null> => {
             async (user) => {
                 unsubscribe();
                 if (user) {
-                    const userDoc = await getDoc(doc(db, 'users-test', user.uid));
+                    const userDoc = await getDoc(doc(db, 'users-test2', user.uid));
                     const userData = userDoc.data() as User;
                     if (userData) {
                         userData.id = userDoc.id; // Assign the doc.id to user.id

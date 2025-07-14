@@ -30,7 +30,7 @@ export function UpdateDetailsDialog() {
     const handleClose = async () => {
         if (state.user) {
             // Update the user document in Firestore
-            const userRef = doc(db, "users-test", state.user.id)
+            const userRef = doc(db, "users-test2", state.user.id)
             await updateDoc(userRef, {
                 hasReviewedTermDetails: true
             })

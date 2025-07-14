@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ChevronLeft, Edit, Trash2, Loader2, CheckCircle, XCircle, AlertCircle, ShoppingCart, CreditCard } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Edit, Trash2, Loader2, CheckCircle, XCircle, ShoppingCart, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Meal } from '@/models/order.model';
 import { loadStripe } from '@stripe/stripe-js';
@@ -542,7 +542,7 @@ const CheckoutPage: React.FC = () => {
 					<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 						<div className="lg:col-span-2">
 							<Card className="overflow-hidden">
-								<CardContent className="p-0">
+								<CardContent className="pb-8 bg-brand-dark-green">
 									<EmbeddedCheckoutProvider
 										stripe={stripePromise}
 										options={options}>
