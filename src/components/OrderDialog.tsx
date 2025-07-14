@@ -278,7 +278,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto">
 				<DialogHeader className="space-y-3">
-					<DialogTitle className="text-xl font-semibold flex items-center justify-between">
+                    <DialogTitle className="text-xl font-semibold flex items-center justify-between">
                         {isEditMode ? 'Edit Meal Order' : 'Create Meal Order'}
                         <div className="flex items-center gap-2">
                             {customerEdit && (
@@ -292,30 +292,34 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                                 </Badge>
                             )}
                         </div>
-					</DialogTitle>
-                    <DialogDescription className="mx-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <div>
-                                <span className="text-sm font-semibold text-blue-900 block">
-                                    Delivering to
-                                </span>
-                                <span className="text-base font-bold text-blue-800">
-                                    {effectiveSchool?.name}
-                                </span>
-                            </div>
-                        </div>
-                        {customerEdit && (
-                            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
-                                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-amber-800">
-                                    <strong>Limited editing:</strong> You can only change the recipient, delivery date, side, and fruit. 
-                                    The main dish and add-ons cannot be modified to ensure pricing accuracy.
-                                </p>
-                            </div>
-                        )}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Configure your meal order for delivery to the selected school.
                     </DialogDescription>
-				</DialogHeader>
+                </DialogHeader>
+
+                <div className="mx-1 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div>
+                            <span className="text-sm font-semibold text-blue-900 block">
+                                Delivering to
+                            </span>
+                            <span className="text-base font-bold text-blue-800">
+                                {effectiveSchool?.name}
+                            </span>
+                        </div>
+                    </div>
+                    {customerEdit && (
+                        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-amber-800">
+                                <strong>Limited editing:</strong> You can only change the recipient, delivery date, side, and fruit. 
+                                The main dish and add-ons cannot be modified to ensure pricing accuracy.
+                            </p>
+                        </div>
+                    )}
+                </div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
 					{/* Left Column - Food Selection */}

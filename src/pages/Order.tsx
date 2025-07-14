@@ -5,9 +5,12 @@ import OrderDialog from '../components/OrderDialog';
 import { Main } from '@/models/item.model';
 import { Meal } from '@/models/order.model';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { School } from '@/models/school.model';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Users, Loader2, ShoppingCart, Plus } from 'lucide-react';
 
 const OrderPage: React.FC = () => {
     const {state, dispatch} = useAppContext();
@@ -142,64 +145,109 @@ const OrderPage: React.FC = () => {
             return null;
         }
 
-        // If only one school, just display it
+        // If only one school, display it in a card
         if (userSchools.length === 1) {
             const school = userSchools[0];
             const childrenCount = state.user?.children?.filter(child => child.schoolId === school.id).length || 0;
             
             return (
-                <div className="flex items-center gap-2 text-xl text-gray-700 mt-2">
-                    <GraduationCap className="h-5 w-5" />
-                    <span>{school.name}</span>
-                    <span className="text-gray-500 text-base">
-                        ({childrenCount} {childrenCount === 1 ? 'child' : 'children'})
-                    </span>
-                </div>
+                <Card className="mb-6">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 rounded-lg">
+                                    <GraduationCap className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg">{school.name}</h3>
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                        <Users className="h-4 w-4" />
+                                        <span>
+                                            {childrenCount} {childrenCount === 1 ? 'child' : 'children'} enrolled
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                Active
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
             );
         }
 
-        // If multiple schools, render select dropdown with enhanced styling
+        // If multiple schools, render select dropdown in a card
         return (
-            <div className="mt-2">
-                <div className="max-w-md">
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        Select School
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
                     <Select
                         value={selectedSchool?.id || ''} 
                         onValueChange={handleSchoolChange}
                     >
-                        <SelectTrigger className="text-xl text-brand-taupe font-semibold mt-2 w-fit border-2 border-brand-taupe min-w-[200px] shadow-sm p-2 h-auto focus:ring-0 bg-white">
-                            <div className="flex items-center gap-2 pr-2">
-                                <SelectValue placeholder="Choose a school" />
-                            </div>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose a school to view menu items" />
                         </SelectTrigger>
                         <SelectContent>
-                            {userSchools.map((school) => (
-                                <SelectItem key={school.id} value={school.id}>
-                                    <div className="flex items-center gap-2">
-                                        <GraduationCap className="h-4 w-4" />
-                                        <span>{school.name}</span>
-                                    </div>
-                                </SelectItem>
-                            ))}
+                            {userSchools.map((school) => {
+                                const childrenCount = state.user?.children?.filter(child => child.schoolId === school.id).length || 0;
+                                return (
+                                    <SelectItem key={school.id} value={school.id}>
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-2">
+                                                <GraduationCap className="h-4 w-4" />
+                                                <span>{school.name}</span>
+                                            </div>
+                                            <span className="text-xs text-gray-500 ml-2">
+                                                {childrenCount} {childrenCount === 1 ? 'child' : 'children'}
+                                            </span>
+                                        </div>
+                                    </SelectItem>
+                                );
+                            })}
                         </SelectContent>
                     </Select>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         );
     };
 
     // Show message if no children
     if (!state.user?.children || state.user.children.length === 0) {
         return (
-            <div className="container mx-auto p-4 py-8">
-                <h1 className="text-4xl md:text-6xl font-bold text-brand-dark-green">Order</h1>
-                <div className="mt-8 text-center">
-                    <p className="text-gray-600 mb-4">
-                        You need to add children to your account before you can place orders.
-                    </p>
-                    <a href="/account" className="text-brand-dark-green hover:underline">
-                        Go to Account Settings
-                    </a>
+            <div className="w-full space-y-6 p-4 sm:p-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                    <p className="text-gray-600 mt-1">Browse and order meals</p>
                 </div>
+
+                <Card className="mt-8">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold text-center">Setup Required</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <Users className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Add Children to Your Account</h3>
+                        <p className="text-gray-500 mb-6">
+                            You need to add children to your account before you can place orders.
+                        </p>
+                        <Button 
+                            onClick={() => window.location.href = '/account'} 
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Go to Account Settings
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -207,49 +255,87 @@ const OrderPage: React.FC = () => {
     // Show loading state if schools haven't loaded yet
     if (state.isLoading || userSchools.length === 0) {
         return (
-            <div className="container mx-auto p-4 py-8">
-                <h1 className="text-4xl md:text-6xl font-bold text-brand-dark-green">Order</h1>
-                <div className="mt-8 text-center">
-                    <p className="text-gray-600">Loading schools...</p>
+            <div className="w-full space-y-6 p-4 sm:p-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                    <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
+                    <p className="text-lg text-gray-600">Loading schools and menu items...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto p-4 py-8">
-            <div className="mb-6">
-                <h1 className="text-4xl md:text-6xl font-bold text-brand-dark-green">Order</h1>
-                {renderSchoolSelector()}
+        <div className="w-full space-y-6 p-4 sm:p-6">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
             </div>
+
+            {renderSchoolSelector()}
 
             {/* Menu Items */}
             {selectedSchool ? (
                 <>
                     {sortedMains.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {sortedMains.map((item) => (
-                                <MenuItemCard
-                                    key={item.id}
-                                    item={item}
-                                    onOrderNow={() => handleOrderNow(item.id)}
-                                />
-                            ))}
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">Available Menu Items</h2>
+                                    <p className="text-gray-600 mt-1">
+                                        {sortedMains.length} item{sortedMains.length !== 1 ? 's' : ''} available at {selectedSchool.name}
+                                    </p>
+                                </div>
+                                {sortedMains.some(item => item.isFeatured) && (
+                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                        Featured items available
+                                    </Badge>
+                                )}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {sortedMains.map((item) => (
+                                    <MenuItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onOrderNow={() => handleOrderNow(item.id)}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     ) : (
-                        <div className="mt-8 text-center">
-                            <p className="text-gray-600">
-                                No menu items available for this school at the moment.
-                            </p>
-                        </div>
+                        <Card>
+                            <CardContent className="text-center py-12">
+                                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                    <ShoppingCart className="h-8 w-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Menu Items Available</h3>
+                                <p className="text-gray-500 mb-6">
+                                    No menu items are currently available for {selectedSchool.name}. Please check back later or contact the school.
+                                </p>
+                                <div className="text-sm text-gray-400">
+                                    Menu items may be temporarily unavailable or under maintenance.
+                                </div>
+                            </CardContent>
+                        </Card>
                     )}
                 </>
             ) : (
-                <div className="mt-8 text-center">
-                    <p className="text-gray-600">
-                        Please select a school to view available menu items.
-                    </p>
-                </div>
+                <Card>
+                    <CardContent className="text-center py-12">
+                        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <GraduationCap className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a School</h3>
+                        <p className="text-gray-500">
+                            Please select a school above to view available menu items for ordering.
+                        </p>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Only render OrderDialog when we have a selected school and modal is open */}
