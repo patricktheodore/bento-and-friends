@@ -73,3 +73,44 @@ export const getUserById = onCall(
     }
   }
 );
+
+// fetch all users
+export const fetchAllUsers = onCall(
+  {
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    region: "us-central1",
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new Error("User must be authenticated to fetch users.");
+    }
+
+    const isAdmin = await isUserAdmin(request.auth.uid);
+    if (!isAdmin) {
+      throw new Error("User does not have permission to access this function.");
+    }
+
+    try {
+      const db = admin.firestore();
+      const usersSnapshot = await db.collection("users-test").get();
+
+      if (usersSnapshot.empty) {
+        return { success: true, users: [] };
+      }
+
+      const users = usersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      return { success: true, users };
+    } catch (error: any) {
+      logger.error("Error fetching all users", {
+        error: error.message,
+        requestingUserId: request.auth.uid,
+      });
+      throw new Error("Unable to fetch users");
+    }
+  }
+);

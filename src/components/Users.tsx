@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail, School } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, User, Search, UserCog, Phone, Mail, School, Users, FileText, Calendar, DollarSign, GraduationCap, Filter, X } from 'lucide-react';
 import { fetchUserDetails, updateUserInFirebase } from '../services/user-service';
-import { User as UserType, OrderHistorySummary, Child } from '../models/user.model';
+import { User as UserType, OrderHistory, Child } from '../models/user.model';
 import toast from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { db } from '@/firebase';
@@ -10,14 +10,17 @@ import { query, collection, orderBy, startAfter, getDocs } from 'firebase/firest
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import debounce from 'lodash/debounce';
 import ChildManagementDialog from './ChildManagementDialog';
-import ManualOrderDialog from './ManualOrderDialog';
 import { Label } from './ui/label';
+import { useAppContext } from '@/context/AppContext';
 
 const PAGE_SIZE = 50;
 
 const UsersComponent: React.FC = () => {
+    const { state } = useAppContext();
 	const [users, setUsers] = useState<UserType[]>([]);
 	const [lastVisible, setLastVisible] = useState<any>(null);
 	const [hasMore, setHasMore] = useState(true);
@@ -33,18 +36,7 @@ const UsersComponent: React.FC = () => {
 	const [editedPhone, setEditedPhone] = useState('');
 	const [isManualOrderDialogOpen, setIsManualOrderDialogOpen] = useState(false);
 
-	// Get unique schools from all users
-	const uniqueSchools = useMemo(() => {
-		const schoolsSet = new Set<string>();
-		users.forEach(user => {
-			user.children.forEach(child => {
-				if (child.school && child.school.trim()) {
-					schoolsSet.add(child.school.trim());
-				}
-			});
-		});
-		return Array.from(schoolsSet).sort();
-	}, [users]);
+    const schools = state.schools || [];
 
 	const handleEditChild = async (childId: string) => {
 		const user = expandedUserDetails;
@@ -100,7 +92,6 @@ const UsersComponent: React.FC = () => {
 		}
 	};
 
-	// Add this to format phone numbers for display
 	const formatPhoneNumber = (phone: string): string => {
 		if (!phone) return 'Not provided';
 
@@ -148,13 +139,13 @@ const UsersComponent: React.FC = () => {
 	}, []);
 
 	// Enhanced filtering function that handles both search and school filter
-	const filterUsers = (searchTerm: string, school: string) => {
+	const filterUsers = (searchTerm: string, schoolId: string) => {
 		let filtered = users;
 
 		// Filter by school if not "all"
-		if (school !== 'all') {
+		if (schoolId !== 'all') {
 			filtered = filtered.filter(user => 
-				user.children.some(child => child.school === school)
+				user.children.some(child => child.schoolId === schoolId)
 			);
 		}
 
@@ -224,11 +215,6 @@ const UsersComponent: React.FC = () => {
 		}
 	};
 
-	const formatDate = (dateString: string): string => {
-		const date = new Date(dateString);
-		return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-	};
-
 	const handleChildUpdate = async (updatedChildData: Omit<Child, 'id'>) => {
 		if (!expandedUserDetails || !selectedChild) return;
 
@@ -274,48 +260,239 @@ const UsersComponent: React.FC = () => {
 	// Get schools for a specific user
 	const getUserSchools = (user: UserType): string[] => {
 		const schools = user.children
-			.map(child => child.school)
+			.map(child => child.schoolId)
 			.filter(school => school && school.trim())
 			.filter((school, index, arr) => arr.indexOf(school) === index); // Remove duplicates
 		return schools;
 	};
 
+	const clearFilters = () => {
+		setSearchTerm('');
+		setSelectedSchool('all');
+		setFilteredUsers(users);
+	};
+
+	const getInitials = (name: string): string => {
+		return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+	};
+
+	// Mobile Card Component
+	const MobileUserCard = ({ user }: { user: UserType }) => {
+		const isExpanded = expandedUserId === user.id;
+		const userSchools = getUserSchools(user);
+
+		return (
+			<Card className="w-full">
+				<CardContent className="p-4">
+					<div 
+						className="flex items-center justify-between cursor-pointer" 
+						onClick={() => handleUserClick(user.id)}
+					>
+						<div className="flex items-center space-x-3 flex-1 min-w-0">
+							<Avatar className="h-10 w-10 flex-shrink-0">
+								<AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
+									{getInitials(user.displayName)}
+								</AvatarFallback>
+							</Avatar>
+							<div className="flex-1 min-w-0">
+								<h3 className="font-medium text-gray-900 truncate">{user.displayName}</h3>
+								<p className="text-sm text-gray-500 truncate">{user.email}</p>
+								<div className="flex items-center gap-2 mt-1">
+									<span className="text-xs text-gray-400">{user.orders?.length || 0} orders</span>
+									{user.phone && (
+										<span className="text-xs text-gray-400">• {formatPhoneNumber(user.phone)}</span>
+									)}
+								</div>
+							</div>
+						</div>
+						<div className="flex items-center space-x-2 flex-shrink-0">
+							<div className="flex flex-wrap gap-1 max-w-[100px]">
+								{userSchools.slice(0, 2).map((school, index) => (
+									<Badge key={index} variant="secondary" className="text-xs">
+										{schools.find(s => s.id === school)?.name?.substring(0, 8) || school.substring(0, 8)}
+									</Badge>
+								))}
+								{userSchools.length > 2 && (
+									<Badge variant="secondary" className="text-xs">+{userSchools.length - 2}</Badge>
+								)}
+							</div>
+							{isExpanded ? (
+								isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+								) : (
+									<ChevronUp className="h-4 w-4 text-gray-500" />
+								)
+							) : (
+								<ChevronDown className="h-4 w-4 text-gray-500" />
+							)}
+						</div>
+					</div>
+
+					{isExpanded && expandedUserDetails && (
+						<div className="mt-4 pt-4 border-t space-y-4">
+							{/* Contact Information */}
+							<div className="space-y-3">
+								<h4 className="font-medium text-gray-900 flex items-center gap-2">
+									Contact Information
+								</h4>
+								<div className="space-y-2 pl-6">
+									<div className="flex items-center gap-2 text-sm">
+										<Mail className="h-3 w-3 text-gray-400" />
+										<span className="text-gray-600">{user.email}</span>
+									</div>
+									<div className="flex items-center gap-2 text-sm">
+										<Phone className="h-3 w-3 text-gray-400" />
+										{isEditingPhone ? (
+											<div className="flex items-center gap-2 flex-1">
+												<Input
+													value={editedPhone}
+													onChange={(e) => setEditedPhone(e.target.value)}
+													placeholder="Enter phone number"
+													className="text-sm h-8"
+												/>
+												<Button size="sm" onClick={() => handlePhoneUpdate(user.id, editedPhone)}>
+													Save
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={() => {
+														setIsEditingPhone(false);
+														setEditedPhone(user.phone || '');
+													}}
+												>
+													Cancel
+												</Button>
+											</div>
+										) : (
+											<div className="flex items-center gap-2 flex-1">
+												<span className="text-gray-600">
+													{formatPhoneNumber(user.phone || '')}
+												</span>
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => {
+														setEditedPhone(user.phone || '');
+														setIsEditingPhone(true);
+													}}
+													className="h-6 px-2 text-xs"
+												>
+													Edit
+												</Button>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+
+							{/* Children */}
+							{expandedUserDetails.children.length > 0 && (
+								<div className="space-y-3">
+									<h4 className="font-medium text-gray-900 flex items-center gap-2">
+										Children / Recipients ({expandedUserDetails.children.length})
+									</h4>
+									<div className="space-y-3 pl-6">
+										{expandedUserDetails.children.map((child) => (
+											<div key={child.id} className="bg-gray-50 rounded-lg p-3">
+												<div className="flex items-center justify-between mb-2">
+													<span className="font-medium text-sm">{child.name}</span>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => handleEditChild(child.id)}
+														className="h-6 w-6 p-0"
+													>
+														<UserCog className="h-3 w-3" />
+													</Button>
+												</div>
+												<div className="space-y-1 text-xs text-gray-600">
+													<div>School: {schools.find(s => s.id === child.schoolId)?.name || 'Unknown'}</div>
+													{!child.isTeacher && (
+														<>
+															<div>Year: {child.year}</div>
+															<div>Class: {child.className}</div>
+														</>
+													)}
+													<div>Role: {child.isTeacher ? 'Teacher' : 'Student'}</div>
+													{child.allergens && <div>Allergens: {child.allergens}</div>}
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Orders */}
+							{expandedUserDetails.orders && expandedUserDetails.orders.length > 0 && (
+								<div className="space-y-3">
+									<h4 className="font-medium text-gray-900 flex items-center gap-2">
+										Recent Orders ({expandedUserDetails.orders.length})
+									</h4>
+									<div className="space-y-2 pl-6">
+										{expandedUserDetails.orders.slice(0, 3).map((order: OrderHistory) => (
+											<div key={order.orderId} className="bg-gray-50 rounded-lg p-3">
+												<div className="flex justify-between items-start text-sm">
+													<div>
+														<div className="font-medium">#{order.orderId}</div>
+														<div className="text-gray-600 flex items-center gap-1">
+															<Calendar className="h-3 w-3" />
+															{new Date(order.orderedOn).toLocaleDateString()}
+														</div>
+													</div>
+													<div className="text-right">
+														<div className="font-medium flex items-center gap-1">
+															<DollarSign className="h-3 w-3" />
+															{order.totalPaid}
+														</div>
+														<div className="text-gray-600 text-xs">{order.itemCount} items</div>
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		);
+	};
+
 	const NoUsersDisplay = () => (
 		<Card className="mt-8">
-			<CardHeader>
-				<CardTitle className="text-2xl font-bold text-center">No Users Found</CardTitle>
-			</CardHeader>
-			<CardContent className="text-center">
-				<User className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
-				<p className="text-lg mb-4">
+			<CardContent className="text-center py-12">
+				<div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+					<Users className="h-8 w-8 text-gray-400" />
+				</div>
+				<h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+				<p className="text-gray-500 mb-6 max-w-sm mx-auto">
 					{searchTerm || selectedSchool !== 'all' 
-						? 'No users match your filter criteria.' 
-						: 'There are no users in the system yet.'
+						? 'No users match your current filter criteria. Try adjusting your search terms.' 
+						: 'There are no users in the system yet. Users will appear here once they sign up.'
 					}
 				</p>
 				{(searchTerm || selectedSchool !== 'all') && (
-					<div className="space-x-2">
-						<Button 
-							variant="outline" 
-							onClick={() => {
-								setSearchTerm('');
-								setSelectedSchool('all');
-								setFilteredUsers(users);
-							}}
-						>
-							Clear Filters
-						</Button>
-					</div>
+					<Button variant="outline" onClick={clearFilters} className="inline-flex items-center gap-2">
+						<X className="h-4 w-4" />
+						Clear Filters
+					</Button>
 				)}
 			</CardContent>
 		</Card>
 	);
 
 	return (
-		<div className="w-full space-y-4">
+		<div className="w-full space-y-6 p-4 sm:p-6">
+			{/* Header */}
 			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-				<h2 className="text-2xl font-bold">Users</h2>
+				<div>
+					<h1 className="text-3xl font-bold text-gray-900">Users</h1>
+					<p className="text-gray-600 mt-1">Manage and view user information</p>
+				</div>
 				
+				{/* Filters */}
 				<div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
 					{/* School Filter */}
 					<div className="min-w-[200px]">
@@ -328,314 +505,305 @@ const UsersComponent: React.FC = () => {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">All Schools</SelectItem>
-								{uniqueSchools.map((school) => (
-									<SelectItem key={school} value={school}>
-										{school}
-									</SelectItem>
-								))}
+								{schools.map((school) => (
+                                    <SelectItem key={school.id} value={school.id}>
+                                        {school.name}
+                                    </SelectItem>
+                                ))}
 							</SelectContent>
 						</Select>
 					</div>
 
 					{/* Search Input */}
-					<div className="relative min-w-[250px]">
+					<div className="relative min-w-[280px]">
 						<Input
 							type="text"
-							placeholder="Search by name or email..."
+							placeholder="Search by name, email, or child name..."
 							value={searchTerm}
 							onChange={handleSearch}
 							className="pl-10"
 						/>
-						<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
+						<Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
 					</div>
 				</div>
 			</div>
 
-			{/* Filter Summary */}
+			{/* Active Filters */}
 			{(searchTerm || selectedSchool !== 'all') && (
-				<div className="flex items-center gap-2 text-sm text-gray-600">
-					<span>Filters:</span>
+				<div className="flex flex-wrap items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+					<div className="flex items-center gap-2">
+						<Filter className="h-4 w-4 text-blue-600" />
+						<span className="text-sm font-medium text-blue-900">Active Filters:</span>
+					</div>
 					{selectedSchool !== 'all' && (
-						<span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md">
-							School: {selectedSchool}
-						</span>
+						<Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+							School: {schools.find(s => s.id === selectedSchool)?.name}
+						</Badge>
 					)}
 					{searchTerm && (
-						<span className="bg-green-100 text-green-800 px-2 py-1 rounded-md">
+						<Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
 							Search: "{searchTerm}"
-						</span>
+						</Badge>
 					)}
-					<span className="text-gray-500">
-						({filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found)
-					</span>
+					<div className="flex items-center gap-2 ml-auto">
+						<span className="text-sm text-blue-700">
+							{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found
+						</span>
+						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2">
+							<X className="h-3 w-3" />
+						</Button>
+					</div>
 				</div>
 			)}
 
 			{filteredUsers.length === 0 ? (
 				<NoUsersDisplay />
 			) : (
-				<div className="rounded-md border overflow-x-auto">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-[200px]">Name</TableHead>
-								<TableHead className="w-[200px]">Email</TableHead>
-								<TableHead className="w-[150px]">Phone</TableHead>
-								<TableHead className="w-[150px]">Schools</TableHead>
-								<TableHead className="w-[100px]">Total Orders</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredUsers.map((user) => (
-								<React.Fragment key={user.id}>
-									<TableRow
-										className="cursor-pointer"
-										onClick={() => handleUserClick(user.id)}
-									>
-										<TableCell className="flex justify-start items-center gap-2">
-											{expandedUserId === user.id ? (
-												isLoading ? (
-													<Loader2 className="h-4 w-4 animate-spin" />
-												) : (
-													<ChevronUp className="h-4 w-4" />
-												)
-											) : (
-												<ChevronDown className="h-4 w-4" />
-											)}
-											{user.displayName}
-										</TableCell>
-										<TableCell>{user.email}</TableCell>
-										<TableCell>{user.phone ? formatPhoneNumber(user.phone) : '-'}</TableCell>
-										<TableCell>
-											<div className="flex flex-wrap gap-1">
-												{getUserSchools(user).map((school, index) => (
-													<span 
-														key={index} 
-														className="bg-gray-100 text-gray-700 px-2 py-1 rounded-sm text-xs"
-													>
-														{school}
-													</span>
-												))}
-												{getUserSchools(user).length === 0 && (
-													<span className="text-gray-400 text-sm">No school</span>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>{user.orderHistory?.length}</TableCell>
-									</TableRow>
-									{expandedUserId === user.id && expandedUserDetails && (
-										<TableRow>
-											<TableCell colSpan={5}>
-												<div className="p-4 bg-gray-50 space-y-4">
-													<div className="bg-white p-4 rounded-lg shadow-sm">
-														<div className="flex justify-between items-center mb-4">
-														<div className="flex items-center gap-2 mb-4">
-															<User className="h-5 w-5 text-gray-500" />
-															<h3 className="font-semibold">Contact Information</h3>
-														</div>
-														</div>
-														<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-															<div className="space-y-2">
-																<div className="flex items-center gap-2">
-																	<Mail className="h-4 w-4 text-gray-500" />
-																	<Label className="text-sm text-gray-500">
-																		Email
-																	</Label>
-																</div>
-																<p className="text-gray-700">{user.email}</p>
-															</div>
-
-															<div className="space-y-2">
-																<div className="flex items-center gap-2">
-																	<Phone className="h-4 w-4 text-gray-500" />
-																	<Label className="text-sm text-gray-500">
-																		Phone Number
-																	</Label>
-																</div>
-																{isEditingPhone ? (
-																	<div className="flex items-center gap-2">
-																		<Input
-																			value={editedPhone}
-																			onChange={(e) =>
-																				setEditedPhone(e.target.value)
-																			}
-																			placeholder="Enter phone number"
-																			className="max-w-[200px]"
-																		/>
-																		<Button
-																			size="sm"
-																			onClick={() =>
-																				handlePhoneUpdate(user.id, editedPhone)
-																			}
-																		>
-																			Save
-																		</Button>
-																		<Button
-																			size="sm"
-																			variant="outline"
-																			onClick={() => {
-																				setIsEditingPhone(false);
-																				setEditedPhone(user.phone || '');
-																			}}
-																		>
-																			Cancel
-																		</Button>
-																	</div>
-																) : (
-																	<div className="flex items-center gap-2">
-																		<p className="text-gray-700">
-																			{formatPhoneNumber(user.phone || '')}
-																		</p>
-																		<Button
-																			variant="ghost"
-																			size="sm"
-																			onClick={() => {
-																				setEditedPhone(user.phone || '');
-																				setIsEditingPhone(true);
-																			}}
-																		>
-																			Edit
-																		</Button>
-																	</div>
-																)}
-															</div>
-														</div>
-													</div>
-
-													<div className="flex justify-between items-center">
-														<h3 className="font-semibold">Members</h3>
-														<Button
-															onClick={() => {
-																setSelectedChild(null);
-																setIsChildDialogOpen(true);
-															}}
-															size="sm"
-														>
-															Add Member
-														</Button>
-													</div>
-													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
-
-														<Table>
-															<TableHeader>
-																<TableRow>
-																	<TableHead>Name</TableHead>
-																	<TableHead>School</TableHead>
-																	<TableHead>Year</TableHead>
-																	<TableHead>Class</TableHead>
-																	<TableHead>Allergens</TableHead>
-																	<TableHead>Role</TableHead>
-																	<TableHead>Actions</TableHead>
-																</TableRow>
-															</TableHeader>
-															<TableBody>
-																{expandedUserDetails.children.map((child) => (
-																	<TableRow key={child.id}>
-																		<TableCell>{child.name}</TableCell>
-																		<TableCell>{child.school}</TableCell>
-																		<TableCell>
-																			{child.isTeacher ? '-' : child.year}
-																		</TableCell>
-																		<TableCell>
-																			{child.isTeacher ? '-' : child.className}
-																		</TableCell>
-																		<TableCell>{child.allergens || 'None'}</TableCell>
-																		<TableCell>
-																			{child.isTeacher ? 'Teacher' : 'Student'}
-																		</TableCell>
-																		<TableCell>
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				onClick={() => handleEditChild(child.id)}
-																			>
-																				<UserCog className="h-4 w-4" />
-																			</Button>
-																		</TableCell>
-																	</TableRow>
-																))}
-															</TableBody>
-														</Table>
-
-													</div>
-
-													<div className="flex justify-between items-center">
-														<h4 className="font-semibold mt-4">Order History</h4>
-														<Button 
-															size="sm" 
-															onClick={() => setIsManualOrderDialogOpen(true)}
-														>
-															New Order
-														</Button>
-													</div>
-													<div className='w-full bg-white p-4 rounded-lg shadow-sm'>
-														{expandedUserDetails.orderHistory?.length > 0 ? (
-															<Table>
-																<TableHeader>
-																	<TableRow>
-																		<TableHead>Order ID</TableHead>
-																		<TableHead>Date</TableHead>
-																		<TableHead>Total</TableHead>
-																		<TableHead>Items</TableHead>
-																	</TableRow>
-																</TableHeader>
-																<TableBody>
-																	{expandedUserDetails.orderHistory?.map(
-																		(order: OrderHistorySummary) => (
-																			<TableRow key={order.customOrderNumber}>
-																				<TableCell>
-																					{order.customOrderNumber}
-																				</TableCell>
-																				<TableCell>
-																					{formatDate(order.createdAt)}
-																				</TableCell>
-																				<TableCell>
-																					${order.total.toFixed(2)}
-																				</TableCell>
-																				<TableCell>{order.items}</TableCell>
-																			</TableRow>
-																		)
-																	)}
-																</TableBody>
-															</Table>
-														) : (
-															<p>No order history</p>
-														)}
-													</div>
-
-												</div>
-											</TableCell>
+				<>
+					{/* Desktop Table View */}
+					<div className="hidden lg:block">
+						<Card>
+							<div className="rounded-lg border overflow-hidden">
+								<Table>
+									<TableHeader>
+										<TableRow className="bg-gray-50">
+											<TableHead className="font-semibold">Name</TableHead>
+											<TableHead className="font-semibold">Email</TableHead>
+											<TableHead className="font-semibold">Phone</TableHead>
+											<TableHead className="font-semibold">Schools</TableHead>
+											<TableHead className="font-semibold text-center">Orders</TableHead>
 										</TableRow>
-									)}
-								</React.Fragment>
-							))}
-						</TableBody>
-					</Table>
-				</div>
+									</TableHeader>
+									<TableBody>
+										{filteredUsers.map((user) => (
+											<React.Fragment key={user.id}>
+												<TableRow
+													className="cursor-pointer hover:bg-gray-50 transition-colors"
+													onClick={() => handleUserClick(user.id)}
+												>
+													<TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            {expandedUserId === user.id ? (
+                                                                isLoading ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                                                                ) : (
+                                                                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                                                                )
+                                                            ) : (
+                                                                <ChevronDown className="h-4 w-4 text-gray-500" />
+                                                            )}
+                                                            <Avatar className="h-8 w-8">
+                                                                <AvatarFallback className="bg-blue-100 text-blue-600 text-sm font-medium">
+                                                                    {getInitials(user.displayName)}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="font-medium">{user.displayName}</span>
+                                                        </div>
+													</TableCell>
+													<TableCell>
+														<span className="text-gray-600">{user.email}</span>
+													</TableCell>
+													<TableCell>
+														<span className="text-gray-600">
+															{user.phone ? formatPhoneNumber(user.phone) : 'Not provided'}
+														</span>
+													</TableCell>
+													<TableCell>
+														<div className="flex flex-wrap gap-1">
+															{getUserSchools(user).map((school, index) => (
+																<Badge key={index} variant="outline" className="text-xs">
+																	{schools.find(s => s.id === school)?.name || school}
+																</Badge>
+															))}
+															{getUserSchools(user).length === 0 && (
+																<span className="text-gray-400 text-sm">No school assigned</span>
+															)}
+														</div>
+													</TableCell>
+													<TableCell className="text-center">
+														<Badge variant="secondary" className="rounded-full">
+															{user.orders?.length || 0}
+														</Badge>
+													</TableCell>
+												</TableRow>
+												{expandedUserId === user.id && expandedUserDetails && (
+													<TableRow>
+														<TableCell colSpan={5} className="p-0">
+															<div className="bg-gray-50 p-6 border-t">
+																<div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+																	{/* Contact Information */}
+																	<Card>
+																		<CardHeader className="pb-3">
+																			<CardTitle className="text-lg flex items-center gap-2">
+																				Contact Information
+																			</CardTitle>
+																		</CardHeader>
+																		<CardContent className="space-y-4">
+																			<div className="space-y-2">
+																				<div className="flex items-center gap-2 text-sm text-gray-500">
+																					<Label>Email</Label>
+																				</div>
+																				<p className="text-gray-900 font-medium">{user.email}</p>
+																			</div>
+
+																			<div className="space-y-2">
+																				<div className="flex items-center gap-2 text-sm text-gray-500">
+																					<Label>Phone Number</Label>
+																				</div>
+																				{isEditingPhone ? (
+																					<div className="space-y-2">
+																						<Input
+																							value={editedPhone}
+																							onChange={(e) => setEditedPhone(e.target.value)}
+																							placeholder="Enter phone number"
+																						/>
+																						<div className="flex gap-2">
+																							<Button
+																								size="sm"
+																								onClick={() => handlePhoneUpdate(user.id, editedPhone)}
+																							>
+																								Save
+																							</Button>
+																							<Button
+																								size="sm"
+																								variant="outline"
+																								onClick={() => {
+																									setIsEditingPhone(false);
+																									setEditedPhone(user.phone || '');
+																								}}
+																							>
+																								Cancel
+																							</Button>
+																						</div>
+																					</div>
+																				) : (
+																					<div className="flex items-center justify-between">
+																						<p className="text-gray-900 font-medium">
+																							{formatPhoneNumber(user.phone || '')}
+																						</p>
+																						<Button
+																							variant="ghost"
+																							size="sm"
+																							onClick={() => {
+																								setEditedPhone(user.phone || '');
+																								setIsEditingPhone(true);
+																							}}
+																						>
+																							Edit
+																						</Button>
+																					</div>
+																				)}
+																			</div>
+																		</CardContent>
+																	</Card>
+
+																	{/* Children */}
+																	<Card>
+																		<CardHeader className="pb-3">
+																			<CardTitle className="text-lg flex items-center gap-2">
+																				Children / Recipients ({expandedUserDetails.children.length})
+																			</CardTitle>
+																		</CardHeader>
+																		<CardContent>
+																			{expandedUserDetails.children.length > 0 ? (
+																				<div className="space-y-3">
+																					{expandedUserDetails.children.map((child) => (
+																						<div key={child.id} className="border rounded-lg p-3 bg-white">
+																							<div className="flex items-center justify-between mb-2">
+																								<span className="font-medium">{child.name}</span>
+																								<Button
+																									variant="ghost"
+																									size="sm"
+																									onClick={() => handleEditChild(child.id)}
+																								>
+																									Edit
+																								</Button>
+																							</div>
+																							<div className="space-y-1 text-sm text-gray-600">
+																								<div>School: {schools.find(s => s.id === child.schoolId)?.name || 'Unknown'}</div>
+																								{!child.isTeacher && (
+																									<>
+																										<div>Year: {child.year} | Class: {child.className}</div>
+																									</>
+																								)}
+																								<div>Role: {child.isTeacher ? 'Teacher' : 'Student'}</div>
+																								{child.allergens && <div>Allergens: {child.allergens}</div>}
+																							</div>
+																						</div>
+																					))}
+																				</div>
+																			) : (
+																				<p className="text-gray-500 text-center py-4">No children registered</p>
+																			)}
+																		</CardContent>
+																	</Card>
+
+																	{/* Orders */}
+																	<Card>
+																		<CardHeader className="pb-3">
+																			<CardTitle className="text-lg flex items-center gap-2">
+																				Order History ({expandedUserDetails.orders?.length || 0})
+																			</CardTitle>
+																		</CardHeader>
+																		<CardContent>
+																			{expandedUserDetails.orders?.length ? (
+																				<div className="space-y-3">
+																					{expandedUserDetails.orders.slice(0, 5).map((order: OrderHistory) => (
+																						<div key={order.orderId} className="border rounded-lg p-3 bg-white">
+																							<div className="flex justify-between items-start">
+																								<div>
+																									<div className="font-medium text-sm">#{order.orderId}</div>
+																									<div className="text-gray-600 text-xs flex items-center gap-1 mt-1">
+																										<Calendar className="h-3 w-3" />
+																										{new Date(order.orderedOn).toLocaleDateString()}
+																									</div>
+																								</div>
+																								<div className="text-right">
+																									<div className="font-medium text-green-600 flex items-center gap-1">
+																										<DollarSign className="h-3 w-3" />
+																										{order.totalPaid}
+																									</div>
+																									<div className="text-gray-500 text-xs">{order.itemCount} items</div>
+																								</div>
+																							</div>
+																						</div>
+																					))}
+																				</div>
+																			) : (
+																				<p className="text-gray-500 text-center py-4">No order history</p>
+																			)}
+																		</CardContent>
+																	</Card>
+																</div>
+															</div>
+														</TableCell>
+													</TableRow>
+												)}
+											</React.Fragment>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						</Card>
+					</div>
+
+					{/* Mobile Card View */}
+					<div className="lg:hidden space-y-4">
+						{filteredUsers.map((user) => (
+							<MobileUserCard key={user.id} user={user} />
+						))}
+					</div>
+				</>
 			)}
 
-			<ChildManagementDialog
-				isOpen={isChildDialogOpen}
-				onClose={() => setIsChildDialogOpen(false)}
-				onSubmit={handleChildUpdate}
-				onRemove={handleRemoveChild}
-				editingChild={selectedChild}
-			/>
-
-			{expandedUserDetails && (
-			<ManualOrderDialog
-				isOpen={isManualOrderDialogOpen}
-				onClose={() => setIsManualOrderDialogOpen(false)}
-				user={expandedUserDetails}
-			/>
-			)}
-
-			{!searchTerm && !selectedSchool && hasMore && (
-				<div className="flex justify-center mt-4">
+			{/* Load More Button */}
+			{!searchTerm && selectedSchool === 'all' && hasMore && filteredUsers.length > 0 && (
+				<div className="flex justify-center pt-8">
 					<Button
 						onClick={loadMore}
 						disabled={isLoading}
-						className="text-sm"
+						variant="outline"
+						className="min-w-[120px]"
 					>
 						{isLoading ? (
 							<>
@@ -643,11 +811,20 @@ const UsersComponent: React.FC = () => {
 								Loading...
 							</>
 						) : (
-							'Load More'
+							'Load More Users'
 						)}
 					</Button>
 				</div>
 			)}
+
+			{/* Child Management Dialog */}
+			<ChildManagementDialog
+				isOpen={isChildDialogOpen}
+				onClose={() => setIsChildDialogOpen(false)}
+				onSubmit={handleChildUpdate}
+				onRemove={handleRemoveChild}
+				editingChild={selectedChild}
+			/>
 		</div>
 	);
 };
