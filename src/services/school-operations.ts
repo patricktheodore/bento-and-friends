@@ -2,11 +2,32 @@ import { doc, addDoc, updateDoc, getDocs, collection } from 'firebase/firestore'
 import { FirebaseError } from 'firebase/app';
 import { db } from '../firebase';
 import { School } from '../models/school.model';
+import { User, Child } from '../models/user.model';
 
 export interface ApiResponse<T> {
 	success: boolean;
 	data?: T;
 	error?: string;
+}
+
+export interface SchoolChildrenData {
+	childrenCount: number;
+	users: Array<{
+		userId: string;
+		userName: string;
+		userEmail: string;
+		children: Array<{
+			id: string;
+			name: string;
+			year?: string;
+			className?: string;
+			isTeacher: boolean;
+		}>;
+	}>;
+}
+
+export interface SchoolEnrollmentData {
+	[schoolId: string]: SchoolChildrenData;
 }
 
 export const handleApiError = (error: unknown): string => {
@@ -64,6 +85,87 @@ export const getSchools = async (): Promise<{ success: boolean; data?: School[];
 	} catch (error) {
 		console.error('Error getting schools: ', error);
 		return { success: false, error: (error as Error).message };
+	}
+};
+
+// Function to get children enrollment data for all schools
+export const getSchoolEnrollmentData = async (): Promise<ApiResponse<SchoolEnrollmentData>> => {
+	try {
+		const usersCollection = collection(db, 'users-test');
+		const usersSnapshot = await getDocs(usersCollection);
+		
+		const enrollmentData: SchoolEnrollmentData = {};
+		
+		usersSnapshot.docs.forEach((doc) => {
+			const userData = doc.data() as User;
+			const userId = doc.id;
+			
+			// Skip users without children
+			if (!userData.children || userData.children.length === 0) {
+				return;
+			}
+			
+			// Group children by school
+			const childrenBySchool: { [schoolId: string]: Child[] } = {};
+			
+			userData.children.forEach((child: Child) => {
+				if (child.schoolId) {
+					if (!childrenBySchool[child.schoolId]) {
+						childrenBySchool[child.schoolId] = [];
+					}
+					childrenBySchool[child.schoolId].push(child);
+				}
+			});
+			
+			// Add to enrollment data
+			Object.entries(childrenBySchool).forEach(([schoolId, children]) => {
+				if (!enrollmentData[schoolId]) {
+					enrollmentData[schoolId] = {
+						childrenCount: 0,
+						users: []
+					};
+				}
+				
+				enrollmentData[schoolId].childrenCount += children.length;
+				enrollmentData[schoolId].users.push({
+					userId,
+					userName: userData.displayName || 'Unknown User',
+					userEmail: userData.email || '',
+					children: children.map(child => ({
+						id: child.id,
+						name: child.name,
+						year: child.year,
+						className: child.className,
+						isTeacher: child.isTeacher || false
+					}))
+				});
+			});
+		});
+		
+		return { success: true, data: enrollmentData };
+	} catch (error) {
+		console.error('Error getting school enrollment data: ', error);
+		return { success: false, error: handleApiError(error) };
+	}
+};
+
+// Function to get enrollment data for a specific school
+export const getSchoolEnrollmentDataById = async (schoolId: string): Promise<ApiResponse<SchoolChildrenData>> => {
+	try {
+		const allEnrollmentData = await getSchoolEnrollmentData();
+		
+		if (!allEnrollmentData.success || !allEnrollmentData.data) {
+			return { success: false, error: allEnrollmentData.error };
+		}
+		
+		const schoolData = allEnrollmentData.data[schoolId] || {
+			childrenCount: 0,
+			users: []
+		};
+		
+		return { success: true, data: schoolData };
+	} catch (error) {
+		return { success: false, error: handleApiError(error) };
 	}
 };
 
