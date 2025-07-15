@@ -28,7 +28,7 @@ const ContactPage = () => {
             phone: '',
             message: '',
         },
-        mode: 'onChange', // This will make the form validate on change
+        mode: 'onChange',
     });
 
 	useEffect(() => {
@@ -44,7 +44,9 @@ const ContactPage = () => {
             const functions = getFunctions();
             const sendContactEmail = httpsCallable(functions, 'sendContactEmail');
             const result = await sendContactEmail(data);
-            console.log('Email sent:', result);
+
+            console.log('Email sent successfully:', result);
+
             toast.success("We've received your message and will get back to you soon.");
             reset();
         } catch (error) {

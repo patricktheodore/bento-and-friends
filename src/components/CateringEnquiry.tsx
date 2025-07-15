@@ -84,8 +84,11 @@ const CateringEnquiryForm = () => {
 
             const functions = getFunctions();
             const sendCateringEnquiry = httpsCallable(functions, 'sendCateringEnquiry');
-            await sendCateringEnquiry(formattedData);
+            const result = await  sendCateringEnquiry(formattedData);
+
+            console.log('Enquiry sent successfully:', result);
             
+            toast.success('Your catering enquiry has been sent successfully!');
             setSubmittedName(data.name);
             setIsSubmitted(true);
         } catch (error) {
