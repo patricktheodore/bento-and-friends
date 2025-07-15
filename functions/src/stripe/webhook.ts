@@ -4,67 +4,70 @@ import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import Stripe from "stripe";
 import { defineSecret } from "firebase-functions/params";
+import { SendOrderConfirmationData, sendOrderConfirmationEmail } from "../emails/order-confirmation";
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const webhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+const resendSecret = defineSecret("RESEND_API_KEY");
+
 interface Order {
-    orderId: string;
-    userId: string;
-    userEmail: string;
-    mealIds: string[];
+	orderId: string;
+	userId: string;
+	userEmail: string;
+	mealIds: string[];
 
-    pricing: {
-        subtotal: number;
-        finalTotal: number;
-        appliedCoupon?: { code: string; discountAmount: number };
-    };
-    payment: {
-        stripeSessionId: string;
-        paidAt?: string;
-        amount: number;
-    };
+	pricing: {
+		subtotal: number;
+		finalTotal: number;
+		appliedCoupon?: { code: string; discountAmount: number };
+	};
+	payment: {
+		stripeSessionId: string;
+		paidAt?: string;
+		amount: number;
+	};
 
-    // Order-level metadata
-    itemCount: number;
-    totalAmount: number;
-    status: "pending" | "paid";
-    createdAt: string;
-    updatedAt: string;
+	// Order-level metadata
+	itemCount: number;
+	totalAmount: number;
+	status: "pending" | "paid";
+	createdAt: string;
+	updatedAt: string;
 }
 
 interface UserOrderSummary {
-    orderId: string;
-    mealIds: string[];
-    totalPaid: number;
-    itemCount: number;
-    orderedOn: string;
+	orderId: string;
+	mealIds: string[];
+	totalPaid: number;
+	itemCount: number;
+	orderedOn: string;
 }
 
 export interface MealRecord {
-    mealId: string;
-    orderId: string;
-    userId: string;
+	mealId: string;
+	orderId: string;
+	userId: string;
 
-    deliveryDate: string;
-    schoolId: string;
-    schoolName: string;
-    schoolAddress: string;
+	deliveryDate: string;
+	schoolId: string;
+	schoolName: string;
+	schoolAddress: string;
 
-    childId: string;
-    childName: string;
+	childId: string;
+	childName: string;
 
-    mainId: string;
-    mainName: string;
-    addOns: Array<{ id: string; display: string }>;
-    fruitId: string | null;
-    fruitName: string | null;
-    sideId: string | null;
-    sideName: string | null;
+	mainId: string;
+	mainName: string;
+	addOns: Array<{ id: string; display: string }>;
+	fruitId: string | null;
+	fruitName: string | null;
+	sideId: string | null;
+	sideName: string | null;
 
-    totalAmount: number;
-    orderedOn: string;
-    createdAt: string;
-    updatedAt: string;
+	totalAmount: number;
+	orderedOn: string;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export const stripeWebhook = onRequest(
@@ -72,12 +75,11 @@ export const stripeWebhook = onRequest(
     memory: "512MiB",
     timeoutSeconds: 60,
     region: "us-central1",
-    secrets: [stripeSecretKey, webhookSecret],
+    secrets: [stripeSecretKey, webhookSecret, resendSecret],
     cors: false,
-    invoker: "public"
+    invoker: "public",
   },
   async (req, res) => {
-
     if (!stripeSecretKey) {
       throw new Error("STRIPE_SECRET_KEY environment variable is required");
     }
@@ -111,13 +113,13 @@ export const stripeWebhook = onRequest(
       event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret.value());
       logger.info("Webhook signature verified successfully", {
         eventType: event.type,
-        eventId: event.id
+        eventId: event.id,
       });
     } catch (err: any) {
       logger.error("Webhook signature verification failed", {
         error: err.message,
         type: err.type,
-        signature: sig ? "present" : "missing"
+        signature: sig ? "present" : "missing",
       });
       res.status(400).send(`Webhook Error: ${err.message}`);
       return;
@@ -127,7 +129,7 @@ export const stripeWebhook = onRequest(
       // Handle the event
       switch (event.type) {
         case "checkout.session.completed":
-          await handlePaymentSuccess(event.data.object as Stripe.Checkout.Session);
+          await handlePaymentSuccess(event.data.object as Stripe.Checkout.Session, resendSecret.value());
           break;
 
         default:
@@ -140,7 +142,7 @@ export const stripeWebhook = onRequest(
         eventType: event.type,
         eventId: event.id,
         error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       res.status(500).send("Internal Server Error");
@@ -148,27 +150,24 @@ export const stripeWebhook = onRequest(
   }
 );
 
-async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
+async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiKey: string): Promise<void> {
   const db = admin.firestore();
 
   logger.info("Processing payment success", {
     sessionId: session.id,
     paymentStatus: session.payment_status,
-    amount: session.amount_total
+    amount: session.amount_total,
   });
 
   if (session.payment_status !== "paid") {
     logger.warn("Payment not completed", {
       sessionId: session.id,
-      status: session.payment_status
+      status: session.payment_status,
     });
     return;
   }
 
-  const tempOrderQuery = await db.collection("tempOrders")
-    .where("stripeSessionId", "==", session.id)
-    .limit(1)
-    .get();
+  const tempOrderQuery = await db.collection("tempOrders").where("stripeSessionId", "==", session.id).limit(1).get();
 
   if (tempOrderQuery.empty) {
     logger.error("No temp order found for session", { sessionId: session.id });
@@ -212,11 +211,13 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
       mainId: meal.main.id,
       mainName: meal.main.display,
 
-      addOns: meal.addOns ? meal.addOns.map((addon: any) => ({
-        id: addon.id,
-        display: addon.display,
-        price: parseFloat(addon.price) || 0,
-      })) : [],
+      addOns: meal.addOns
+        ? meal.addOns.map((addon: any) => ({
+          id: addon.id,
+          display: addon.display,
+          price: parseFloat(addon.price) || 0,
+        }))
+        : [],
 
       fruitId: meal.fruit ? meal.fruit.id : null,
       fruitName: meal.fruit ? meal.fruit.display : null,
@@ -246,7 +247,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
       finalTotal: tempOrder.pricing.finalTotal,
       ...(tempOrder.pricing.appliedCoupon && {
         appliedCoupon: tempOrder.pricing.appliedCoupon,
-      })
+      }),
     },
 
     payment: {
@@ -280,24 +281,18 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
     await db.runTransaction(async (transaction) => {
       logger.info("Starting transaction", { orderId: tempOrder.orderId });
 
-      transaction.set(
-        db.collection("orders-test2").doc(tempOrder.orderId),
-        completedOrder
-      );
+      transaction.set(db.collection("orders-test2").doc(tempOrder.orderId), completedOrder);
 
       transaction.set(
         db.collection("users-test2").doc(tempOrder.userId),
         {
-          orders: FieldValue.arrayUnion(userOrder)
+          orders: FieldValue.arrayUnion(userOrder),
         },
         { merge: true }
       );
 
       mealRecords.forEach((meal: MealRecord) => {
-        transaction.set(
-          db.collection("meals-test2").doc(meal.mealId),
-          meal
-        );
+        transaction.set(db.collection("meals-test2").doc(meal.mealId), meal);
       });
 
       // Delete temp order
@@ -308,9 +303,39 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session) {
       orderId: tempOrder.orderId,
       userId: tempOrder.userId,
       mealCount: mealRecords.length,
-      totalAmount: (session.amount_total || 0) / 100
+      totalAmount: (session.amount_total || 0) / 100,
     });
 
+    // Send order confirmation email
+    try {
+      // Transform meal records to email format
+      const mealItems = mealRecords.map((meal) => ({
+        name: meal.mainName,
+        addOns: meal.addOns.map((addon) => addon.display).join(", ") || "None",
+        fruit: meal.fruitName || undefined,
+        side: meal.sideName || undefined,
+        deliveryDate: new Date(meal.deliveryDate).toLocaleDateString(),
+        schoolName: meal.schoolName,
+        quantity: 1, // Each meal record represents 1 meal
+        childName: meal.childName,
+      }));
+
+      const emailData: SendOrderConfirmationData = {
+        email: tempOrder.userEmail,
+        orderNumber: tempOrder.orderId,
+        orderDate: new Date(tempOrder.createdAt).toLocaleDateString(),
+        orderTotal: tempOrder.pricing.finalTotal,
+        mealItems,
+      };
+
+      await sendOrderConfirmationEmail(emailData, resendApiKey);
+    } catch (emailError) {
+      // This entire block fails silently
+      logger.warn("Order confirmation email failed but order processing succeeded", {
+        orderId: tempOrder.orderId,
+        error: emailError instanceof Error ? emailError.message : "Unknown error",
+      });
+    }
   } catch (error) {
     logger.error("Error saving completed order", {
       orderId: tempOrder.orderId,

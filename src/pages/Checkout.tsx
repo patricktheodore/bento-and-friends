@@ -186,8 +186,6 @@ const CheckoutPage: React.FC = () => {
 
 			setClientSecret(clientSecret);
 			setCheckoutStep('payment');
-			
-			toast.success('Order created successfully! Please complete payment.');
 		} catch (error) {
 			console.error('Checkout Error:', error);
 			setPaymentError('An error occurred during checkout. Please try again.');

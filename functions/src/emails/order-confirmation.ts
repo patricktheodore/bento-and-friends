@@ -1,77 +1,107 @@
-// export const sendOrderConfirmationEmail = functions.https.onCall(async (
-//   data: OrderConfirmationEmailData,
-//   context
-// ) => {
-//   if (!context.auth) {
-//     throw new functions.https.HttpsError(
-//       "unauthenticated",
-//       "User must be authenticated to send confirmation emails."
-//     );
-//   }
+import { logger } from "firebase-functions";
+import { Resend } from "resend";
+import * as fs from "fs";
+import * as path from "path";
 
-//   const maxRetries = 3;
-//   let attempt = 0;
+export interface SendOrderConfirmationData {
+	email: string;
+	orderNumber: string;
+	orderDate: string;
+	orderTotal: number;
+	mealItems: Array<{
+		name: string;
+		addOns: string;
+		fruit?: string;
+		side?: string;
+		deliveryDate?: string;
+		schoolName?: string;
+		quantity: number;
+		childName: string;
+	}>;
+}
+export async function sendOrderConfirmationEmail(data: SendOrderConfirmationData, resendSecret: string): Promise<void> {
+  try {
+    if (!resendSecret) {
+      logger.warn("Resend API key not configured, skipping order confirmation email");
+      return;
+    }
 
-//   const dateOptions: Intl.DateTimeFormatOptions = {
-//     timeZone: "Australia/Perth",
-//     weekday: "long",
-//     year: "numeric",
-//     month: "long",
-//     day: "numeric",
-//   };
+    const resend = new Resend(resendSecret);
 
-//   const formatDate = (dateString: string) => {
-//     // Create date object and adjust for timezone
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString("en-AU", dateOptions);
-//   };
+    // Validate input
+    if (!data.email) {
+      logger.warn("Email is required, skipping order confirmation email");
+      return;
+    }
 
-//   while (attempt < maxRetries) {
-//     try {
-//       const msg = {
-//         to: data.to,
-//         from: {
-//           email: "bentoandfriends@outlook.com.au",
-//           name: "Bento & Friends",
-//         },
-//         subject: `Order Confirmation: ${data.customOrderNumber}`,
-//         templateId: "d-3dc5c0e2fb2643279bf93a8a0efea205",
-//         dynamicTemplateData: {
-//           customerName: data.customerName || "Valued Customer",
-//           customOrderNumber: data.customOrderNumber,
-//           meals: data.meals.map((meal) => ({
-//             ...meal,
-//             deliveryDate: formatDate(meal.orderDate),
-//             total: meal.total.toFixed(2),
-//           })),
-//           originalTotal: data.originalTotal.toFixed(2),
-//           finalTotal: data.finalTotal.toFixed(2),
-//           savings: data.originalTotal - data.finalTotal > 0 ?
-//             (data.originalTotal - data.finalTotal).toFixed(2) : null,
-//         },
-//       };
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      logger.warn("Invalid email format, skipping order confirmation email", { email: data.email });
+      return;
+    }
 
-//       await sgMail.send(msg);
-//       console.log(
-//         `Order confirmation email sent successfully for order
-//         ${data.customOrderNumber}`
-//       );
-//       return;
-//     } catch (error) {
-//       attempt++;
-//       console.error(
-//         `Attempt ${attempt} failed to send order confirmation email:`,
-//         error
-//       );
-//       if (attempt === maxRetries) {
-//         throw new functions.https.HttpsError(
-//           "internal",
-//           `Failed to send confirmation email after ${maxRetries} attempts`,
-//           error
-//         );
-//       }
-//       await new Promise((resolve) =>
-//         setTimeout(resolve, Math.pow(2, attempt) * 1000));
-//     }
-//   }
-// });
+    logger.info("Sending order confirmation email", {
+      email: data.email,
+      orderNumber: data.orderNumber
+    });
+
+    const wrapperTemplatePath = path.join(__dirname, "templates", "orderConfirmationEmail.html");
+    const mealItemTemplatePath = path.join(__dirname, "templates", "mealItemTemplate.html");
+
+    let emailTemplate: string;
+    let mealItemTemplate: string;
+
+    try {
+      emailTemplate = fs.readFileSync(wrapperTemplatePath, "utf8");
+      mealItemTemplate = fs.readFileSync(mealItemTemplatePath, "utf8");
+    } catch (error) {
+      logger.warn("Failed to read email templates, skipping order confirmation email", { error });
+      return;
+    }
+
+    const mealItemsHtml = data.mealItems
+      .map((item) => {
+        return mealItemTemplate
+          .replace(/{{ITEM_NAME}}/g, item.name)
+          .replace(/{{ITEM_ADD_ONS}}/g, item.addOns || "None")
+          .replace(/{{ITEM_FRUIT}}/g, item.fruit || "None")
+          .replace(/{{ITEM_SIDE}}/g, item.side || "None")
+          .replace(/{{ITEM_DELIVERY_DATE}}/g, item.deliveryDate || "N/A")
+          .replace(/{{ITEM_SCHOOL_NAME}}/g, item.schoolName || "N/A")
+          .replace(/{{ITEM_CHILD_NAME}}/g, item.childName || "N/A");
+      })
+      .join("");
+
+    const personalizedHtml = emailTemplate
+      .replace(/{{ORDER_DATE}}/g, data.orderDate)
+      .replace(/{{ORDER_NUMBER}}/g, data.orderNumber)
+      .replace(/{{ORDER_TOTAL}}/g, `${data.orderTotal.toFixed(2)}`)
+      .replace(/{{MEAL_COUNT}}/g, data.mealItems.length.toString())
+      .replace(/{{MEAL_ITEMS}}/g, mealItemsHtml);
+
+    // Send email via Resend
+    const result = await resend.emails.send({
+      from: "noreply@bentoandfriends.com.au",
+      to: data.email,
+      replyTo: "bentoandfriends@outlook.com.au",
+      subject: `Order Confirmation - ${data.orderNumber}`,
+      html: personalizedHtml,
+    });
+
+    logger.info("Order confirmation email sent successfully", {
+      emailId: result.data?.id,
+      email: data.email,
+      orderNumber: data.orderNumber
+    });
+
+  } catch (error) {
+    // Fail silently - log the error but don't throw
+    logger.warn("Failed to send order confirmation email", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      email: data.email,
+      orderNumber: data.orderNumber
+    });
+  }
+}
+

@@ -62,7 +62,7 @@ export const sendWelcomeEmail = onCall(
 
       // Send email via Resend
       const result = await resend.emails.send({
-        from: "bentoandfriends@outlook.com.au",
+        from: "noreply@bentoandfriends.com.au",
         to: email,
         subject: `Welcome to Bento & Friends, ${displayName}!`,
         html: personalizedHtml,
