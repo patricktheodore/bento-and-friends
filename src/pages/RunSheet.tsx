@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMealsBetweenDates, MealWithId } from '../services/run-sheet-operations';
+import { getMealsBetweenDates, getMealsPlacedAfterDate, MealWithId } from '../services/run-sheet-operations';
 import { useAppContext } from '../context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,6 +20,7 @@ import {
 	GraduationCap,
 	Clock,
 	AlertCircle,
+	ChevronDownIcon,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'react-hot-toast';
@@ -33,6 +34,10 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import RunSheetSummary from '@/components/RunSheetSummary';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import MissingLabelsDialog from '@/components/MissingLabelsDialog';
 
 interface jsPDFWithPlugin extends jsPDF {
 	autoTable: (options: UserOptions) => jsPDF;
@@ -50,6 +55,8 @@ const RunSheet: React.FC = () => {
 	const [quickSelect, setQuickSelect] = useState('today');
 	const [sortedMeals, setSortedMeals] = useState<MealWithId[]>([]);
 	const [error, setError] = useState<string | null>(null);
+	const [showMissingLabelsDialog, setShowMissingLabelsDialog] = useState(false);
+	const [isMissingLabelsLoading, setIsMissingLabelsLoading] = useState(false);
 
 	const groupMealsByDateAndSchool = (meals: MealWithId[]) => {
 		return meals.reduce(
@@ -233,9 +240,6 @@ const RunSheet: React.FC = () => {
 		return `${side} | ${fruit}`;
 	};
 
-	// PDF generation functions
-	// Updated handlePrintRunSheet function with fixed column widths
-	// Updated handlePrintRunSheet function with alphabetical school sorting
 	const handlePrintRunSheet = () => {
 		const pdf = new jsPDF({
 			orientation: 'landscape',
@@ -337,6 +341,59 @@ const RunSheet: React.FC = () => {
 		toast.success('Run sheet PDF generated and downloaded.');
 	};
 
+	const handlePrintMissingLabels = () => {
+        // Add a small delay to ensure dropdown closes completely
+        setTimeout(() => {
+            setShowMissingLabelsDialog(true);
+        }, 50);
+    };
+
+	const handleMissingLabelsConfirm = async (startDate: Date) => {
+		setIsMissingLabelsLoading(true);
+
+		try {
+			// Check if date range is selected
+			const currentRangeStart = dateRange.from;
+			const currentRangeEnd = dateRange.to || dateRange.from;
+
+			if (!currentRangeStart) {
+				toast.error('Please select a date range first');
+				return;
+			}
+
+			// Get meals that were ordered after startDate and have delivery dates within current range
+			const missingMeals = await getMealsPlacedAfterDate(
+				startDate,
+				currentRangeStart,
+				currentRangeEnd ?? currentRangeStart
+			);
+
+			// Apply school filter if not "all"
+			const filteredMissingMeals =
+				selectedSchool === 'all'
+					? missingMeals
+					: missingMeals.filter((meal) => meal.schoolName === selectedSchool);
+
+			if (filteredMissingMeals.length === 0) {
+				toast('No missing labels found for the selected criteria');
+				return;
+			}
+
+			// Close dialog and generate labels
+			setShowMissingLabelsDialog(false);
+
+			// Pass the filtered meals to the existing handlePrintLabels function
+			handlePrintLabels(filteredMissingMeals);
+
+			toast.success(`Generated ${filteredMissingMeals.length} missing labels`);
+		} catch (error) {
+			console.error('Error generating missing labels:', error);
+			toast.error('Failed to generate missing labels. Please try again.');
+		} finally {
+			setIsMissingLabelsLoading(false);
+		}
+	};
+
 	const sortMealsForLabels = (mealsToSort: MealWithId[]): MealWithId[] => {
 		return mealsToSort.sort((a, b) => {
 			// Sort by Date
@@ -387,7 +444,7 @@ const RunSheet: React.FC = () => {
 		});
 	};
 
-	const handlePrintLabels = () => {
+	const handlePrintLabels = (missingMeals?: MealWithId[]) => {
 		const pdf = new jsPDF({
 			orientation: 'portrait',
 			unit: 'mm',
@@ -457,7 +514,7 @@ const RunSheet: React.FC = () => {
 		};
 
 		// Sort meals specifically for labels (by date, school, main dish, year, class, name)
-		const sortedMealsForLabels = sortMealsForLabels(sortedMeals);
+		const sortedMealsForLabels = sortMealsForLabels(missingMeals ?? sortedMeals);
 
 		// Group the sorted meals by date and school for processing
 		const groupedSortedMeals = sortedMealsForLabels.reduce(
@@ -1094,9 +1151,13 @@ const RunSheet: React.FC = () => {
 							<FileText className="mr-2 h-4 w-4" />
 							Print Run Sheet Summary
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handlePrintLabels}>
+						<DropdownMenuItem onClick={() => handlePrintLabels()}>
 							<Tags className="mr-2 h-4 w-4" />
 							Print Labels
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={handlePrintMissingLabels}>
+							<Tags className="mr-2 h-4 w-4" />
+							Print Missing Labels
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={handlePrintMainDishSummary}>
 							<ChefHat className="mr-2 h-4 w-4" />
@@ -1347,6 +1408,15 @@ const RunSheet: React.FC = () => {
 						</div>
 					</div>
 				</>
+			)}
+
+			{showMissingLabelsDialog && (
+				<MissingLabelsDialog
+					open={true}
+					onClose={() => setShowMissingLabelsDialog(false)}
+					onConfirm={handleMissingLabelsConfirm}
+					isLoading={isMissingLabelsLoading}
+				/>
 			)}
 		</div>
 	);

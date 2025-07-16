@@ -97,3 +97,43 @@ export const getMealsByChild = async (
     ...doc.data()
   })) as MealWithId[];
 };
+
+export const getMealsPlacedAfterDate = async (startDate: Date, deliveryStartDate: Date, deliveryEndDate: Date): Promise<MealWithId[]> => {
+  try {
+    const mealsRef = collection(db, 'meals-test2');
+    
+    // Convert dates to ISO strings for comparison
+    // startDate is already in the user's local timezone (Perth), toISOString() converts to UTC
+    // This matches the stored orderedOn field which should be in UTC
+    const startDateISOString = startDate.toISOString();
+    const deliveryStartISOString = deliveryStartDate.toISOString();
+    const deliveryEndISOString = deliveryEndDate.toISOString();
+    
+    // Query meals ordered after the start date and within the delivery date range
+    // Note: This requires a composite index on (orderedOn, deliveryDate)
+    const q = query(
+      mealsRef,
+      where('orderedOn', '>=', startDateISOString),
+      where('deliveryDate', '>=', deliveryStartISOString),
+      where('deliveryDate', '<=', deliveryEndISOString),
+      orderBy('orderedOn', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const meals: MealWithId[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const mealData = doc.data();
+      meals.push({
+        id: doc.id,
+        ...mealData
+      } as MealWithId);
+    });
+    
+    return meals;
+  } catch (error) {
+    console.error('Error fetching meals placed after date:', error);
+    
+    throw error;
+  }
+};

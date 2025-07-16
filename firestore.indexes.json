@@ -4,6 +4,14 @@
 			"collectionGroup": "tempOrders",
 			"queryScope": "COLLECTION",
 			"fields": [{ "fieldPath": "expiresAt", "order": "ASCENDING" }]
+		},
+		{
+			"collectionGroup": "meals-test2",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "orderedOn", "order": "ASCENDING" },
+				{ "fieldPath": "deliveryDate", "order": "ASCENDING" }
+			]
 		}
 	],
 	"fieldOverrides": []
