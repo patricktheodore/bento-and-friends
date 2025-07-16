@@ -45,7 +45,7 @@ const FeaturedMenuItemsCarousel: React.FC = () => {
 		arrows: false,
 		autoplay: featuredItems.length > 4, // Only autoplay if we have enough items
 		autoplaySpeed: 4000,
-		beforeChange: (current: number, next: number) => {
+		beforeChange: (next: number) => {
 			// Update navigation button states
 			const totalSlides = featuredItems.length;
 			const slidesToShow = window.innerWidth >= 1024 ? 4 : window.innerWidth >= 600 ? 2 : 1;
