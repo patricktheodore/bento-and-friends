@@ -299,13 +299,6 @@ const CheckoutPage: React.FC = () => {
 						>
 							Try Again
 						</Button>
-						<Button 
-							variant="outline" 
-							onClick={() => window.location.href = '/order'}
-							className="w-full sm:w-auto ml-0 sm:ml-3"
-						>
-							Back to Ordering
-						</Button>
 					</div>
 				</CardContent>
 			</Card>

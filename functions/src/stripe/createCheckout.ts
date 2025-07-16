@@ -83,6 +83,7 @@ export const createCheckout = onCall(
     timeoutSeconds: 60,
     region: "us-central1",
     secrets: [stripeSecretKey],
+    cors: true,
   },
   async (request) => {
     // Initialize Stripe - v2 uses environment variables
@@ -263,7 +264,7 @@ export async function createTempOrder(
         name: meal.child.name,
         isTeacher: meal.child.isTeacher || false,
         year: meal.child.year || undefined,
-        class: meal.child.class || undefined,
+        class: meal.child.className || undefined,
       },
       school: {
         id: meal.school.id,

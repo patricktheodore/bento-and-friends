@@ -1,11 +1,6 @@
-import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { logger } from 'firebase-functions/v2';
-import { initializeApp } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-
-// Initialize Firebase Admin
-initializeApp();
-const db = getFirestore();
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions/v2";
+import * as admin from "firebase-admin";
 
 interface DailyAnalytics {
   date: string;
@@ -27,26 +22,27 @@ interface CumulativeAnalytics {
 }
 
 export const updateDailyAnalytics = onSchedule({
-  schedule: '0 1 * * *', // Run at 1 AM daily (gives buffer for late orders)
-  timeZone: 'Australia/Perth', // Adjust to your timezone
-  memory: '256MiB',
+  schedule: "0 1 * * *", // Run at 1 AM daily (gives buffer for late orders)
+  timeZone: "Australia/Perth", // Adjust to your timezone
+  memory: "256MiB",
   timeoutSeconds: 300
-}, async (event) => {
+}, async () => {
+  const db = admin.firestore();
   const now = Timestamp.now();
   const today = now.toDate();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
-  const todayString = today.toISOString().split('T')[0];
-  const yesterdayString = yesterday.toISOString().split('T')[0];
+
+  const todayString = today.toISOString().split("T")[0];
+  const yesterdayString = yesterday.toISOString().split("T")[0];
 
   logger.info(`Starting analytics update for ${yesterdayString} -> ${todayString}`);
 
   try {
     // References
-    const cumulativeRef = db.collection('cumulativeAnalytics').doc('totals');
-    const yesterdayRef = db.collection('dailyAnalytics').doc(yesterdayString);
-    const todayRef = db.collection('dailyAnalytics').doc(todayString);
+    const cumulativeRef = db.collection("cumulativeAnalytics").doc("totals");
+    const yesterdayRef = db.collection("dailyAnalytics").doc(yesterdayString);
+    const todayRef = db.collection("dailyAnalytics").doc(todayString);
 
     await db.runTransaction(async (transaction) => {
       // Fetch yesterday's analytics
@@ -70,8 +66,8 @@ export const updateDailyAnalytics = onSchedule({
       };
 
       // Get real-time user and school counts
-      const usersSnapshot = await db.collection('users-test2').count().get();
-      const schoolsSnapshot = await db.collection('schools-test').count().get();
+      const usersSnapshot = await db.collection("users-test2").count().get();
+      const schoolsSnapshot = await db.collection("schools-test").count().get();
       const currentUserCount = usersSnapshot.data().count;
       const currentSchoolCount = schoolsSnapshot.data().count;
 
@@ -113,7 +109,7 @@ export const updateDailyAnalytics = onSchedule({
         transaction.set(todayRef, newDayData);
       }
 
-      logger.info(`Successfully updated analytics:`, {
+      logger.info("Successfully updated analytics:", {
         date: todayString,
         yesterdayOrders: yesterdayData.orderCount,
         yesterdayRevenue: yesterdayData.revenue,
@@ -131,23 +127,25 @@ export const updateDailyAnalytics = onSchedule({
 });
 
 // Backup function to manually recalculate cumulative data (callable)
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall } from "firebase-functions/v2/https";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const recalculateCumulativeAnalytics = onCall({
-  memory: '512MiB',
+  memory: "512MiB",
   timeoutSeconds: 540,
 }, async (request) => {
   // Add authentication check
+  const db = admin.firestore();
   if (!request.auth?.token?.admin) {
-    throw new Error('Unauthorized: Admin access required');
+    throw new Error("Unauthorized: Admin access required");
   }
 
-  logger.info('Starting cumulative analytics recalculation');
+  logger.info("Starting cumulative analytics recalculation");
 
   try {
     // Get all daily analytics
-    const dailyAnalyticsSnapshot = await db.collection('dailyAnalytics')
-      .orderBy('date', 'asc')
+    const dailyAnalyticsSnapshot = await db.collection("dailyAnalytics")
+      .orderBy("date", "asc")
       .get();
 
     let totalOrders = 0;
@@ -162,8 +160,8 @@ export const recalculateCumulativeAnalytics = onCall({
     });
 
     // Get current user and school counts
-    const usersSnapshot = await db.collection('users-test2').count().get();
-    const schoolsSnapshot = await db.collection('schools-test').count().get();
+    const usersSnapshot = await db.collection("users-test2").count().get();
+    const schoolsSnapshot = await db.collection("schools-test").count().get();
 
     const recalculatedData: CumulativeAnalytics = {
       orderCount: totalOrders,
@@ -175,18 +173,18 @@ export const recalculateCumulativeAnalytics = onCall({
     };
 
     // Update cumulative analytics
-    await db.collection('cumulativeAnalytics').doc('totals').set(recalculatedData);
+    await db.collection("cumulativeAnalytics").doc("totals").set(recalculatedData);
 
-    logger.info('Cumulative analytics recalculated successfully', recalculatedData);
-    
-    return { 
-      success: true, 
+    logger.info("Cumulative analytics recalculated successfully", recalculatedData);
+
+    return {
+      success: true,
       data: recalculatedData,
-      daysProcessed: dailyAnalyticsSnapshot.size 
+      daysProcessed: dailyAnalyticsSnapshot.size
     };
 
   } catch (error) {
-    logger.error('Error recalculating cumulative analytics:', error);
+    logger.error("Error recalculating cumulative analytics:", error);
     throw error;
   }
 });
