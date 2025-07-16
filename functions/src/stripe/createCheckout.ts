@@ -263,8 +263,8 @@ export async function createTempOrder(
         id: meal.child.id,
         name: meal.child.name,
         isTeacher: meal.child.isTeacher || false,
-        year: meal.child.year || undefined,
-        class: meal.child.className || undefined,
+        year: !meal.child.isTeacher ? meal.child.year ?? '' : 'Staff',
+        class: !meal.child.isTeacher ? meal.child.className ?? '' : 'Staff',
       },
       school: {
         id: meal.school.id,

@@ -438,7 +438,8 @@ const OrderHistory: React.FC = () => {
                                                                                                 ${meal.totalAmount}
                                                                                             </span>
                                                                                             
-                                                                                            {canEdit && (
+                                                                                            {/* DISABLED FOR NOW */}
+                                                                                            {/* {canEdit && (
                                                                                                 <Button
                                                                                                     variant="outline"
                                                                                                     size="sm"
@@ -461,7 +462,7 @@ const OrderHistory: React.FC = () => {
                                                                                                         </>
                                                                                                     )}
                                                                                                 </Button>
-                                                                                            )}
+                                                                                            )} */}
                                                                                         </div>
                                                                                     </div>
                                                                                 );

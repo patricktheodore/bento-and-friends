@@ -407,7 +407,8 @@ const MealCalendar: React.FC = () => {
                                                     ${meal.totalAmount.toFixed(2)}
                                                 </p>
                                                 
-                                                {canEdit && (
+                                                {/* DISABLED FOR NOW */}
+                                                {/* {canEdit && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -430,7 +431,7 @@ const MealCalendar: React.FC = () => {
                                                             </>
                                                         )}
                                                     </Button>
-                                                )}
+                                                )} */}
                                             </div>
                                         </CardContent>
                                     </Card>

@@ -1,8 +1,10 @@
 ## TO RUN THE FIREBASE FUNCTIONS LOCALLY
+<!-- Set secrets -->
+firebase functions:secrets:access STRIPE_WEBHOOK_SECRET
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 
-firebase functions:config:set stripe.secret_key="sk_xxxx_key"
-firebase functions:config:set app.url="http://localhost:5173"
-firebase functions:config:get > .runtimeconfig.json
+<!-- emulate functions on local server -->
 firebase emulators:start --only functions
 
+<!-- run dev server -->
 npm run dev

@@ -22,7 +22,7 @@ const RunSheet = lazy(() => import('@/pages/RunSheet'));
 const MaintenancePage = lazy(() => import('../pages/Maintenance'));
 
 // Toggle this to enable/disable maintenance mode
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 // **
 
 const AnimatedRoutes: React.FC = () => {

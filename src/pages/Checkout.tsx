@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const stripePromise = loadStripe(
-	'pk_test_51RbbwMRtsoGEFZInbGrxGhn8cPi6bAX35Hqjj1dr6tx22Vsfaxm3aBNdDXGp1Si9VxuCzwjWEWjCKpEgGzlpU4Jo00VRwsQajl'
+	'pk_live_51PzenCRuOSdR9YdWStFVzk83YT4PRIeDGCMRCylZObMEVE0Fp24AwPMp0gK91zLvZXNvfhSGNG7vKnetFkg1MWna00flH0J7XX'
 );
 
 type CheckoutStep = 'review' | 'payment' | 'processing' | 'success' | 'error';
@@ -153,12 +153,12 @@ const CheckoutPage: React.FC = () => {
 			const functions = getFunctions();
 			const createCheckoutSession = httpsCallable(functions, 'createCheckout');
 
-            const lineItems = cart.meals.map((meal) => ({
+            const lineItems = cart.meals.map((meal: Meal) => ({
                 price_data: {
                     currency: 'aud',
                     product_data: {
-                        name: `${meal.main.display} - ${meal.child.name}`,
-                        description: `Main: ${meal.main.display}, For: ${meal.child.name} (${meal.school.name}), On: ${new Date(meal.deliveryDate).toLocaleDateString('en-AU')}`,
+                        name: `${meal.main.display} - ${meal.child.name} (${meal.school.name})`,
+                        description: `Main: ${meal.main.display} (${meal.main.addOns?.map(addon => addon.display).join(", ")}), ${meal.side ? `Side: ${meal.side.display}, ` : ''}${meal.fruit ? `Fruit: ${meal.fruit.display}, ` : ''}On: ${new Date(meal.deliveryDate).toLocaleDateString('en-AU')}`,
                     },
                     unit_amount: Math.round(meal.total * 100), // Convert to cents
                 },
