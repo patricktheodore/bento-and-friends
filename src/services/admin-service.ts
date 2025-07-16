@@ -1,5 +1,7 @@
 import { db } from '@/firebase';
-import {
+import { 
+    doc, 
+    getDoc, 
     getDocs, 
     query, 
     where, 
@@ -41,25 +43,26 @@ export const fetchOrders = async (options: FetchOrdersOptions = {}): Promise<Pag
         let ordersQuery;
 
         if (searchTerm) {
-            // Try to search by both orderId and customOrderNumber
+            // Try to search by both orderId
             // First try orderId (exact match)
-            ordersQuery = query(
-                collection(db, 'orders-test2'),
-                where('orderId', '==', searchTerm.toUpperCase()),
-                limit(pageSize)
-            );
-            
-            // If no results and searchTerm doesn't look like orderId format, try customOrderNumber
-            let querySnapshot = await getDocs(ordersQuery);
-            
-            if (querySnapshot.empty && !searchTerm.startsWith('ORD-')) {
+
+            if (searchTerm.startsWith('202') || searchTerm.startsWith('ORD')) {
+                let formattedSearchTerm = searchTerm.startsWith('ORD') ? searchTerm : `ORD-${searchTerm}`;
+
                 ordersQuery = query(
                     collection(db, 'orders-test2'),
-                    where('customOrderNumber', '==', searchTerm.toUpperCase()),
+                    where('orderId', '>=', formattedSearchTerm.toUpperCase()),
                     limit(pageSize)
                 );
-                querySnapshot = await getDocs(ordersQuery);
+            } else {
+                ordersQuery = query(
+                    collection(db, 'orders-test2'),
+                    where('userEmail', '>=', searchTerm),
+                    limit(pageSize)
+                );
             }
+
+            let querySnapshot = await getDocs(ordersQuery);
             
             // Process search results
             const orders: OrderRecord[] = [];

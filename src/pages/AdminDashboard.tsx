@@ -15,7 +15,8 @@ import {
   UtensilsCrossed, 
   GraduationCap, 
   Ticket,
-  Settings
+  Settings,
+  CalendarHeart
 } from 'lucide-react';
 import Schools from '../components/Schools';
 import ItemController from '../components/ItemController';
@@ -23,6 +24,7 @@ import CouponController from '@/components/CouponController';
 import OrdersComponent from '@/components/Orders';
 import AdminOverview from '@/components/AdminOverview';
 import UsersComponent from '@/components/Users';
+import Events from '@/components/Events';
 
 const tabs = [
   { name: 'Dashboard', component: AdminOverview, icon: BarChart3 },
@@ -30,6 +32,7 @@ const tabs = [
   { name: 'Users', component: UsersComponent, icon: Users },
   { name: 'Menu Items', component: ItemController, icon: UtensilsCrossed },
   { name: 'Schools', component: Schools, icon: GraduationCap },
+  { name: 'Events', component: Events, icon: CalendarHeart },
   { name: 'Coupons', component: CouponController, icon: Ticket },
 ];
 
@@ -41,7 +44,6 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const ActiveComponent = tabs[activeTab].component;
-  const ActiveIcon = tabs[activeTab].icon;
 
   return (
     <div className="w-full space-y-6 p-4 sm:p-6">

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Loader2, Search, Utensils, Edit } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Search, Utensils, Edit, Filter, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -18,18 +18,32 @@ import { Child, User } from '@/models/user.model';
 
 const PAGE_SIZE = 25;
 
+interface SearchState {
+	term: string;
+	debouncedTerm: string;
+	isSearching: boolean;
+}
+
 const OrdersComponent: React.FC = () => {
 	const { state } = useAppContext();
 	const [orders, setOrders] = useState<OrderRecord[]>([]);
 	const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [hasMore, setHasMore] = useState(true);
-	const [searchTerm, setSearchTerm] = useState('');
+	const [isSearchResult, setIsSearchResult] = useState(false);
+	
+	// Search state
+	const [searchState, setSearchState] = useState<SearchState>({
+		term: '',
+		debouncedTerm: '',
+		isSearching: false
+	});
+	
 	const [mealToEdit, setMealToEdit] = useState<Meal | null>(null);
 	const [adminState, setAdminState] = useState<Child[] | null>(null);
 	const [showEditItemDialog, setShowEditItemDialog] = useState(false);
-    const [editingMealId, setEditingMealId] = useState<string | null>(null);
-    const [savingMealId, setSavingMealId] = useState<string | null>(null); // Track which meal is being saved
+	const [editingMealId, setEditingMealId] = useState<string | null>(null);
+	const [savingMealId, setSavingMealId] = useState<string | null>(null);
 	const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
 
 	// Memoized check for saving state
@@ -38,13 +52,13 @@ const OrdersComponent: React.FC = () => {
 		return result;
 	}, [savingMealId]);
 
-	const loadOrders = async (isLoadMore: boolean = false) => {
+	const loadOrders = useCallback(async (isLoadMore: boolean = false) => {
 		setLoading(true);
 		try {
 			const options = {
 				pageSize: PAGE_SIZE,
 				lastVisible: isLoadMore ? lastVisible : null,
-				searchTerm: searchTerm,
+				searchTerm: searchState.debouncedTerm,
 			};
 
 			const response: PaginatedOrdersResponse = await fetchOrders(options);
@@ -57,50 +71,83 @@ const OrdersComponent: React.FC = () => {
 
 			setLastVisible(response.lastVisible);
 			setHasMore(response.hasMore);
+			setIsSearchResult(!!searchState.debouncedTerm);
 		} catch (error) {
 			console.error('Error fetching orders: ', error);
 			toast.error('Failed to fetch orders');
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [lastVisible, searchState.debouncedTerm]);
 
-	// Debounced search handler
-	const debouncedSearch = debounce((term: string) => {
-		setSearchTerm(term);
-		setLastVisible(null);
-		setOrders([]); // Clear current results when searching
-	}, 300);
+	// Debounced search function
+	const debouncedSearch = useCallback(
+		debounce((searchTerm: string) => {
+			setSearchState(prev => ({ 
+				...prev, 
+				debouncedTerm: searchTerm,
+				isSearching: false 
+			}));
+		}, 500),
+		[]
+	);
 
-	const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+	// Handle search input change
+	const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
 		const value = event.target.value;
+		setSearchState(prev => ({ 
+			...prev, 
+			term: value,
+			isSearching: value.trim() !== prev.debouncedTerm.trim()
+		}));
 		debouncedSearch(value);
-	};
+	}, [debouncedSearch]);
 
+	// Clear search and filters
+	const clearFilters = useCallback(() => {
+		setSearchState({ term: '', debouncedTerm: '', isSearching: false });
+		setLastVisible(null);
+		setOrders([]);
+		setIsSearchResult(false);
+	}, []);
+
+	// Effect for search term changes
+	useEffect(() => {
+		// Skip the initial undefined state
+		if (searchState.debouncedTerm === undefined) return;
+		
+		setLastVisible(null);
+		setOrders([]);
+		loadOrders(false);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [searchState.debouncedTerm]);
+
+	// Initial load only
 	useEffect(() => {
 		loadOrders(false);
-	}, [searchTerm]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
-	const loadMore = () => {
-		if (!loading && hasMore) {
+	const loadMore = useCallback(() => {
+		if (!loading && hasMore && !isSearchResult) {
 			loadOrders(true);
 		}
-	};
+	}, [loading, hasMore, isSearchResult, loadOrders]);
 
-    const getUserDetails = async (userId: string): Promise<User | null> => {
-        try {
-            const functions = getFunctions();
-            const getUserById = httpsCallable(functions, 'getUserById');
-            
-            const result = await getUserById({ userId });
-            const data = result.data as { success: boolean; user: User };
-            
-            return data.success ? data.user : null;
-        } catch (error) {
-            console.error('Error getting user details:', error);
-            return null;
-        }
-    };
+	const getUserDetails = async (userId: string): Promise<User | null> => {
+		try {
+			const functions = getFunctions();
+			const getUserById = httpsCallable(functions, 'getUserById');
+			
+			const result = await getUserById({ userId });
+			const data = result.data as { success: boolean; user: User };
+			
+			return data.success ? data.user : null;
+		} catch (error) {
+			console.error('Error getting user details:', error);
+			return null;
+		}
+	};
 
 	// Updated to use Set-based expansion like OrderHistory
 	const handleOrderClick = (orderId: string) => {
@@ -120,44 +167,43 @@ const OrdersComponent: React.FC = () => {
 	};
 
 	const editMeal = async (meal: MealRecord) => {
-        setEditingMealId(meal.mealId);
-        try {
-            // parse the meal to match the expected Meal type
-            const user = await getUserDetails(meal.userId);
-            setAdminState(user?.children || []);
-            const selectedMain: Main = state.mains.find(main => main.id === meal.mainId)!;
-            const selectedAddons = state.addOns.filter(addon => meal.addOns.some(a => a.id === addon.id));
-            const selectedFruit = state.fruits.find(fruit => fruit.id === meal.fruitId) || undefined;
-            const selectedSide = state.sides.find(side => side.id === meal.sideId) || undefined;
-            const selectedChild = user?.children.find(child => child.id === meal.childId)!;
-            const selectedSchool = state.schools.find(school => school.id === meal.schoolId)!;
+		setEditingMealId(meal.mealId);
+		try {
+			// parse the meal to match the expected Meal type
+			const user = await getUserDetails(meal.userId);
+			setAdminState(user?.children || []);
+			const selectedMain: Main = state.mains.find(main => main.id === meal.mainId)!;
+			const selectedAddons = state.addOns.filter(addon => meal.addOns.some(a => a.id === addon.id));
+			const selectedFruit = state.fruits.find(fruit => fruit.id === meal.fruitId) || undefined;
+			const selectedSide = state.sides.find(side => side.id === meal.sideId) || undefined;
+			const selectedChild = user?.children.find(child => child.id === meal.childId)!;
+			const selectedSchool = state.schools.find(school => school.id === meal.schoolId)!;
 
-            const parsedMeal: Meal = {
-                id: meal.mealId, // Explicitly using meal.mealId to ensure consistency
-                main: selectedMain,
-                addOns: selectedAddons,
-                fruit: selectedFruit,
-                side: selectedSide,
-                child: selectedChild,
-                school: selectedSchool,
-                total: meal.totalAmount,
-                deliveryDate: new Date(meal.deliveryDate).toISOString(),
-            };
+			const parsedMeal: Meal = {
+				id: meal.mealId,
+				main: selectedMain,
+				addOns: selectedAddons,
+				fruit: selectedFruit,
+				side: selectedSide,
+				child: selectedChild,
+				school: selectedSchool,
+				total: meal.totalAmount,
+				deliveryDate: new Date(meal.deliveryDate).toISOString(),
+			};
 
-            setMealToEdit(parsedMeal);
-            setShowEditItemDialog(true);
-        } catch (error) {
-            console.error('Error preparing meal for edit:', error);
-            toast.error('Failed to load meal details');
-        } finally {
-            setEditingMealId(null);
-        }
-    };
+			setMealToEdit(parsedMeal);
+			setShowEditItemDialog(true);
+		} catch (error) {
+			console.error('Error preparing meal for edit:', error);
+			toast.error('Failed to load meal details');
+		} finally {
+			setEditingMealId(null);
+		}
+	};
 
 	const handleCloseModal = () => {
 		setShowEditItemDialog(false);
 		setMealToEdit(null);
-        // Don't clear savingMealId here anymore - let it clear after the save operation completes
 	};
 
 	const handleSaveMeal = async (meals: Meal | Meal[]) => {
@@ -168,7 +214,7 @@ const OrdersComponent: React.FC = () => {
 			return;
 		}
 
-        setSavingMealId(meal.id);
+		setSavingMealId(meal.id);
 
 		try {
 			const functions = getFunctions();
@@ -208,17 +254,13 @@ const OrdersComponent: React.FC = () => {
 
 			if (data.success) {
 				toast.success('Meal updated successfully');
-				// Close the modal first (but keep savingMealId set)
 				setShowEditItemDialog(false);
 				setMealToEdit(null);
 				
-				// Add a small delay to ensure the saving indicator is visible
 				setTimeout(async () => {
-					// Then refresh the orders to show the updated meal
 					await loadOrders(false);
-					// Finally clear the saving state
 					setSavingMealId(null);
-				}, 500); // 500ms delay to show the saving indicator
+				}, 500);
 			} else {
 				toast.error('Failed to update meal');
 			}
@@ -235,7 +277,7 @@ const OrdersComponent: React.FC = () => {
 				toast.error('Failed to update meal. Please try again.');
 			}
 		} finally {
-			setSavingMealId(null); // Clear saving state
+			setSavingMealId(null);
 		}
 	};
 
@@ -267,7 +309,6 @@ const OrdersComponent: React.FC = () => {
 		}
 	};
 
-	// Helper functions like OrderHistory
 	const isOrderExpanded = (orderId: string): boolean => {
 		return expandedOrderIds.has(orderId);
 	};
@@ -280,8 +321,19 @@ const OrdersComponent: React.FC = () => {
 			<CardContent className="text-center">
 				<Utensils className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
 				<p className="text-lg mb-4">
-					{searchTerm ? `No orders found matching "${searchTerm}"` : 'No orders available.'}
+					{searchState.debouncedTerm 
+						? searchState.debouncedTerm.length < 2 
+							? 'Please enter at least 2 characters to search'
+							: `No orders found matching "${searchState.debouncedTerm}"`
+						: 'No orders available.'
+					}
 				</p>
+				{searchState.debouncedTerm && (
+					<Button variant="outline" onClick={clearFilters} className="inline-flex items-center gap-2">
+						<X className="h-4 w-4" />
+						Clear Search
+					</Button>
+				)}
 			</CardContent>
 		</Card>
 	);
@@ -294,13 +346,51 @@ const OrdersComponent: React.FC = () => {
 				<div className="relative max-w-sm w-full">
 					<Input
 						type="text"
-						placeholder="Search by order ID..."
-						onChange={handleSearch}
-						className="pl-10"
+						placeholder="Search by order ID"
+						value={searchState.term}
+						onChange={handleSearchChange}
+						className="pl-10 pr-10"
 					/>
-					<Search className="absolute left-3 top-2.5 h-5 w-5 text-brand-taupe" />
+					<Search className="absolute left-3 top-2 h-5 w-5 text-brand-taupe" />
+					{searchState.isSearching && (
+						<Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-brand-taupe animate-spin" />
+					)}
 				</div>
 			</div>
+
+			{/* Active Filters & Search Status */}
+			{searchState.debouncedTerm && (
+				<div className="flex flex-wrap items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+					<div className="flex items-center gap-2">
+						<Filter className="h-4 w-4 text-blue-600" />
+						<span className="text-sm font-medium text-blue-900">Active Search:</span>
+					</div>
+					{searchState.debouncedTerm.length >= 2 ? (
+						<>
+							<Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
+								Search: "{searchState.debouncedTerm}"
+							</Badge>
+							<div className="flex items-center gap-2 ml-auto">
+								<span className="text-sm text-blue-700">
+									{orders.length} order{orders.length !== 1 ? 's' : ''} found
+								</span>
+								<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2">
+									<X className="h-3 w-3" />
+								</Button>
+							</div>
+						</>
+					) : (
+						<>
+							<span className="text-sm text-orange-700">
+								Please enter at least 2 characters to search
+							</span>
+							<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 ml-auto">
+								<X className="h-3 w-3" />
+							</Button>
+						</>
+					)}
+				</div>
+			)}
 
 			{orders.length === 0 && !loading ? (
 				<RenderNoOrders />
@@ -353,10 +443,10 @@ const OrdersComponent: React.FC = () => {
 																<span className="font-medium">Order ID:</span>{' '}
 																{order.orderId}
 															</div>
-															<div>
-																<span className="font-medium">User:</span>{' '}
-																{order.userEmail}
-															</div>
+                                                            <div>
+                                                                <span className="font-medium">Delivered to:</span>{' '}
+                                                                {order.meals.map(meal => meal.schoolName).join(', ')}
+                                                            </div>
 															<div>
 																<span className="font-medium">Total Meals:</span>{' '}
 																{order.meals.length}
@@ -388,25 +478,25 @@ const OrdersComponent: React.FC = () => {
 														<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 															{order.meals.map((meal) => {
 																const mealStatus = getMealStatus(meal.deliveryDate);
-                                                                const isMealBeingEdited = editingMealId === meal.mealId;
-                                                                const isMealBeingSaved = isMealSaving(meal.mealId);
-                                                                const isMealDisabled = isMealBeingEdited || isMealBeingSaved;
-                                                                
+																const isMealBeingEdited = editingMealId === meal.mealId;
+																const isMealBeingSaved = isMealSaving(meal.mealId);
+																const isMealDisabled = isMealBeingEdited || isMealBeingSaved;
+																
 																return (
 																	<div
 																		key={`${meal.mealId}`}
 																		className="bg-white p-4 rounded-md shadow-sm mb-3 relative">
-                                                                        {isMealBeingSaved && (
-                                                                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-md">
-                                                                                <div className="flex items-center gap-2 p-3 bg-white rounded-lg shadow-sm border">
-                                                                                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                                                                    <span className="text-sm font-medium text-gray-700">
-                                                                                        Saving...
-                                                                                    </span>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                        
+																		{isMealBeingSaved && (
+																			<div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-md">
+																				<div className="flex items-center gap-2 p-3 bg-white rounded-lg shadow-sm border">
+																					<Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+																					<span className="text-sm font-medium text-gray-700">
+																						Saving...
+																					</span>
+																				</div>
+																			</div>
+																		)}
+																		
 																		<div className="absolute top-2 right-2">
 																			{getStatusBadge(mealStatus)}
 																		</div>
@@ -470,34 +560,34 @@ const OrdersComponent: React.FC = () => {
 																			)}
 
 																			{mealStatus !== 'delivered' && (
-                                                                                <Button
-                                                                                    variant="outline"
-                                                                                    size="sm"
-                                                                                    className="mt-2"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        editMeal(meal);
-                                                                                    }}
-                                                                                    disabled={isMealDisabled}
-                                                                                >
-                                                                                    {isMealBeingEdited ? (
-                                                                                        <>
-                                                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                                                            Loading...
-                                                                                        </>
-                                                                                    ) : isMealBeingSaved ? (
-                                                                                        <>
-                                                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                                                            Saving...
-                                                                                        </>
-                                                                                    ) : (
-                                                                                        <>
-                                                                                            <Edit className="h-4 w-4 mr-2" />
-                                                                                            Edit Meal
-                                                                                        </>
-                                                                                    )}
-                                                                                </Button>
-                                                                            )}
+																				<Button
+																					variant="outline"
+																					size="sm"
+																					className="mt-2"
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						editMeal(meal);
+																					}}
+																					disabled={isMealDisabled}
+																				>
+																					{isMealBeingEdited ? (
+																						<>
+																							<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+																							Loading...
+																						</>
+																					) : isMealBeingSaved ? (
+																						<>
+																							<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+																							Saving...
+																						</>
+																					) : (
+																						<>
+																							<Edit className="h-4 w-4 mr-2" />
+																							Edit Meal
+																						</>
+																					)}
+																				</Button>
+																			)}
 																		</div>
 																	</div>
 																);
@@ -515,7 +605,7 @@ const OrdersComponent: React.FC = () => {
 				</div>
 			)}
 
-			{hasMore && (
+			{hasMore && !isSearchResult && (
 				<div className="flex justify-center mt-4">
 					<Button
 						onClick={loadMore}

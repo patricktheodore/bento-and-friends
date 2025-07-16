@@ -548,7 +548,7 @@ const UsersComponent: React.FC = () => {
 						<span className="text-sm text-blue-700">
 							{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found
 						</span>
-						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2">
+						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 hover:bg-blue-200">
 							<X className="h-3 w-3" />
 						</Button>
 					</div>
