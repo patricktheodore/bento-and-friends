@@ -78,25 +78,15 @@ export const getAllDailyAnalytics = async (days: number = 90) => {
 };
 
 export const getCumulativeAnalytics = async () => {
-    const cumulativeRef = doc(db, 'cumulativeAnalytics', 'totals');
-    const cumulativeSnap = await getDoc(cumulativeRef);
-    
-    if (cumulativeSnap.exists()) {
-      const cumulativeData = cumulativeSnap.data() as CumulativeAnalytics;
+  const cumulativeRef = doc(db, 'cumulativeAnalytics', 'totals');
+  const cumulativeSnap = await getDoc(cumulativeRef);
   
-      // Get the current user count
-      const usersCollection = collection(db, 'users-test2');
-      const userCountSnapshot = await getCountFromServer(usersCollection);
-      const currentUserCount = userCountSnapshot.data().count;
-  
-      return {
-        ...cumulativeData,
-        userCount: currentUserCount  // Override the userCount with the current count
-      };
-    } else {
-      throw new Error('Cumulative analytics data not found');
-    }
-  };
+  if (cumulativeSnap.exists()) {
+    return cumulativeSnap.data() as CumulativeAnalytics;
+  } else {
+    throw new Error('Cumulative analytics data not found');
+  }
+};
   
 
 export const getOrdersOverTime = async (days: number = 30) => {

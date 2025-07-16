@@ -1,21 +1,23 @@
-import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
-import { db } from '../firebase'; // Adjust the import path as needed
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
+import { MealRecord } from '@/models/order.model';
 
-export const getMealsBetweenDates = async (startDate: Date, endDate: Date) => {
-  // Set the time to the start of the day for the start date
-  const startOfDay = new Date(startDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const startTimestamp = Timestamp.fromDate(startOfDay);
+export interface MealWithId extends MealRecord {
+  id: string;
+}
 
-  // Set the time to the end of the day for the end date
-  const endOfDay = new Date(endDate);
-  endOfDay.setHours(23, 59, 59, 999);
-  const endTimestamp = Timestamp.fromDate(endOfDay);
+export const getMealsBetweenDates = async (
+  startDate: Date, 
+  endDate: Date
+): Promise<MealWithId[]> => {
+  // Format dates as YYYY-MM-DD strings to match your deliveryDate format
+  const startDateString = startDate.toISOString().split('T')[0];
+  const endDateString = endDate.toISOString().split('T')[0];
 
-  let q = query(
-    collection(db, 'meals'),
-    where('deliveryDate', '>=', startTimestamp),
-    where('deliveryDate', '<=', endTimestamp),
+  const q = query(
+    collection(db, 'meals-test2'),
+    where('deliveryDate', '>=', startDateString),
+    where('deliveryDate', '<=', endDateString),
     orderBy('deliveryDate')
   );
 
@@ -23,5 +25,75 @@ export const getMealsBetweenDates = async (startDate: Date, endDate: Date) => {
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
-  }));
+  })) as MealWithId[];
+};
+
+export const getMealsByDateRange = async (
+  startDate: string, 
+  endDate: string
+): Promise<MealWithId[]> => {
+  const q = query(
+    collection(db, 'meals-test2'),
+    where('deliveryDate', '>=', startDate),
+    where('deliveryDate', '<=', endDate),
+    orderBy('deliveryDate')
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as MealWithId[];
+};
+
+export const getMealsBySchool = async (
+  schoolId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<MealWithId[]> => {
+  let q = query(
+    collection(db, 'meals-test2'),
+    where('schoolId', '==', schoolId),
+    orderBy('deliveryDate')
+  );
+
+  if (startDate) {
+    q = query(q, where('deliveryDate', '>=', startDate));
+  }
+  
+  if (endDate) {
+    q = query(q, where('deliveryDate', '<=', endDate));
+  }
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as MealWithId[];
+};
+
+export const getMealsByChild = async (
+  childId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<MealWithId[]> => {
+  let q = query(
+    collection(db, 'meals-test2'),
+    where('childId', '==', childId),
+    orderBy('deliveryDate')
+  );
+
+  if (startDate) {
+    q = query(q, where('deliveryDate', '>=', startDate));
+  }
+  
+  if (endDate) {
+    q = query(q, where('deliveryDate', '<=', endDate));
+  }
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as MealWithId[];
 };

@@ -48,6 +48,9 @@ interface OptimizedOrderData {
     child: {
       id: string;
       name: string;
+      isTeacher: boolean; // Optional field to indicate if the child is a teacher
+      year?: string; // Optional field for child year
+      class?: string; // Optional field for child class
     };
 
     school: {
@@ -258,6 +261,9 @@ export async function createTempOrder(
       child: {
         id: meal.child.id,
         name: meal.child.name,
+        isTeacher: meal.child.isTeacher || false,
+        year: meal.child.year || undefined,
+        class: meal.child.class || undefined,
       },
       school: {
         id: meal.school.id,

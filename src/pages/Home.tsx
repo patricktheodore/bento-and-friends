@@ -9,78 +9,107 @@ import DiscountOptionsComponent from '@/components/DiscountOptions';
 import { getStorage, ref, getDownloadURL } from "firebase/storage";
 import placeholder from '@/assets/banner.png';
 import CateringPreviewComponent from '@/components/CateringPreview';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 const HomePage: React.FC = () => {
 	const { state } = useAppContext();
-
 	const [heroImage, setHeroImage] = useState(placeholder);
+	const [imageLoading, setImageLoading] = useState(true);
 
 	useEffect(() => {
-	  const fetchHeroImage = async () => {
-		const storage = getStorage();
-		const heroImageRef = ref(storage, 'images/hero.jpg');
-		try {
-		  const url = await getDownloadURL(heroImageRef);
-		  setHeroImage(url);
-		} catch (error) {
-		  console.error("Error fetching hero image:", error);
-		  setHeroImage(placeholder);
-		}
-	  };
-  
-	  fetchHeroImage();
+		const fetchHeroImage = async () => {
+			const storage = getStorage();
+			const heroImageRef = ref(storage, 'images/hero.jpg');
+			try {
+				const url = await getDownloadURL(heroImageRef);
+				setHeroImage(url);
+			} catch (error) {
+				console.error("Error fetching hero image:", error);
+				setHeroImage(placeholder);
+			} finally {
+				setImageLoading(false);
+			}
+		};
+
+		fetchHeroImage();
 	}, []);
 
 	return (
-		<>
-			<div className="relative max-h-screen h-[40vh] flex items-center justify-center">
+		<div className="w-full">
+			{/* Hero Section */}
+			<div className="relative h-[60vh] min-h-[500px] flex items-center justify-center">
+				{imageLoading && (
+					<div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-20">
+						<Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+					</div>
+				)}
 				<div
 					className="absolute inset-0 bg-cover bg-center z-0"
 					style={{
 						backgroundImage: `url(${heroImage})`,
 					}}
 				>
-					<div className="absolute inset-0 bg-black opacity-75"></div>
+					<div className="absolute inset-0 bg-black/70"></div>
 				</div>
 
-				<div className="z-10 text-center px-4">
-					<h1 className="text-4xl md:text-6xl tracking-wide text-brand-cream mb-4">Welcome to Bento & Friends!</h1>
-					<h2 className='text-2xl md:text-4xl text-brand-cream mb-4'>Perth’s Dedicated School Lunch Catering Specialists</h2>
-					<h3 className='text-xl md:text-2xl text-brand-cream mb-8 font-light italic'>"Powering our school kids with every bite"</h3>
+				<div className="z-10 text-center px-4 max-w-4xl mx-auto">
+					<h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight">
+						Welcome to Bento & Friends!
+					</h1>
+					<h2 className="text-xl md:text-3xl text-white mb-4 font-medium">
+						Perth's Dedicated School Lunch Catering Specialists
+					</h2>
+					<p className="text-lg md:text-xl text-white/90 mb-8 font-light italic">
+						"Powering our school kids with every bite"
+					</p>
+					
 					{state.user ? (
-						<Link
-							to="/order"
-							className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+						<Button 
+							asChild 
+							size="lg" 
+							className="bg-white text-gray-900 hover:bg-gray-100 font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
 						>
-							Order Now
-						</Link>
+							<Link to="/order">
+								Order Now
+							</Link>
+						</Button>
 					) : (
-						<div className="flex justify-center gap-4">
-							<Link
-								to="/signin?mode=register"
-								className="bg-transparent text-brand-cream border-2 border-cream hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+						<div className="flex flex-col sm:flex-row justify-center gap-4">
+							<Button 
+								asChild 
+								variant="outline" 
+								size="lg"
+								className="bg-transparent text-white border-2 border-white hover:bg-white hover:text-gray-900 font-semibold px-8 py-3 rounded-full transition-all duration-300"
 							>
-								Get Started
-							</Link>
-							<Link
-								to="/signin"
-								className="bg-brand-cream text-brand-dark-green hover:brightness-75 font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg ring-2 ring-transparent hover:ring-brand-dark-green"
+								<Link to="/signin?mode=register">
+									Get Started
+								</Link>
+							</Button>
+							<Button 
+								asChild 
+								size="lg"
+								className="bg-white text-gray-900 hover:bg-gray-100 font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
 							>
-								Sign In
-							</Link>
+								<Link to="/signin">
+									Sign In
+								</Link>
+							</Button>
 						</div>
 					)}
 				</div>
 			</div>
-			<HowItWorksSummaryComponent />
-			<DiscountOptionsComponent />
-			<NutritionComponent />
-			<CateringPreviewComponent />
-			<OurStoryComponent />
-            <FeaturedMenuItemsCarousel />
-			{/* <TestimonialsComponent /> */}
-			{/* <SustainabilityComponent /> */}
-		</>
+
+			{/* Content Sections */}
+			<div className="space-y-0">
+				<HowItWorksSummaryComponent />
+				<DiscountOptionsComponent />
+				<NutritionComponent />
+				<CateringPreviewComponent />
+				<OurStoryComponent />
+				<FeaturedMenuItemsCarousel />
+			</div>
+		</div>
 	);
 };
 

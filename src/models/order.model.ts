@@ -86,6 +86,9 @@ export interface MealRecord {
 
     childId: string;
     childName: string;
+    childIsTeacher: boolean;
+    childYear?: string;
+    childClass?: string;
 
     mainId: string;
     mainName: string;

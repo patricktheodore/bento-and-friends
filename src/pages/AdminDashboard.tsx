@@ -6,6 +6,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  BarChart3, 
+  ShoppingCart, 
+  Users, 
+  UtensilsCrossed, 
+  GraduationCap, 
+  Ticket,
+  Settings
+} from 'lucide-react';
 import Schools from '../components/Schools';
 import ItemController from '../components/ItemController';
 import CouponController from '@/components/CouponController';
@@ -14,12 +25,12 @@ import AdminOverview from '@/components/AdminOverview';
 import UsersComponent from '@/components/Users';
 
 const tabs = [
-  { name: 'Dashboard', component: AdminOverview },
-  { name: 'Orders', component: OrdersComponent },
-  { name: 'Users', component: UsersComponent },
-  { name: 'Menu Items', component: ItemController },
-  { name: 'Schools', component: Schools },
-  { name: 'Coupons', component: CouponController },
+  { name: 'Dashboard', component: AdminOverview, icon: BarChart3 },
+  { name: 'Orders', component: OrdersComponent, icon: ShoppingCart },
+  { name: 'Users', component: UsersComponent, icon: Users },
+  { name: 'Menu Items', component: ItemController, icon: UtensilsCrossed },
+  { name: 'Schools', component: Schools, icon: GraduationCap },
+  { name: 'Coupons', component: CouponController, icon: Ticket },
 ];
 
 const AdminDashboardPage: React.FC = () => {
@@ -30,48 +41,93 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const ActiveComponent = tabs[activeTab].component;
+  const ActiveIcon = tabs[activeTab].icon;
 
   return (
-    <div className="w-full mx-auto p-4 pb-8 md:p-8 lg:p-12 flex flex-col justify-start items-center gap-2">
-      <div className="w-full flex flex-col justify-start items-center md:flex-row md:justify-between gap-4 px-4">
-        <h1 className="text-4xl font-bold">Admin Dashboard</h1>
-        
-        {/* Select dropdown for small screens */}
-        <div className="md:hidden w-full max-w-xs">
-          <Select onValueChange={handleTabChange} defaultValue={activeTab.toString()}>
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="Select a tab" />
-            </SelectTrigger>
-            <SelectContent>
-              {tabs.map((tab, index) => (
-                <SelectItem key={index} value={index.toString()}>
-                  {tab.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="w-full space-y-6 p-4 sm:p-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-600 mt-1">Manage your business operations</p>
         </div>
         
-        {/* Tab menu for larger screens */}
-        <div className="hidden md:flex justify-start items-center gap-2 rounded-md p-1 bg-stone-200">
-          {tabs.map((tab, index) => (
-            <button
-              key={index}
-              onClick={() => handleTabChange(index.toString())}
-              className={`text-sm rounded-md py-2 px-4 transition-colors ${
-                activeTab === index 
-                  ? 'bg-white font-bold' 
-                  : 'bg-stone-200 hover:brightness-90'
-              }`}
-            >
-              {tab.name}
-            </button>
-          ))}
+        {/* Admin Badge */}
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+            <Settings className="h-3 w-3 mr-1" />
+            Admin Access
+          </Badge>
         </div>
       </div>
 
-      <div className="w-full bg-card text-card-foreground rounded-lg border shadow-sm p-4">
-        {ActiveComponent ? <ActiveComponent /> : <div>Component not implemented yet</div>}
+      {/* Navigation */}
+      <Card>
+        <CardContent className="pt-6">
+          {/* Mobile Select Dropdown */}
+          <div className="md:hidden">
+            <Select onValueChange={handleTabChange} value={activeTab.toString()}>
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Select a section" />
+              </SelectTrigger>
+              <SelectContent>
+                {tabs.map((tab, index) => {
+                  const Icon = tab.icon;
+                  return (
+                    <SelectItem key={index} value={index.toString()}>
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {tab.name}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Desktop Tab Menu */}
+          <div className="hidden md:flex justify-start items-center gap-2 p-1 bg-gray-100 rounded-lg">
+            {tabs.map((tab, index) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleTabChange(index.toString())}
+                  className={`flex items-center gap-2 text-sm rounded-lg py-2 px-4 transition-all duration-200 ${
+                    activeTab === index 
+                      ? 'bg-white font-medium text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.name}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Content Section */}
+      <div>
+
+        {/* Active Component */}
+        <Card className="shadow-sm">
+          <CardContent className="p-6">
+            {ActiveComponent ? (
+              <ActiveComponent />
+            ) : (
+              <div className="text-center py-8">
+                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <Settings className="h-6 w-6 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
+                <p className="text-gray-500">This section is currently under development.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
