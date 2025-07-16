@@ -32,7 +32,7 @@ interface OrderDialogProps {
 const OrderDialog: React.FC<OrderDialogProps> = ({ 
     isOpen, 
     onClose, 
-    selectedMain, 
+    selectedMain,
     selectedSchool, 
     editingMeal,
     adminState,
@@ -48,7 +48,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 	const [selectedChildren, setSelectedChildren] = useState<Child[]>([]);
 	const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 	const [isMainOnly, setIsMainOnly] = useState<boolean>(false);
-
+    const [calendarKey, setCalendarKey] = useState<string>(`calendar-${selectedMain?.id || 'none'}`);
 	// Use the school from editingMeal if in edit mode and selectedSchool is not provided
 	const effectiveSchool = selectedSchool || editingMeal?.school;
 	
@@ -184,12 +184,53 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         }
 	};
 
+    const updateMain = (main: Main) => {
+    const wasPromo = currentMain?.isPromo;
+    const isPromo = main.isPromo;
+    
+    if ((wasPromo || isPromo) && selectedDates.length > 0) {
+        setSelectedDates([]);
+        
+        if (wasPromo && !isPromo) {
+            toast('Dates cleared - switching from promotional to regular menu item', {
+                style: {
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                },
+            });
+        } else if (!wasPromo && isPromo) {
+            toast('Dates cleared - promotional items have specific available dates', {
+                style: {
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                },
+            });
+        } else if (wasPromo && isPromo) {
+            toast('Dates cleared - different promotional item selected', {
+                style: {
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                },
+            });
+        }
+    }
+
+    setCurrentMain(main);
+    setCalendarKey(`calendar-${main.id}`);
+}
+
 	const isInvalidDate = (date: Date):boolean => {
-        if (!effectiveSchool || !effectiveSchool.validDates) {
-            return false; // No valid dates defined for the school
+        let validDates = [];
+
+        if (currentMain?.isPromo && currentMain?.validDates) {
+            validDates = currentMain.validDates;
+        } else if (effectiveSchool?.validDates) {
+            validDates = effectiveSchool.validDates;
+        } else {
+            return false; // No valid dates to check against
         }
 
-		return !(isValidDateCheck(date, effectiveSchool.validDates));
+		return !(isValidDateCheck(date, validDates));
 	};
 
 	const calculateTotal = (main: Main, addOns: AddOn[]) => {
@@ -203,7 +244,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 			return;
 		}
 		if (selectedChildren.length === 0) {
-			toast.error('Please select at least one child');
+			toast.error('Please select at least one recipient');
 			return;
 		}
 		if (selectedDates.length === 0) {
@@ -334,7 +375,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 								value={currentMain?.id || ''}
 								onValueChange={(value) => {
 									const main = availableMains.find(m => m.id === value);
-									if (main) setCurrentMain(main);
+									if (main) updateMain(main);
 								}}
 								disabled={isMainDisabled}
 							>
@@ -345,7 +386,12 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 									{availableMains.map(main => (
 										<SelectItem key={main.id} value={main.id}>
 											<span className="flex justify-between items-center w-full">
-												<span>{main.display}</span>
+												{main.isPromo && (
+                                                    <Badge variant="promo" className="mr-2">
+                                                        Promo
+                                                    </Badge>
+                                                )}
+                                                <span>{main.display}</span>
 												<span className="font-medium ml-2">${main.price.toFixed(2)}</span>
 											</span>
 										</SelectItem>
@@ -461,12 +507,21 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 
 						{/* Date Selection */}
 						<div className="bg-gray-50 rounded-lg p-4 space-y-3">
-							<h3 className="text-lg font-semibold text-gray-900">
-								{isEditMode ? 'Date' : 'Dates'}
-							</h3>
+							<div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {isEditMode ? 'Date' : 'Dates'}
+                                </h3>
+                                {currentMain?.isPromo && (
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                                        Promo Dates
+                                    </Badge>
+                                )}
+                            </div>
+                            
 							<div className="flex justify-center">
 								{isEditMode ? (
 									<Calendar
+                                        key={calendarKey}
 										mode="single"
 										selected={selectedDates[0]}
 										onSelect={(date) => handleDateSelect(date)}
@@ -475,6 +530,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 									/>
 								) : (
 									<Calendar
+                                        key={calendarKey}
 										mode="multiple"
 										selected={selectedDates}
 										onSelect={(dates) => handleDateSelect(dates)}

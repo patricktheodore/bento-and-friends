@@ -14,7 +14,7 @@ const Header: React.FC = () => {
     
     const menuItems = [
         { to: '/menu', label: 'Menu' },
-        { to: '/contact', label: 'Contact' },
+        { to: '/order', label: 'Order' },
         ...(state.user 
             ? (state.user.isAdmin
                 ? [
@@ -23,7 +23,7 @@ const Header: React.FC = () => {
                     { to: '/signout', label: 'Sign Out' }
                 ]
                 : [
-                    { to: '/order', label: 'Order' },
+                    { to: '/contact', label: 'Contact' },
                     { to: '/catering', label: 'Catering' },
                     { to: '/account', label: 'Account' },
                     { to: '/signout', label: 'Sign Out' }

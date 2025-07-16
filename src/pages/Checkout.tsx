@@ -74,8 +74,25 @@ const CheckoutPage: React.FC = () => {
 		totalDiscountPercentage,
 	} = discountCalculation;
 
+    const isInvalidDate = (meal: Meal): boolean => {
+        let validDates = [];
+
+        const main = state.mains.find(m => m.id === meal.main.id);
+        const school = meal.school;
+
+        if (main?.isPromo && main?.validDates) {
+            validDates = main.validDates;
+        } else if (school?.validDates) {
+            validDates = school.validDates;
+        } else {
+            return false; // No valid dates to check against
+        }
+
+        return !(isValidDateCheck(new Date(meal.deliveryDate), validDates));
+    };
+
 	const hasInvalidDates = useMemo(() => {
-		return sortedMeals.some(meal => !isValidDateCheck(new Date(meal.deliveryDate), meal.school?.validDates));
+        return sortedMeals.some(meal => isInvalidDate(meal));
 	}, [sortedMeals]);
 
 	const handleApplyCoupon = async (code: string) => {
@@ -113,10 +130,6 @@ const CheckoutPage: React.FC = () => {
 		dispatch({ type: 'REMOVE_FROM_CART', payload: mealId });
 		toast.success('Item removed from cart');
 	};
-
-    const isInvalidDate = (meal: Meal): boolean => {
-        return !(isValidDateCheck(new Date(meal.deliveryDate), meal.school?.validDates));
-    };
 
     const handleUpdate = (meals: Meal | Meal[]) => {
         if (!state.cart) {
@@ -158,7 +171,7 @@ const CheckoutPage: React.FC = () => {
                     currency: 'aud',
                     product_data: {
                         name: `${meal.main.display} - ${meal.child.name} (${meal.school.name})`,
-                        description: `Main: ${meal.main.display} (${meal.main.addOns?.map(addon => addon.display).join(", ")}), ${meal.side ? `Side: ${meal.side.display}, ` : ''}${meal.fruit ? `Fruit: ${meal.fruit.display}, ` : ''}On: ${new Date(meal.deliveryDate).toLocaleDateString('en-AU')}`,
+                        description: `Main: ${meal.main.display} (${meal.addOns?.map(addon => addon.display).join(", ")}), ${meal.side ? `Side: ${meal.side.display}, ` : ''}${meal.fruit ? `Fruit: ${meal.fruit.display}, ` : ''}On: ${new Date(meal.deliveryDate).toLocaleDateString('en-AU')}`,
                     },
                     unit_amount: Math.round(meal.total * 100), // Convert to cents
                 },
@@ -358,7 +371,14 @@ const CheckoutPage: React.FC = () => {
 						<CardContent className="p-4">
 							<div className="flex flex-wrap justify-between items-start">
 								<div className="w-full sm:w-2/3">
-									<h3 className="font-semibold text-lg">{meal.main.display}</h3>
+                                    <div className='flex gap-2 items-center'>
+                                        <h3 className="font-semibold text-lg">{meal.main.display}</h3>
+                                        {meal.main.isPromo && (
+                                            <Badge variant="promo" className="mr-2">
+                                                Promo
+                                            </Badge>
+                                        )}
+                                    </div>
 									{isInvalidDate(meal) && (
 										<Alert variant="destructive" className="mt-2 mb-2">
 											<AlertTriangle className="h-4 w-4" />

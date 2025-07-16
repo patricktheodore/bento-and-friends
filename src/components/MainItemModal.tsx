@@ -8,7 +8,9 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
-import { X } from 'lucide-react';
+import { Calendar } from './ui/calendar';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { X, Calendar as CalendarIcon } from 'lucide-react';
 
 interface MainItemModalProps {
     isOpen: boolean;
@@ -37,17 +39,40 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         isFeatured: false,
         isVegetarian: false,
         isPromo: false,
+        validDates: [] as string[],
     });
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string>('');
     const [allergenInput, setAllergenInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+    const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
 
     // Get available addons from app context
     const availableAddons = state.addOns.filter(addon => addon.isActive);
 
+    // Hook to track screen size for responsive calendar
+    useEffect(() => {
+        const updateScreenSize = () => {
+            setScreenSize({ width: window.innerWidth, height: window.innerHeight });
+        };
+
+        updateScreenSize();
+        window.addEventListener('resize', updateScreenSize);
+        return () => window.removeEventListener('resize', updateScreenSize);
+    }, []);
+
+    // Determine number of months based on screen size
+    const getNumberOfMonths = () => {
+        if (screenSize.width >= 1280) return 3; // xl screens
+        if (screenSize.width >= 768) return 2; // md screens
+        return 1; // sm screens
+    };
+
     useEffect(() => {
         if (item && mode === 'edit') {
+            const validDatesAsDateObjects = (item.validDates || []).map(dateStr => new Date(dateStr));
+            
             setFormData({
                 display: item.display || '',
                 description: item.description || '',
@@ -59,7 +84,9 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: item.isFeatured ?? false,
                 isVegetarian: item.isVegetarian ?? false,
                 isPromo: item.isPromo ?? false,
+                validDates: item.validDates || [],
             });
+            setSelectedDates(validDatesAsDateObjects);
             setImagePreview(item.image || '');
         } else {
             // Reset form for add mode
@@ -74,7 +101,9 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: false,
                 isVegetarian: false,
                 isPromo: false,
+                validDates: [],
             });
+            setSelectedDates([]);
             setImagePreview('');
             setImageFile(null);
         }
@@ -127,11 +156,52 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         });
     };
 
+    const handlePromoToggle = (checked: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            isPromo: checked,
+            validDates: checked ? prev.validDates : [], // Clear dates if not promo
+        }));
+        
+        if (!checked) {
+            setSelectedDates([]); // Clear selected dates in calendar
+        }
+    };
+
+    const handleDateSelect = (dates: Date[] | undefined) => {
+        if (!dates) return;
+        
+        const uniqueDates = removeDuplicateDates(dates);
+        setSelectedDates(uniqueDates);
+        
+        // Convert dates to ISO strings for storage
+        const dateStrings = uniqueDates.map(date => date.toISOString());
+        setFormData(prev => ({
+            ...prev,
+            validDates: dateStrings
+        }));
+    };
+
+    const removeDuplicateDates = (dates: Date[]): Date[] => {
+        return Array.from(new Set(dates.map(d => d.toISOString()))).map(d => new Date(d));
+    };
+
+    const isWeekend = (date: Date) => {
+        const day = date.getDay();
+        return day === 0 || day === 6;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!formData.display || formData.price < 0) {
             alert('Please fill in all required fields');
+            return;
+        }
+
+        // Validate promo dates
+        if (formData.isPromo && formData.validDates.length === 0) {
+            alert('Please select at least one valid date for promotional items');
             return;
         }
 
@@ -150,7 +220,8 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 formData.addOns,
                 formData.price,
                 item?.id,
-                formData.isPromo
+                formData.isPromo,
+                formData.isPromo ? formData.validDates : undefined // Only pass validDates if isPromo
             );
 
             await onSubmit(mainItem, imageFile);
@@ -168,7 +239,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'add' ? 'Add New Main Item' : 'Edit Main Item'}
@@ -367,10 +438,59 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                             <Switch
                                 id="isPromo"
                                 checked={formData.isPromo}
-                                onCheckedChange={(checked) => setFormData({ ...formData, isPromo: checked })}
+                                onCheckedChange={handlePromoToggle}
                             />
                         </div>
                     </div>
+
+                    {/* Promotional Dates Section */}
+                    {formData.isPromo && (
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <CalendarIcon className="h-5 w-5 text-blue-600" />
+                                    Valid Promotional Dates
+                                </CardTitle>
+                                <p className="text-sm text-gray-600">
+                                    Select the dates when this promotional item will be available (weekends are disabled)
+                                </p>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Calendar
+                                        mode="multiple"
+                                        selected={selectedDates}
+                                        onSelect={handleDateSelect}
+                                        disabled={isWeekend}
+                                        numberOfMonths={getNumberOfMonths()}
+                                        className="rounded-md border w-fit"
+                                        showOutsideDays={true}
+                                    />
+                                    
+                                    {/* Selected dates summary */}
+                                    {selectedDates.length > 0 && (
+                                        <div className="bg-blue-50 p-3 rounded-lg w-full">
+                                            <p className="text-sm font-medium text-blue-900 mb-2">
+                                                Selected Dates: {selectedDates.length}
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {selectedDates.slice(0, 10).map((date, index) => (
+                                                    <Badge key={index} variant="secondary" className="text-xs">
+                                                        {date.toLocaleDateString()}
+                                                    </Badge>
+                                                ))}
+                                                {selectedDates.length > 10 && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        +{selectedDates.length - 10} more
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Form Actions */}
                     <div className="flex justify-end gap-3 pt-4 border-t">

@@ -21,7 +21,8 @@ export const getMains = async (): Promise<{ success: boolean; data?: Main[]; err
 				data.addOns || [],
 				data.price,
 				doc.id,
-				data.isPromo
+				data.isPromo,
+                data.validDates || []
 			);
 		});
 		return { success: true, data: mains };

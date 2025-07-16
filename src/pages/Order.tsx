@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { School } from '@/models/school.model';
-import { GraduationCap, Users, Loader2, ShoppingCart, Plus } from 'lucide-react';
+import { GraduationCap, Users, Loader2, ShoppingCart, Plus, Shield } from 'lucide-react';
 
 const OrderPage: React.FC = () => {
     const {state, dispatch} = useAppContext();
@@ -19,6 +19,7 @@ const OrderPage: React.FC = () => {
     const [userSchools, setUserSchools] = useState<School[]>([]);
     const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
     const [showOrderDialog, setShowOrderDialog] = useState(false);
+    const [adminModeEnabled, setAdminModeEnabled] = useState(false);
 
     useEffect(() => {
         setShowOrderDialog(isModalOpen && !!selectedSchool);
@@ -35,9 +36,24 @@ const OrderPage: React.FC = () => {
         console.log('User schools:', schools);
         console.log('Selected school:', defaultSchool);
         
-    }, [state.user, state.schools]); // Added state.schools as dependency
+    }, [state.user, state.schools, adminModeEnabled]); // Added adminModeEnabled as dependency
+
+    const toggleAdminMode = () => {
+        setAdminModeEnabled(!adminModeEnabled);
+        
+        // Show toast notification
+        if (!adminModeEnabled) {
+            toast.success('Admin mode enabled - You can now view all school menus (ordering disabled)');
+        } else {
+            toast.success('Admin mode disabled - Back to normal ordering mode');
+        }
+    };
 
     const getUserSchools = (): School[] => {
+        if (state.user?.isAdmin && adminModeEnabled) {
+            return state.schools.filter(school => school.isActive).sort((a, b) => a.name.localeCompare(b.name));
+        }
+
         if (!state.user?.children || state.user.children.length === 0) {
             return [];
         }
@@ -57,6 +73,11 @@ const OrderPage: React.FC = () => {
 
     const getDefaultSchool = (schools: School[]): School | null => {
         if (schools.length === 0) return null;
+
+        // In admin mode, don't use localStorage for school selection
+        if (adminModeEnabled) {
+            return schools[0]; // Just use first school alphabetically
+        }
 
         // Strategy 1: Use previously selected school from localStorage
         const savedSchoolId = localStorage.getItem('lastSelectedSchool');
@@ -95,13 +116,21 @@ const OrderPage: React.FC = () => {
 
     const schoolMenuItems = getSchoolMenuItems();
     const sortedMains = schoolMenuItems.sort((a, b) => {
-        // Featured items first, then alphabetical
+        // Promo items first, then featured items, then alphabetical
+        if (a.isPromo && !b.isPromo) return -1;
+        if (!a.isPromo && b.isPromo) return 1;
         if (a.isFeatured && !b.isFeatured) return -1;
         if (!a.isFeatured && b.isFeatured) return 1;
         return a.display.localeCompare(b.display);
     });
 
     const handleOrderNow = (itemId: string) => {
+        // Prevent ordering in admin mode
+        if (adminModeEnabled) {
+            toast.error('Ordering is disabled in admin mode');
+            return;
+        }
+
         if (!selectedSchool) {
             toast.error('Please select a school first');
             return;
@@ -130,8 +159,10 @@ const OrderPage: React.FC = () => {
         
         setSelectedSchool(school);
         
-        // Save selection for next time
-        localStorage.setItem('lastSelectedSchool', schoolId);
+        // Only save selection for next time if not in admin mode
+        if (!adminModeEnabled) {
+            localStorage.setItem('lastSelectedSchool', schoolId);
+        }
     };
 
     const handleCloseModal = () => {
@@ -145,8 +176,8 @@ const OrderPage: React.FC = () => {
             return null;
         }
 
-        // If only one school, display it in a card
-        if (userSchools.length === 1) {
+        // In admin mode, always show selector even if only one school
+        if (userSchools.length === 1 && !adminModeEnabled) {
             const school = userSchools[0];
             const childrenCount = state.user?.children?.filter(child => child.schoolId === school.id).length || 0;
             
@@ -177,13 +208,19 @@ const OrderPage: React.FC = () => {
             );
         }
 
-        // If multiple schools, render select dropdown in a card
+        // Show select dropdown for multiple schools or when in admin mode
         return (
             <Card className="mb-6">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <GraduationCap className="h-5 w-5" />
                         Select School
+                        {adminModeEnabled && (
+                            <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200">
+                                <Shield className="h-3 w-3 mr-1" />
+                                Admin View
+                            </Badge>
+                        )}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -196,7 +233,10 @@ const OrderPage: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent>
                             {userSchools.map((school) => {
-                                const childrenCount = state.user?.children?.filter(child => child.schoolId === school.id).length || 0;
+                                const childrenCount = adminModeEnabled ? 
+                                    0 : // Don't show children count in admin mode
+                                    (state.user?.children?.filter(child => child.schoolId === school.id).length || 0);
+                                
                                 return (
                                     <SelectItem key={school.id} value={school.id}>
                                         <div className="flex items-center justify-between w-full">
@@ -204,9 +244,11 @@ const OrderPage: React.FC = () => {
                                                 <GraduationCap className="h-4 w-4" />
                                                 <span>{school.name}</span>
                                             </div>
-                                            <span className="text-xs text-gray-500 ml-2">
-                                                {childrenCount} {childrenCount === 1 ? 'child' : 'children'}
-                                            </span>
+                                            {!adminModeEnabled && (
+                                                <span className="text-xs text-gray-500 ml-2">
+                                                    {childrenCount} {childrenCount === 1 ? 'child' : 'children'}
+                                                </span>
+                                            )}
                                         </div>
                                     </SelectItem>
                                 );
@@ -218,13 +260,24 @@ const OrderPage: React.FC = () => {
         );
     };
 
-    // Show message if no children
-    if (!state.user?.children || state.user.children.length === 0) {
+    // Show message if no children and not in admin mode
+    if ((!state.user?.children || state.user.children.length === 0) && !adminModeEnabled) {
         return (
             <div className="w-full space-y-6 p-4 sm:p-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                    <p className="text-gray-600 mt-1">Browse and order meals</p>
+                <div className='flex items-center justify-between'>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                        <p className="text-gray-600 mt-1">Browse and order meals</p>
+                    </div>
+                    {state.user && state.user.isAdmin && (
+                        <Button 
+                            onClick={() => toggleAdminMode()} 
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            <Shield className="mr-2 h-4 w-4" />
+                            Enable Admin Mode
+                        </Button>
+                    )}
                 </div>
 
                 <Card className="mt-8">
@@ -256,9 +309,20 @@ const OrderPage: React.FC = () => {
     if (state.isLoading || userSchools.length === 0) {
         return (
             <div className="w-full space-y-6 p-4 sm:p-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                    <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
+                <div className='flex items-center justify-between'>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                        <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
+                    </div>
+                    {state.user && state.user.isAdmin && (
+                        <Button 
+                            onClick={() => toggleAdminMode()} 
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            <Shield className="mr-2 h-4 w-4" />
+                            {adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}
+                        </Button>
+                    )}
                 </div>
 
                 <div className="flex flex-col items-center justify-center py-12">
@@ -271,10 +335,42 @@ const OrderPage: React.FC = () => {
 
     return (
         <div className="w-full space-y-6 p-4 sm:p-6">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
+            <div className='flex items-center justify-between'>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
+                    <p className="text-gray-600 mt-1">
+                        {adminModeEnabled ? 'Browse menu items (Admin View)' : 'Browse and order meals for your children'}
+                    </p>
+                </div>
+                {state.user && state.user.isAdmin && (
+                    <Button 
+                        onClick={() => toggleAdminMode()} 
+                        className={`${adminModeEnabled ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+                    >
+                        <Shield className="mr-2 h-4 w-4" />
+                        {adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}
+                    </Button>
+                )}
             </div>
+
+            {/* Admin Mode Warning */}
+            {adminModeEnabled && (
+                <Card className="border-orange-200 bg-orange-50">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-100 rounded-lg">
+                                <Shield className="h-5 w-5 text-orange-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-orange-800">Admin Mode Active</h3>
+                                <p className="text-sm text-orange-700">
+                                    You are viewing all school menus. Ordering is disabled in this mode.
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {renderSchoolSelector()}
 
@@ -288,6 +384,9 @@ const OrderPage: React.FC = () => {
                                     <h2 className="text-2xl font-bold text-gray-900">Available Menu Items</h2>
                                     <p className="text-gray-600 mt-1">
                                         {sortedMains.length} item{sortedMains.length !== 1 ? 's' : ''} available at {selectedSchool.name}
+                                        {adminModeEnabled && (
+                                            <span className="ml-2 text-orange-600 font-medium">(Admin View)</span>
+                                        )}
                                     </p>
                                 </div>
                                 {sortedMains.some(item => item.isFeatured) && (
@@ -302,7 +401,8 @@ const OrderPage: React.FC = () => {
                                     <MenuItemCard
                                         key={item.id}
                                         item={item}
-                                        onOrderNow={() => handleOrderNow(item.id)}
+                                        onOrderNow={adminModeEnabled ? undefined : () => handleOrderNow(item.id)}
+                                        disabled={adminModeEnabled}
                                     />
                                 ))}
                             </div>
@@ -338,8 +438,8 @@ const OrderPage: React.FC = () => {
                 </Card>
             )}
 
-            {/* Only render OrderDialog when we have a selected school and modal is open */}
-            {showOrderDialog && selectedSchool && (
+            {/* Only render OrderDialog when we have a selected school, modal is open, and NOT in admin mode */}
+            {showOrderDialog && selectedSchool && !adminModeEnabled && (
                 <OrderDialog
                     key={`${selectedSchool.id}-${isModalOpen}`}
                     isOpen={isModalOpen}

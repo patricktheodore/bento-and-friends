@@ -104,7 +104,20 @@ const Cart: React.FC = () => {
 	};
 
     const isInvalidDate = (meal: Meal):boolean => {
-        return !(isValidDateCheck(new Date(meal.deliveryDate), meal.school?.validDates));
+        let validDates = [];
+
+        const main = state.mains.find(m => m.id === meal.main.id);
+        const school = meal.school;
+
+        if (main?.isPromo && main?.validDates) {
+            validDates = main.validDates;
+        } else if (school?.validDates) {
+            validDates = school.validDates;
+        } else {
+            return false; // No valid dates to check against
+        }
+
+        return !(isValidDateCheck(new Date(meal.deliveryDate), validDates));
     };
 
 	const handleUpdate = (meals: Meal | Meal[]) => {
@@ -144,6 +157,11 @@ const Cart: React.FC = () => {
         closeCart();
         navigate('/checkout');
     }
+
+    const clearCart = () => {
+        dispatch({ type: 'CLEAR_CART' });
+        toast.success('Cart cleared');
+    };
 
 	return (
 		<Sheet
@@ -208,9 +226,11 @@ const Cart: React.FC = () => {
 									</Alert>
 								)}
 								<p className="text-sm text-gray-500">
-									{meal.addOns.map((addon) => addon.display).join(', ')} -{' '}
-									{meal.side ? meal.side.display : ' No side '} -{' '}
-									{meal.fruit ? meal.fruit.display : ' No fruit '}
+									{[
+										...(meal.addOns.length > 0 ? meal.addOns.map((addon) => addon.display) : []),
+										meal.side ? meal.side.display : 'No side',
+										meal.fruit ? meal.fruit.display : 'No fruit'
+									].join(' - ')}
 								</p>
 								<p className="text-sm">
 									{meal.child.name} - {formatDate(meal.deliveryDate)}
@@ -265,6 +285,12 @@ const Cart: React.FC = () => {
 							onClick={handleCheckout}
 							className="w-full mt-4">
 							Proceed to Checkout
+						</Button>
+						<Button
+                            variant={"outline"}
+							onClick={clearCart}
+							className="w-full mt-4">
+                            Clear Cart
 						</Button>
 					</div>
 				)}

@@ -26,15 +26,6 @@ const itemTypeOptions = [
 	{ value: 'platter', label: 'Platter' },
 ];
 
-const columnConfigs = {
-	main: ['name', 'allergens', 'addons', 'price'],
-	addon: ['name', 'price'],
-	side: ['name'],
-	fruit: ['name'],
-	drink: ['name', 'price'],
-	platter: ['name', 'price']
-};
-
 type MenuItem = Main | Side | AddOn | Fruit | Drink | Platter;
 
 const ItemController: React.FC = () => {
@@ -139,6 +130,14 @@ const ItemController: React.FC = () => {
 				item.image = imageUrl;
 			}
 
+            if (item.isPromo) {
+				if (!item.validDates) {
+					item.validDates = [];
+				}
+			} else {
+				item.validDates = [];
+			}
+
 			const response = await addOrUpdateItem(item);
 
 			if (response.success) {
@@ -198,6 +197,16 @@ const ItemController: React.FC = () => {
 
 			const docSnap = await getDoc(itemRef);
 
+            if (item instanceof Main) {
+				if (item.isPromo) {
+					if (!item.validDates) {
+						item.validDates = [];
+					}
+				} else {
+					item.validDates = [];
+				}
+			}
+
 			const itemData: any = { ...item };
 			delete itemData.id;
 
@@ -214,30 +223,75 @@ const ItemController: React.FC = () => {
 		}
 	};
 
-	const renderCell = (item: MenuItem, column: string) => {
-		switch (column) {
-			case 'name':
-				return item.display;
-			case 'price':
-				return (item instanceof Main || item instanceof Drink || item instanceof AddOn || item instanceof Platter) && item.price !== undefined
-					? formatPrice(item.price)
-					: 'N/A';
-			case 'allergens':
-				return item instanceof Main ? item.allergens?.join(', ') || 'None' : 'N/A';
-			case 'addons':
-				if (item instanceof Main && item.addOns && item.addOns.length > 0) {
-					// Get addon names from state
-					const addonNames = item.addOns.map(addonId => {
-						const addon = state.items.find(i => i.id === addonId && i instanceof AddOn);
-						return addon ? addon.display : addonId;
-					});
-					return addonNames.join(', ');
-				}
-				return 'None';
-			default:
-				return 'N/A';
-		}
-	};
+	const columnConfigs = {
+        main: ['name', 'allergens', 'addons', 'price', 'featured', 'promo', 'validDates'],
+        addon: ['name', 'price'],
+        side: ['name'],
+        fruit: ['name'],
+        drink: ['name', 'price'],
+        platter: ['name', 'price']
+    };
+
+// Updated renderCell function to handle validDates
+const renderCell = (item: MenuItem, column: string) => {
+	switch (column) {
+		case 'name':
+			return item.display;
+		case 'price':
+			return (item instanceof Main || item instanceof Drink || item instanceof AddOn || item instanceof Platter) && item.price !== undefined
+				? formatPrice(item.price)
+				: 'N/A';
+		case 'allergens':
+			return item instanceof Main ? item.allergens?.join(', ') || 'None' : 'N/A';
+        case 'addons':
+            if (item instanceof Main && item.addOns && item.addOns.length > 0) {
+                // Get addon names from state
+                const addonNames = item.addOns.map(addonId => {
+                    const addon = state.items.find(i => i.id === addonId && i instanceof AddOn);
+                    return addon ? addon.display : addonId;
+                });
+                
+                if (addonNames.length <= 3) {
+                    return addonNames.join(', ');
+                } else {
+                    const displayed = addonNames.slice(0, 2);
+                    const remaining = addonNames.length - 2;
+                    return `${displayed.join(', ')} + ${remaining} more...`;
+                }
+            }
+            return 'None';
+		case 'featured':
+			return item instanceof Main ? (item.isFeatured ? 'Yes' : 'No') : 'N/A';
+		case 'promo':
+			return item instanceof Main ? (item.isPromo ? 'Yes' : 'No') : 'N/A';
+        case 'validDates':
+            if (item instanceof Main && item.isPromo && item.validDates && item.validDates.length > 0) {
+                const formatDate = (dateString: string) => {
+                    const date = new Date(dateString);
+                    const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    const dayNum = date.getDate();
+                    const month = date.toLocaleDateString('en-US', { month: 'short' });
+                    const suffix = dayNum % 10 === 1 && dayNum !== 11 ? 'st' : 
+                                  dayNum % 10 === 2 && dayNum !== 12 ? 'nd' : 
+                                  dayNum % 10 === 3 && dayNum !== 13 ? 'rd' : 'th';
+                    return `${day} ${dayNum}${suffix} ${month}`;
+                };
+                
+                const formattedDates = item.validDates.map(formatDate);
+                
+                if (formattedDates.length <= 2) {
+                    return formattedDates.join(', ');
+                } else {
+                    const displayed = formattedDates.slice(0, 2);
+                    const remaining = formattedDates.length - 2;
+                    return `${displayed.join(', ')} + ${remaining} more...`;
+                }
+            }
+            return item instanceof Main && item.isPromo ? 'No dates set' : 'N/A';
+		default:
+			return 'N/A';
+	}
+};
 
 	const handleCloseModal = () => {
 		setIsItemModalOpen(false);

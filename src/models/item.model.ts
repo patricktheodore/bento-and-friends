@@ -1,3 +1,8 @@
+// Utility function for generating unique IDs
+const generateId = (): string => {
+	return Date.now().toString() + Math.random().toString(36).slice(2, 11);
+};
+
 // Base interface for all menu items
 interface BaseItem {
 	id: string;
@@ -38,6 +43,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 	public addOns: string[]; // Array of AddOn IDs
 	public price: number;
 	public isPromo: boolean;
+	public validDates?: string[];
 
 	constructor(
 		display?: string,
@@ -51,9 +57,10 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		addOns?: string[],
 		price?: number,
 		id?: string,
-		isPromo?: boolean
+		isPromo?: boolean,
+		validDates?: string[]
 	) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.image = image;
 		this.description = description;
@@ -65,10 +72,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		this.addOns = addOns || [];
 		this.price = price || 0;
 		this.isPromo = isPromo ?? false;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+		this.validDates = validDates || [];
 	}
 
 	// Helper method to check if main has specific addon
@@ -96,14 +100,10 @@ export class Side implements CodedItem {
 	public isActive: boolean;
 
 	constructor(display?: string, id?: string, code?: string, isActive?: boolean) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.code = code;
 		this.isActive = isActive ?? true;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 	}
 }
 
@@ -114,14 +114,10 @@ export class AddOn implements PricedItem {
 	public isActive: boolean;
 
 	constructor(display?: string, price?: number, id?: string, isActive?: boolean) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.price = price || 0;
 		this.isActive = isActive ?? true;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 	}
 }
 
@@ -132,14 +128,10 @@ export class Fruit implements CodedItem {
 	public isActive: boolean;
 
 	constructor(display?: string, id?: string, code?: string, isActive?: boolean) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.code = code;
 		this.isActive = isActive ?? true;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 	}
 }
 
@@ -151,15 +143,11 @@ export class Drink implements PricedItem, ImagedItem {
 	public isActive: boolean;
 
 	constructor(display?: string, image?: string, price?: number, id?: string, isActive?: boolean) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.image = image;
 		this.price = price || 0;
 		this.isActive = isActive ?? true;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 	}
 }
 
@@ -179,16 +167,12 @@ export class Platter implements PricedItem, ImagedItem, DescribedItem {
 		id?: string,
 		isActive?: boolean
 	) {
-		this.id = id || this.generateId();
+		this.id = id || generateId();
 		this.display = display || '';
 		this.image = image;
 		this.description = description;
 		this.price = price || 0;
 		this.isActive = isActive ?? true;
-	}
-
-	private generateId(): string {
-		return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 	}
 }
 

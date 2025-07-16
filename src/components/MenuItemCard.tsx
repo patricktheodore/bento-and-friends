@@ -9,7 +9,8 @@ import { Main } from '@/models/item.model';
 
 export interface MenuItemProps {
 	item: Main;
-	onOrderNow: () => void;
+	onOrderNow?: () => void;
+    disabled?: boolean;
 }
 
 const allergenIcons: { [key: string]: React.ReactNode } = {
@@ -19,7 +20,7 @@ const allergenIcons: { [key: string]: React.ReactNode } = {
 	soy: <Bean size={16} />,
 };
 
-const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow }) => {
+const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow, disabled = false }) => {
 	const { state } = useAppContext();
 	// const navigate = useNavigate();
 
@@ -34,7 +35,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow }) => {
 	};
 
 	const handleOrderNow = () => {
-		onOrderNow();
+		onOrderNow?.();
 	};
 
 	return (
@@ -50,7 +51,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow }) => {
 						/>
 						{item.isPromo && (
 							<div className="absolute top-2 left-2">
-								<Badge className="bg-lime-500 text-white border-0 text-xs px-2 py-0.5 flex items-center gap-1">
+								<Badge className="bg-purple-700 text-white border-0 text-xs px-2 py-0.5 flex items-center gap-1">
 									<Sparkles className="h-3 w-3" />
 									Promo
 								</Badge>
@@ -76,7 +77,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow }) => {
 						/>
 						{item.isPromo && (
 							<div className="absolute top-3 left-3">
-								<Badge className="bg-lime-500 text-white border-0 px-3 py-1 flex items-center gap-1.5 shadow-lg">
+								<Badge variant={"promo"} className="border-0 px-3 py-1 flex items-center gap-1.5 shadow-lg">
 									<Sparkles className="h-3.5 w-3.5" />
 									Promo
 								</Badge>
@@ -124,6 +125,7 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow }) => {
 						<CardFooter className="pt-0 pb-4 px-6">
 							{state.user ? (
 								<Button
+                                    disabled={disabled}
 									className="w-full bg-brand-dark-green text-brand-cream hover:bg-brand-dark-green/90 font-semibold h-11 text-base group-hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
 									onClick={handleOrderNow}>
 									<ShoppingCart className="h-4 w-4" />
