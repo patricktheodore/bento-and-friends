@@ -55,6 +55,7 @@ export interface MealRecord {
 
 	childId: string;
 	childName: string;
+    childAllergens: string; // Allergens for the child
     childIsTeacher: boolean; // Indicates if the child is a teacher
     childYear?: string; // Optional field for child year
     childClass?: string; // Optional field for child class
@@ -210,6 +211,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiK
 
       childId: meal.child.id,
       childName: meal.child.name,
+      childAllergens: meal.child.allergens || '', // Allergens for the child
       childIsTeacher: meal.child.isTeacher || false, // Indicates if the child is a teacher
       childYear: meal.child.year || undefined, // Optional field for child year
       childClass: meal.child.class || undefined, // Optional field for child class
