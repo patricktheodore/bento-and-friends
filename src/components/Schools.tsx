@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
 import { getCurrentUser } from '../services/auth';
-import { getSchools, updateSchoolValidDates, updateSchoolMenuItems, getSchoolEnrollmentData, SchoolEnrollmentData, SchoolChildrenData } from '../services/school-operations';
+import { getSchools, addSchool, updateSchool, updateSchoolValidDates, updateSchoolMenuItems, getSchoolEnrollmentData, SchoolEnrollmentData, SchoolChildrenData } from '../services/school-operations';
 import { useAppContext } from '../context/AppContext';
 import toast from 'react-hot-toast';
 
@@ -11,8 +11,23 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Users, GraduationCap, UserCheck, Mail, Loader2 } from 'lucide-react';
+import { Users, GraduationCap, UserCheck, Mail, Loader2, Plus, Power } from 'lucide-react';
 import { Main } from '@/models/item.model';
+import { School } from '@/models/school.model';
+
+// Add these imports for the dialog
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Switch } from './ui/switch';
 
 const Schools: React.FC = () => {
 	const { state, dispatch } = useAppContext();
@@ -26,6 +41,15 @@ const Schools: React.FC = () => {
 	const [savingMenuStates, setSavingMenuStates] = useState<Record<string, boolean>>({});
 	const [enrollmentData, setEnrollmentData] = useState<SchoolEnrollmentData>({});
 	const [loadingEnrollment, setLoadingEnrollment] = useState(false);
+	const [savingActiveStates, setSavingActiveStates] = useState<Record<string, boolean>>({});
+
+	// Add School Dialog State
+	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+	const [addSchoolForm, setAddSchoolForm] = useState({
+		name: '',
+		address: ''
+	});
+	const [isAddingSchool, setIsAddingSchool] = useState(false);
 
 	// Hook to track screen size for responsive calendar
 	useEffect(() => {
@@ -67,50 +91,101 @@ const Schools: React.FC = () => {
 		}
 	};
 
-	useEffect(() => {
-		const fetchSchoolsAndCheckAdmin = async () => {
-			try {
-				const user = await getCurrentUser();
-				if (!user) {
-					toast.error('User not authenticated');
-					return;
-				}
-
-				const adminStatus = user.isAdmin;
-				setIsAdmin(adminStatus);
-
-				// Fetch schools
-				const response = await getSchools();
-				if (response.success && response.data) {
-					dispatch({ type: 'SET_SCHOOLS', payload: response.data });
-
-					// Initialize selected dates for each school
-					const initialDates: Record<string, Date[]> = {};
-					const initialMenuItems: Record<string, string[]> = {};
-
-					response.data.forEach((school) => {
-						initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
-						initialMenuItems[school.id] = school.menuItems || [];
-					});
-
-					setSchoolSelectedDates(initialDates);
-					setSchoolMenuItems(initialMenuItems);
-				} else {
-					toast.error(response.error || 'Failed to fetch schools');
-				}
-
-                const activeMenuItems = state.mains.filter((item) => item.isActive);
-                setAvailableMenuItems(activeMenuItems);
-
-				// Fetch enrollment data
-				await fetchEnrollmentData();
-			} catch (error) {
-				toast.error((error as Error).message);
+	const fetchSchoolsAndCheckAdmin = async () => {
+		try {
+			const user = await getCurrentUser();
+			if (!user) {
+				toast.error('User not authenticated');
+				return;
 			}
-		};
 
+			const adminStatus = user.isAdmin;
+			setIsAdmin(adminStatus);
+
+			// Fetch schools
+			const response = await getSchools();
+			if (response.success && response.data) {
+				dispatch({ type: 'SET_SCHOOLS', payload: response.data });
+
+				// Initialize selected dates for each school
+				const initialDates: Record<string, Date[]> = {};
+				const initialMenuItems: Record<string, string[]> = {};
+
+				response.data.forEach((school) => {
+					initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
+					initialMenuItems[school.id] = school.menuItems || [];
+				});
+
+				setSchoolSelectedDates(initialDates);
+				setSchoolMenuItems(initialMenuItems);
+			} else {
+				toast.error(response.error || 'Failed to fetch schools');
+			}
+
+			const activeMenuItems = state.mains.filter((item) => item.isActive);
+			setAvailableMenuItems(activeMenuItems);
+
+			// Fetch enrollment data
+			await fetchEnrollmentData();
+		} catch (error) {
+			toast.error((error as Error).message);
+		}
+	};
+
+	useEffect(() => {
 		fetchSchoolsAndCheckAdmin();
 	}, [dispatch]);
+
+	// Add School Handler
+	const handleAddSchool = async () => {
+		// Validate form
+		if (!addSchoolForm.name.trim() || !addSchoolForm.address.trim()) {
+			toast.error('Please fill in all required fields');
+			return;
+		}
+
+		setIsAddingSchool(true);
+
+		try {
+			const newSchoolData: Omit<School, 'id'> = {
+				name: addSchoolForm.name.trim(),
+				address: addSchoolForm.address.trim(),
+				isActive: false,
+				menuItems: [],
+				validDates: []
+			};
+
+			const response = await addSchool(newSchoolData);
+
+			if (response.success && response.data) {
+				// Add the new school to the state
+				dispatch({ type: 'SET_SCHOOLS', payload: [...state.schools, response.data] });
+				
+				// Initialize the new school's data
+				setSchoolSelectedDates(prev => ({
+					...prev,
+					[response.data!.id]: []
+				}));
+				setSchoolMenuItems(prev => ({
+					...prev,
+					[response.data!.id]: []
+				}));
+
+				// Reset form and close dialog
+				setAddSchoolForm({ name: '', address: '' });
+				setIsAddDialogOpen(false);
+
+				toast.success(`School "${response.data.name}" added successfully`);
+			} else {
+				toast.error(response.error || 'Failed to add school');
+			}
+		} catch (error) {
+			console.error('Error adding school:', error);
+			toast.error('Failed to add school. Please try again.');
+		} finally {
+			setIsAddingSchool(false);
+		}
+	};
 
 	const toggleRowExpansion = (schoolId: string) => {
 		const newExpandedRows = new Set(expandedRows);
@@ -202,6 +277,32 @@ const Schools: React.FC = () => {
 			toast.error('Failed to update school menu items. Please try again.');
 		} finally {
 			setSavingMenuStates((prev) => ({ ...prev, [schoolId]: false }));
+		}
+	};
+
+	const handleUpdateSchoolActiveStatus = async (schoolId: string, isActive: boolean) => {
+		setSavingActiveStates((prev) => ({ ...prev, [schoolId]: true }));
+
+		try {
+			const response = await updateSchool(schoolId, { isActive });
+
+			if (response.success) {
+				// Update the school in the global state
+				const updatedSchools = state.schools.map((school) =>
+					school.id === schoolId ? { ...school, isActive } : school
+				);
+				dispatch({ type: 'SET_SCHOOLS', payload: updatedSchools });
+
+				const schoolName = state.schools.find((s) => s.id === schoolId)?.name;
+				toast.success(`${schoolName} is now ${isActive ? 'active' : 'inactive'}`);
+			} else {
+				toast.error(response.error || 'Failed to update school status');
+			}
+		} catch (error) {
+			console.error('Error updating school status:', error);
+			toast.error('Failed to update school status. Please try again.');
+		} finally {
+			setSavingActiveStates((prev) => ({ ...prev, [schoolId]: false }));
 		}
 	};
 
@@ -356,19 +457,86 @@ const Schools: React.FC = () => {
 					<h1 className="text-3xl font-bold text-gray-900">Schools</h1>
 					<p className="text-gray-600 mt-1">Manage schools, enrollment, and delivery settings</p>
 				</div>
-				<Button
-					onClick={fetchEnrollmentData}
-					disabled={loadingEnrollment}
-					variant="outline"
-					className="flex items-center gap-2"
-				>
-					{loadingEnrollment ? (
-						<Loader2 className="h-4 w-4 animate-spin" />
-					) : (
-						<Users className="h-4 w-4" />
-					)}
-					Refresh Enrollment
-				</Button>
+				<div className="flex gap-2">
+					<Button
+						onClick={fetchEnrollmentData}
+						disabled={loadingEnrollment}
+						variant="outline"
+						className="flex items-center gap-2"
+					>
+						{loadingEnrollment ? (
+							<Loader2 className="h-4 w-4 animate-spin" />
+						) : (
+							<Users className="h-4 w-4" />
+						)}
+						Refresh Enrollment
+					</Button>
+					
+					<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+						<DialogTrigger asChild>
+							<Button className="flex items-center gap-2">
+								<Plus className="h-4 w-4" />
+								Add School
+							</Button>
+						</DialogTrigger>
+						<DialogContent className="sm:max-w-[425px]">
+							<DialogHeader>
+								<DialogTitle>Add New School</DialogTitle>
+								<DialogDescription>
+									Create a new school. You can configure menu items and delivery dates after creation.
+								</DialogDescription>
+							</DialogHeader>
+							<div className="grid gap-4 py-4">
+								<div className="grid gap-2">
+									<Label htmlFor="school-name">School Name *</Label>
+									<Input
+										id="school-name"
+										placeholder="Enter school name"
+										value={addSchoolForm.name}
+										onChange={(e) => setAddSchoolForm(prev => ({ ...prev, name: e.target.value }))}
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="school-address">Address *</Label>
+									<Input
+										id="school-address"
+										placeholder="Enter school address"
+										value={addSchoolForm.address}
+										onChange={(e) => setAddSchoolForm(prev => ({ ...prev, address: e.target.value }))}
+									/>
+								</div>
+								<div className="text-sm text-gray-500">
+									* Required fields. School will be created as inactive by default.
+								</div>
+							</div>
+							<DialogFooter>
+								<Button 
+									variant="outline" 
+									onClick={() => {
+										setIsAddDialogOpen(false);
+										setAddSchoolForm({ name: '', address: '' });
+									}}
+									disabled={isAddingSchool}
+								>
+									Cancel
+								</Button>
+								<Button 
+									onClick={handleAddSchool}
+									disabled={isAddingSchool || !addSchoolForm.name.trim() || !addSchoolForm.address.trim()}
+								>
+									{isAddingSchool ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin mr-2" />
+											Adding...
+										</>
+									) : (
+										'Add School'
+									)}
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+				</div>
 			</div>
 
 			<Card>
@@ -429,12 +597,95 @@ const Schools: React.FC = () => {
 												<TableCell colSpan={6} className="p-0">
 													<div className="bg-gray-50 p-6 border-t">
 														<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-															{/* Enrollment Information */}
-															<EnrollmentSummary schoolId={school.id} />
-
-															{/* Management Options */}
+															{/* Left Column */}
 															<div className="space-y-6">
-																{/* Menu Items Management Section */}
+																{/* Active Status Management */}
+																<Card>
+																	<CardHeader className="pb-3">
+																		<CardTitle className="text-lg flex items-center gap-2">
+																			<Power className="h-5 w-5 text-green-600" />
+																			School Status
+																		</CardTitle>
+																		<p className="text-sm text-gray-600">
+																			Control whether this school is active and can receive orders
+																		</p>
+																	</CardHeader>
+																	<CardContent className="space-y-4">
+																		<div className="flex items-center justify-between p-4 bg-white rounded-lg border">
+																			<div className="flex items-center gap-3">
+																				<div className={`p-2 rounded-full ${school.isActive ? 'bg-green-100' : 'bg-red-100'}`}>
+																					<Power className={`h-5 w-5 ${school.isActive ? 'text-green-600' : 'text-red-600'}`} />
+																				</div>
+																				<div>
+																					<p className="font-medium text-gray-900">
+																						{school.isActive ? 'Active' : 'Inactive'}
+																					</p>
+																					<p className="text-sm text-gray-500">
+																						{school.isActive 
+																							? 'School can receive orders and deliveries' 
+																							: 'School is disabled for orders and deliveries'
+																						}
+																					</p>
+																				</div>
+																			</div>
+																			<div className="flex items-center gap-3">
+																				{!savingActiveStates[school.id] && (
+                                                                                    <Switch
+                                                                                        checked={school.isActive}
+                                                                                        onCheckedChange={(checked) => handleUpdateSchoolActiveStatus(school.id, checked)}
+                                                                                        disabled={savingActiveStates[school.id]}
+                                                                                    />
+                                                                                )}
+																				{savingActiveStates[school.id] && (
+																					<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+																				)}
+																			</div>
+																		</div>
+																		{!school.isActive && (
+																			<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+																				<p className="text-sm text-yellow-800">
+																					<strong>Note:</strong> While inactive, this school will not appear in ordering options and cannot receive deliveries.
+																				</p>
+																			</div>
+																		)}
+																	</CardContent>
+																</Card>
+
+																{/* Date Management Section */}
+																<Card>
+																	<CardHeader className="pb-3">
+																		<CardTitle className="text-lg">Delivery Dates</CardTitle>
+																		<p className="text-sm text-gray-600">
+																			Select weekdays when this school can receive deliveries
+																		</p>
+																	</CardHeader>
+																	<CardContent className="space-y-4">
+																		<div className="flex flex-col items-center gap-4">
+																			<Calendar
+																				mode="multiple"
+																				selected={schoolSelectedDates[school.id] || []}
+																				onSelect={(dates) => handleSchoolDateSelect(school.id, dates)}
+																				disabled={isWeekend}
+																				numberOfMonths={getNumberOfMonths()}
+																				className="rounded-md border w-fit"
+																				showOutsideDays={true}
+																			/>
+																			<Button
+																				onClick={() => handleSaveSchoolDates(school.id)}
+																				disabled={savingStates[school.id]}
+																				className="w-full">
+																				{savingStates[school.id] ? 'Saving...' : 'Save Valid Dates'}
+																			</Button>
+																		</div>
+																	</CardContent>
+																</Card>
+
+																{/* Enrollment Information */}
+																<EnrollmentSummary schoolId={school.id} />
+															</div>
+
+															{/* Right Column - Menu Items Management */}
+															<div className="space-y-6">
 																<Card>
 																	<CardHeader className="pb-3">
 																		<CardTitle className="text-lg">Menu Items Management</CardTitle>
@@ -517,35 +768,6 @@ const Schools: React.FC = () => {
 																				? 'Saving...'
 																				: 'Save Menu Items'}
 																		</Button>
-																	</CardContent>
-																</Card>
-
-																{/* Date Management Section */}
-																<Card>
-																	<CardHeader className="pb-3">
-																		<CardTitle className="text-lg">Delivery Dates</CardTitle>
-																		<p className="text-sm text-gray-600">
-																			Select weekdays when this school can receive deliveries
-																		</p>
-																	</CardHeader>
-																	<CardContent className="space-y-4">
-																		<div className="flex flex-col items-center gap-4">
-																			<Calendar
-																				mode="multiple"
-																				selected={schoolSelectedDates[school.id] || []}
-																				onSelect={(dates) => handleSchoolDateSelect(school.id, dates)}
-																				disabled={isWeekend}
-																				numberOfMonths={getNumberOfMonths()}
-																				className="rounded-md border w-fit"
-																				showOutsideDays={true}
-																			/>
-																			<Button
-																				onClick={() => handleSaveSchoolDates(school.id)}
-																				disabled={savingStates[school.id]}
-																				className="w-full">
-																				{savingStates[school.id] ? 'Saving...' : 'Save Valid Dates'}
-																			</Button>
-																		</div>
 																	</CardContent>
 																</Card>
 															</div>

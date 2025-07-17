@@ -342,11 +342,11 @@ const RunSheet: React.FC = () => {
 	};
 
 	const handlePrintMissingLabels = () => {
-        // Add a small delay to ensure dropdown closes completely
-        setTimeout(() => {
-            setShowMissingLabelsDialog(true);
-        }, 50);
-    };
+		// Add a small delay to ensure dropdown closes completely
+		setTimeout(() => {
+			setShowMissingLabelsDialog(true);
+		}, 50);
+	};
 
 	const handleMissingLabelsConfirm = async (startDate: Date) => {
 		setIsMissingLabelsLoading(true);
@@ -478,6 +478,22 @@ const RunSheet: React.FC = () => {
 
 		let labelIndex = 0;
 
+		// Helper function to add timestamp to current page
+		const addTimestampToPage = () => {
+
+			// Set timestamp styling
+			pdf.setFont('helvetica', 'normal');
+			pdf.setFontSize(7);
+			pdf.setTextColor(120, 120, 120);
+
+			// Generate current date/time in local timezone
+			const now = new Date();
+			const timestamp = now.toLocaleString();
+
+			// Position at bottom left (5mm from left, 5mm from bottom)
+			pdf.text(timestamp, 5, pageHeight - 5);
+		};
+
 		const getFruitCode = (text: string) => {
 			return state.fruits.find((fruit) => fruit.display === text)?.code || '';
 		};
@@ -529,6 +545,9 @@ const RunSheet: React.FC = () => {
 			{} as Record<string, Record<string, MealWithId[]>>
 		);
 
+		// Add timestamp to the first page
+		addTimestampToPage();
+
 		Object.entries(groupedSortedMeals).forEach(([_, schools]) => {
 			// Sort schools alphabetically
 			const sortedSchools = Object.entries(schools).sort((a, b) => a[0].localeCompare(b[0]));
@@ -537,6 +556,8 @@ const RunSheet: React.FC = () => {
 				meals.forEach((meal) => {
 					if (labelIndex > 0 && labelIndex % (labelsPerRow * labelsPerCol) === 0) {
 						pdf.addPage();
+						// Add timestamp to the new page
+						addTimestampToPage();
 					}
 
 					const col = labelIndex % labelsPerRow;

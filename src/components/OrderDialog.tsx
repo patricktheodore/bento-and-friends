@@ -117,7 +117,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 			const activeFruits = fruits.filter(fruit => fruit.isActive);
 			setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
 			setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
-			setSelectedChildren([]);
+            setSelectedChildren(children.length === 1 ? [children[0]] : []);
 			setSelectedDates([]);
 			setIsMainOnly(false);
 		}
