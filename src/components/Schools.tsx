@@ -42,6 +42,8 @@ const Schools: React.FC = () => {
 	const [enrollmentData, setEnrollmentData] = useState<SchoolEnrollmentData>({});
 	const [loadingEnrollment, setLoadingEnrollment] = useState(false);
 	const [savingActiveStates, setSavingActiveStates] = useState<Record<string, boolean>>({});
+	const [editingSchoolNames, setEditingSchoolNames] = useState<Record<string, string>>({});
+	const [savingNameStates, setSavingNameStates] = useState<Record<string, boolean>>({});
 
 	// Add School Dialog State
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -110,14 +112,17 @@ const Schools: React.FC = () => {
 				// Initialize selected dates for each school
 				const initialDates: Record<string, Date[]> = {};
 				const initialMenuItems: Record<string, string[]> = {};
+				const initialNames: Record<string, string> = {};
 
 				response.data.forEach((school) => {
 					initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
 					initialMenuItems[school.id] = school.menuItems || [];
+					initialNames[school.id] = school.name;
 				});
 
 				setSchoolSelectedDates(initialDates);
 				setSchoolMenuItems(initialMenuItems);
+				setEditingSchoolNames(initialNames);
 			} else {
 				toast.error(response.error || 'Failed to fetch schools');
 			}
@@ -169,6 +174,10 @@ const Schools: React.FC = () => {
 				setSchoolMenuItems(prev => ({
 					...prev,
 					[response.data!.id]: []
+				}));
+				setEditingSchoolNames(prev => ({
+					...prev,
+					[response.data!.id]: response.data!.name
 				}));
 
 				// Reset form and close dialog
@@ -306,6 +315,44 @@ const Schools: React.FC = () => {
 		}
 	};
 
+	const handleUpdateSchoolName = async (schoolId: string) => {
+		const newName = editingSchoolNames[schoolId]?.trim();
+		
+		if (!newName) {
+			toast.error('School name cannot be empty');
+			return;
+		}
+
+		setSavingNameStates((prev) => ({ ...prev, [schoolId]: true }));
+
+		try {
+			const response = await updateSchool(schoolId, { name: newName });
+
+			if (response.success) {
+				// Update the school in the global state
+				const updatedSchools = state.schools.map((school) =>
+					school.id === schoolId ? { ...school, name: newName } : school
+				);
+				dispatch({ type: 'SET_SCHOOLS', payload: updatedSchools });
+
+				toast.success(`School name updated to "${newName}"`);
+			} else {
+				toast.error(response.error || 'Failed to update school name');
+				// Reset the name input to the original value on error
+				const originalName = state.schools.find((s) => s.id === schoolId)?.name || '';
+				setEditingSchoolNames(prev => ({ ...prev, [schoolId]: originalName }));
+			}
+		} catch (error) {
+			console.error('Error updating school name:', error);
+			toast.error('Failed to update school name. Please try again.');
+			// Reset the name input to the original value on error
+			const originalName = state.schools.find((s) => s.id === schoolId)?.name || '';
+			setEditingSchoolNames(prev => ({ ...prev, [schoolId]: originalName }));
+		} finally {
+			setSavingNameStates((prev) => ({ ...prev, [schoolId]: false }));
+		}
+	};
+
 	const removeDuplicateDates = (dates: Date[]): Date[] => {
         return Array.from(new Set(dates.map((d) => d.toISOString()))).map((d) => new Date(d));
 	};
@@ -333,7 +380,6 @@ const Schools: React.FC = () => {
 				<Card>
 					<CardHeader className="pb-3">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Users className="h-5 w-5 text-blue-600" />
 							Enrollment Information
 						</CardTitle>
 					</CardHeader>
@@ -349,7 +395,6 @@ const Schools: React.FC = () => {
 			<Card>
 				<CardHeader className="pb-3">
 					<CardTitle className="text-lg flex items-center gap-2">
-						<Users className="h-5 w-5 text-blue-600" />
 						Enrollment Information
 					</CardTitle>
 				</CardHeader>
@@ -599,11 +644,58 @@ const Schools: React.FC = () => {
 														<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 															{/* Left Column */}
 															<div className="space-y-6">
+																{/* School Name Management */}
+																<Card>
+																	<CardHeader className="pb-3">
+																		<CardTitle className="text-lg flex items-center gap-2">
+																			School Name
+																		</CardTitle>
+																		<p className="text-sm text-gray-600">
+																			Update the school name
+																		</p>
+																	</CardHeader>
+																	<CardContent className="space-y-4">
+																		<div className="flex gap-3">
+																			<Input
+																				value={editingSchoolNames[school.id] || ''}
+																				onChange={(e) => setEditingSchoolNames(prev => ({ 
+																					...prev, 
+																					[school.id]: e.target.value 
+																				}))}
+																				placeholder="Enter school name"
+																				disabled={savingNameStates[school.id]}
+																				className="flex-1"
+																			/>
+																			<Button
+																				onClick={() => handleUpdateSchoolName(school.id)}
+																				disabled={
+																					savingNameStates[school.id] || 
+																					!editingSchoolNames[school.id]?.trim() ||
+																					editingSchoolNames[school.id]?.trim() === school.name
+																				}
+																				className="px-4"
+																			>
+																				{savingNameStates[school.id] ? (
+																					<Loader2 className="h-4 w-4 animate-spin" />
+																				) : (
+																					'Save'
+																				)}
+																			</Button>
+																		</div>
+																		{editingSchoolNames[school.id]?.trim() !== school.name && editingSchoolNames[school.id]?.trim() && (
+																			<div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+																				<p className="text-sm text-blue-800">
+																					<strong>Preview:</strong> "{editingSchoolNames[school.id]?.trim()}"
+																				</p>
+																			</div>
+																		)}
+																	</CardContent>
+																</Card>
+
 																{/* Active Status Management */}
 																<Card>
 																	<CardHeader className="pb-3">
 																		<CardTitle className="text-lg flex items-center gap-2">
-																			<Power className="h-5 w-5 text-green-600" />
 																			School Status
 																		</CardTitle>
 																		<p className="text-sm text-gray-600">
@@ -629,13 +721,11 @@ const Schools: React.FC = () => {
 																				</div>
 																			</div>
 																			<div className="flex items-center gap-3">
-																				{!savingActiveStates[school.id] && (
-                                                                                    <Switch
-                                                                                        checked={school.isActive}
-                                                                                        onCheckedChange={(checked) => handleUpdateSchoolActiveStatus(school.id, checked)}
-                                                                                        disabled={savingActiveStates[school.id]}
-                                                                                    />
-                                                                                )}
+																				<Switch
+																					checked={school.isActive}
+																					onCheckedChange={(checked) => handleUpdateSchoolActiveStatus(school.id, checked)}
+																					disabled={savingActiveStates[school.id]}
+																				/>
 																				{savingActiveStates[school.id] && (
 																					<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
 																				)}
