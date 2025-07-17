@@ -1,1 +1,1 @@
-export { updateDailyAnalytics, recalculateCumulativeAnalytics } from "./cumulative-stats";
+export { updateDailyAnalytics } from "./cumulative-stats";

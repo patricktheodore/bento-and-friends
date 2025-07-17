@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { Meal, MealRecord } from '../models/order.model';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { PlusIcon, Calendar, Loader2, Edit } from 'lucide-react';
+import { PlusIcon, Calendar, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from './ui/badge';
 import moment from 'moment';
@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import { fetchOrderDetails } from '@/services/order-service';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import OrderDialog from './OrderDialog';
-import { Main } from '@/models/item.model';
+// import { Main } from '@/models/item.model';
 
 interface GroupedMeals {
     [date: string]: MealRecord[];
@@ -26,7 +26,7 @@ const MealCalendar: React.FC = () => {
     // Meal editing state
     const [showEditMealDialog, setShowEditMealDialog] = useState(false);
     const [mealToEdit, setMealToEdit] = useState<Meal | null>(null);
-    const [editingMealId, setEditingMealId] = useState<string | null>(null);
+    // const [editingMealId, setEditingMealId] = useState<string | null>(null);
     const [savingMealId, setSavingMealId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -115,38 +115,38 @@ const MealCalendar: React.FC = () => {
         return status === 'upcoming';
     };
 
-    const editMeal = async (meal: MealRecord) => {
-        setEditingMealId(meal.mealId);
-        try {
-            // Find the selected items from state
-            const selectedMain: Main = state.mains.find(main => main.id === meal.mainId)!;
-            const selectedAddons = state.addOns.filter(addon => meal.addOns.some(a => a.id === addon.id));
-            const selectedFruit = state.fruits.find(fruit => fruit.id === meal.fruitId) || undefined;
-            const selectedSide = state.sides.find(side => side.id === meal.sideId) || undefined;
-            const selectedChild = state.user?.children.find(child => child.id === meal.childId)!;
-            const selectedSchool = state.schools.find(school => school.id === meal.schoolId)!;
+    // const editMeal = async (meal: MealRecord) => {
+    //     setEditingMealId(meal.mealId);
+    //     try {
+    //         // Find the selected items from state
+    //         const selectedMain: Main = state.mains.find(main => main.id === meal.mainId)!;
+    //         const selectedAddons = state.addOns.filter(addon => meal.addOns.some(a => a.id === addon.id));
+    //         const selectedFruit = state.fruits.find(fruit => fruit.id === meal.fruitId) || undefined;
+    //         const selectedSide = state.sides.find(side => side.id === meal.sideId) || undefined;
+    //         const selectedChild = state.user?.children.find(child => child.id === meal.childId)!;
+    //         const selectedSchool = state.schools.find(school => school.id === meal.schoolId)!;
 
-            const parsedMeal: Meal = {
-                id: meal.mealId,
-                main: selectedMain,
-                addOns: selectedAddons,
-                fruit: selectedFruit,
-                side: selectedSide,
-                child: selectedChild,
-                school: selectedSchool,
-                total: meal.totalAmount,
-                deliveryDate: new Date(meal.deliveryDate).toISOString(),
-            };
+    //         const parsedMeal: Meal = {
+    //             id: meal.mealId,
+    //             main: selectedMain,
+    //             addOns: selectedAddons,
+    //             fruit: selectedFruit,
+    //             side: selectedSide,
+    //             child: selectedChild,
+    //             school: selectedSchool,
+    //             total: meal.totalAmount,
+    //             deliveryDate: new Date(meal.deliveryDate).toISOString(),
+    //         };
 
-            setMealToEdit(parsedMeal);
-            setShowEditMealDialog(true);
-        } catch (error) {
-            console.error('Error preparing meal for edit:', error);
-            toast.error('Failed to load meal details');
-        } finally {
-            setEditingMealId(null);
-        }
-    };
+    //         setMealToEdit(parsedMeal);
+    //         setShowEditMealDialog(true);
+    //     } catch (error) {
+    //         console.error('Error preparing meal for edit:', error);
+    //         toast.error('Failed to load meal details');
+    //     } finally {
+    //         setEditingMealId(null);
+    //     }
+    // };
 
     const handleCloseEditDialog = () => {
         setShowEditMealDialog(false);
@@ -349,10 +349,10 @@ const MealCalendar: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {mealsForDate.map((meal) => {
                                 const mealStatus = getMealStatus(meal.deliveryDate);
-                                const canEdit = canEditMeal(meal.deliveryDate);
-                                const isMealBeingEdited = editingMealId === meal.mealId;
+                                // const canEdit = canEditMeal(meal.deliveryDate);
+                                // const isMealBeingEdited = editingMealId === meal.mealId;
                                 const isMealBeingSaved = isMealSaving(meal.mealId);
-                                const isMealDisabled = isMealBeingEdited || isMealBeingSaved;
+                                // const isMealDisabled = isMealBeingEdited || isMealBeingSaved;
 
                                 return (
                                     <Card key={meal.mealId} className="hover:shadow-md transition-shadow relative">

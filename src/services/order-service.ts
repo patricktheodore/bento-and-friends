@@ -61,6 +61,7 @@ export const fetchMealsById = async (mealIds: string[]): Promise<MealRecord[]> =
           schoolAddress: mealData.schoolAddress,
           childId: mealData.childId,
           childName: mealData.childName,
+          childAllergens: mealData.childAllergens || "",
           childIsTeacher: mealData.childIsTeacher || false,
           childClass: mealData.childClass || null,
           childYear: mealData.childYear || null,

@@ -1,6 +1,8 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { onCall } from "firebase-functions/v2/https";
+import { Timestamp } from "firebase-admin/firestore";
 
 interface DailyAnalytics {
   date: string;
@@ -45,8 +47,19 @@ export const updateDailyAnalytics = onSchedule({
     const todayRef = db.collection("dailyAnalytics").doc(todayString);
 
     await db.runTransaction(async (transaction) => {
+      // *** PERFORM ALL READS FIRST ***
+      
       // Fetch yesterday's analytics
       const yesterdayDoc = await transaction.get(yesterdayRef);
+      
+      // Fetch current cumulative data
+      const cumulativeDoc = await transaction.get(cumulativeRef);
+      
+      // Check if today's document already exists
+      const todayDoc = await transaction.get(todayRef);
+
+      // *** PROCESS DATA ***
+      
       const yesterdayData: DailyAnalytics = (yesterdayDoc.data() as DailyAnalytics) || {
         date: yesterdayString,
         orderCount: 0,
@@ -54,8 +67,6 @@ export const updateDailyAnalytics = onSchedule({
         revenue: 0,
       };
 
-      // Fetch current cumulative data
-      const cumulativeDoc = await transaction.get(cumulativeRef);
       const cumulativeData: CumulativeAnalytics = (cumulativeDoc.data() as CumulativeAnalytics) || {
         orderCount: 0,
         mealCount: 0,
@@ -65,7 +76,9 @@ export const updateDailyAnalytics = onSchedule({
         lastUpdated: now,
       };
 
-      // Get real-time user and school counts
+      // *** PERFORM ALL WRITES ***
+      
+      // Get real-time user and school counts (these are separate operations, not transaction reads)
       const usersSnapshot = await db.collection("users-test2").count().get();
       const schoolsSnapshot = await db.collection("schools-test").count().get();
       const currentUserCount = usersSnapshot.data().count;
@@ -95,7 +108,6 @@ export const updateDailyAnalytics = onSchedule({
       transaction.set(cumulativeRef, updatedCumulativeData);
 
       // Initialize today's analytics (only if it doesn't exist)
-      const todayDoc = await transaction.get(todayRef);
       if (!todayDoc.exists) {
         const newDayData: DailyAnalytics = {
           date: todayString,
@@ -123,68 +135,5 @@ export const updateDailyAnalytics = onSchedule({
   } catch (error) {
     logger.error(`Error updating analytics for ${todayString}:`, error);
     throw error; // Re-throw to trigger retry mechanism
-  }
-});
-
-// Backup function to manually recalculate cumulative data (callable)
-import { onCall } from "firebase-functions/v2/https";
-import { Timestamp } from "firebase-admin/firestore";
-
-export const recalculateCumulativeAnalytics = onCall({
-  memory: "512MiB",
-  timeoutSeconds: 540,
-}, async (request) => {
-  // Add authentication check
-  const db = admin.firestore();
-  if (!request.auth?.token?.admin) {
-    throw new Error("Unauthorized: Admin access required");
-  }
-
-  logger.info("Starting cumulative analytics recalculation");
-
-  try {
-    // Get all daily analytics
-    const dailyAnalyticsSnapshot = await db.collection("dailyAnalytics")
-      .orderBy("date", "asc")
-      .get();
-
-    let totalOrders = 0;
-    let totalMeals = 0;
-    let totalRevenue = 0;
-
-    dailyAnalyticsSnapshot.docs.forEach(doc => {
-      const data = doc.data() as DailyAnalytics;
-      totalOrders += data.orderCount || 0;
-      totalMeals += data.mealCount || 0;
-      totalRevenue += data.revenue || 0;
-    });
-
-    // Get current user and school counts
-    const usersSnapshot = await db.collection("users-test2").count().get();
-    const schoolsSnapshot = await db.collection("schools-test").count().get();
-
-    const recalculatedData: CumulativeAnalytics = {
-      orderCount: totalOrders,
-      mealCount: totalMeals,
-      revenue: totalRevenue,
-      userCount: usersSnapshot.data().count,
-      schoolCount: schoolsSnapshot.data().count,
-      lastUpdated: Timestamp.now(),
-    };
-
-    // Update cumulative analytics
-    await db.collection("cumulativeAnalytics").doc("totals").set(recalculatedData);
-
-    logger.info("Cumulative analytics recalculated successfully", recalculatedData);
-
-    return {
-      success: true,
-      data: recalculatedData,
-      daysProcessed: dailyAnalyticsSnapshot.size
-    };
-
-  } catch (error) {
-    logger.error("Error recalculating cumulative analytics:", error);
-    throw error;
   }
 });
