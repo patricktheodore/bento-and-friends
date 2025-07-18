@@ -96,7 +96,15 @@ async function sendContactFormSubmissionEmail(data: ContactFormSubmissionData, r
       .replace(/{{USER_EMAIL}}/g, data.email)
       .replace(/{{USER_PHONE}}/g, data.phone || "N/A")
       .replace(/{{USER_MESSAGE}}/g, data.message)
-      .replace(/{{SUBMITTED_ON}}/g, new Date().toLocaleDateString());
+      .replace(/{{SUBMITTED_ON}}/g, new Date().toLocaleDateString(
+        "en-AU", {
+          timeZone: "Australia/Perth",
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "2-digit"
+        }
+      ));
 
     const result = await resend.emails.send({
       from: data.email,
@@ -143,7 +151,15 @@ async function sendAutoReplyEmail(data: ContactFormSubmissionData, resend: Resen
       .replace(/{{USER_EMAIL}}/g, data.email)
       .replace(/{{USER_PHONE}}/g, data.phone || "N/A")
       .replace(/{{USER_MESSAGE}}/g, data.message)
-      .replace(/{{SUBMITTED_ON}}/g, new Date().toLocaleDateString());
+      .replace(/{{SUBMITTED_ON}}/g, new Date().toLocaleDateString(
+        "en-AU", {
+          timeZone: "Australia/Perth",
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "2-digit"
+        }
+      ));
 
     const result = await resend.emails.send({
       from: "noreply@bentoandfriends.com.au",

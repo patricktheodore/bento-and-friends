@@ -124,8 +124,24 @@ async function sendCateringNotificationEmail(data: CateringEnquiryData, resend: 
       throw new HttpsError("internal", "Email templates not found");
     }
 
-    const eventDate = new Date(data.event.date).toLocaleDateString();
-    const submittedOn = new Date().toLocaleDateString();
+    const eventDate = new Date(data.event.date).toLocaleDateString(
+      "en-AU", {
+        timeZone: "Australia/Perth",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "2-digit"
+      }
+    );
+    const submittedOn = new Date().toLocaleDateString(
+      "en-AU", {
+        timeZone: "Australia/Perth",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "2-digit"
+      }
+    );
     const totalPlatters = data.platters.reduce((sum, platter) => sum + platter.quantity, 0);
 
     const platterSelectionHtml = data.platters.map((platter) => {
@@ -193,8 +209,24 @@ async function sendCateringAutoReplyEmail(data: CateringEnquiryData, resend: Res
       throw new HttpsError("internal", "Auto-reply email templates not found");
     }
 
-    const eventDate = new Date(data.event.date).toLocaleDateString();
-    const submittedOn = new Date().toLocaleDateString();
+    const eventDate = new Date(data.event.date).toLocaleDateString(
+      "en-AU", {
+        timeZone: "Australia/Perth",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "2-digit"
+      }
+    );
+    const submittedOn = new Date().toLocaleDateString(
+      "en-AU", {
+        timeZone: "Australia/Perth",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "2-digit"
+      }
+    );
     const totalPlatters = data.platters.reduce((sum, platter) => sum + platter.quantity, 0);
 
     const platterSelectionHtml = data.platters.map((platter) => {

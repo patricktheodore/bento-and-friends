@@ -48,18 +48,18 @@ export const updateDailyAnalytics = onSchedule({
 
     await db.runTransaction(async (transaction) => {
       // *** PERFORM ALL READS FIRST ***
-      
+
       // Fetch yesterday's analytics
       const yesterdayDoc = await transaction.get(yesterdayRef);
-      
+
       // Fetch current cumulative data
       const cumulativeDoc = await transaction.get(cumulativeRef);
-      
+
       // Check if today's document already exists
       const todayDoc = await transaction.get(todayRef);
 
       // *** PROCESS DATA ***
-      
+
       const yesterdayData: DailyAnalytics = (yesterdayDoc.data() as DailyAnalytics) || {
         date: yesterdayString,
         orderCount: 0,
@@ -77,7 +77,7 @@ export const updateDailyAnalytics = onSchedule({
       };
 
       // *** PERFORM ALL WRITES ***
-      
+
       // Get real-time user and school counts (these are separate operations, not transaction reads)
       const usersSnapshot = await db.collection("users-test2").count().get();
       const schoolsSnapshot = await db.collection("schools-test").count().get();

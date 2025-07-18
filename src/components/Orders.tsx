@@ -313,6 +313,11 @@ const OrdersComponent: React.FC = () => {
 		return expandedOrderIds.has(orderId);
 	};
 
+    const uniqueSchoolNames = (meals: MealRecord[]) => {
+        const schoolNames = meals.map(meal => meal.schoolName);
+        return Array.from(new Set(schoolNames)).join(', ');
+    };
+
 	const RenderNoOrders = () => (
 		<Card className="mt-8">
 			<CardHeader>
@@ -445,7 +450,7 @@ const OrdersComponent: React.FC = () => {
 															</div>
                                                             <div>
                                                                 <span className="font-medium">Delivered to:</span>{' '}
-                                                                {order.meals.map(meal => meal.schoolName).join(', ')}
+                                                                {uniqueSchoolNames(order.meals)}
                                                             </div>
 															<div>
 																<span className="font-medium">Total Meals:</span>{' '}

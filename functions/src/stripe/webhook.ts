@@ -211,7 +211,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiK
 
       childId: meal.child.id,
       childName: meal.child.name,
-      childAllergens: meal.child.allergens || '', // Allergens for the child
+      childAllergens: meal.child.allergens || "", // Allergens for the child
       childIsTeacher: meal.child.isTeacher || false, // Indicates if the child is a teacher
       childYear: meal.child.year || undefined, // Optional field for child year
       childClass: meal.child.class || undefined, // Optional field for child class
@@ -322,7 +322,15 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiK
         addOns: meal.addOns.map((addon) => addon.display).join(", ") || "None",
         fruit: meal.fruitName || undefined,
         side: meal.sideName || undefined,
-        deliveryDate: new Date(meal.deliveryDate).toLocaleDateString(),
+        deliveryDate: new Date(meal.deliveryDate).toLocaleDateString(
+          "en-AU", {
+            timeZone: "Australia/Perth",
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: undefined
+          }
+        ),
         schoolName: meal.schoolName,
         quantity: 1, // Each meal record represents 1 meal
         childName: meal.childName,
@@ -331,7 +339,15 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiK
       const emailData: SendOrderConfirmationData = {
         email: tempOrder.userEmail,
         orderNumber: tempOrder.orderId,
-        orderDate: new Date(tempOrder.createdAt).toLocaleDateString(),
+        orderDate: new Date(tempOrder.createdAt).toLocaleDateString(
+          "en-AU", {
+            timeZone: "Australia/Perth",
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: undefined
+          }
+        ),
         orderTotal: tempOrder.pricing.finalTotal,
         mealItems,
       };
