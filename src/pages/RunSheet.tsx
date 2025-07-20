@@ -151,6 +151,18 @@ const RunSheet: React.FC = () => {
 		}
 	};
 
+    const startOfDay = (date: Date) => {
+		const start = new Date(date);
+		start.setHours(0, 0, 0, 0);
+		return start;
+	};
+
+    const endOfDay = (date: Date) => {
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        return end;
+    };
+
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
@@ -158,12 +170,12 @@ const RunSheet: React.FC = () => {
 
 		switch (option) {
 			case 'today':
-				newRange = { from: today, to: today };
+				newRange = { from: startOfDay(today), to: endOfDay(today) };
 				break;
 			case 'tomorrow':
 				const tomorrow = new Date(today);
 				tomorrow.setDate(tomorrow.getDate() + 1);
-				newRange = { from: tomorrow, to: tomorrow };
+				newRange = { from: startOfDay(tomorrow), to: endOfDay(tomorrow) };
 				break;
 			case 'this-week':
 				newRange = { from: startOfWeek(today), to: endOfWeek(today) };
