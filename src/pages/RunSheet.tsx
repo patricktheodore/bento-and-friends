@@ -963,8 +963,8 @@ const RunSheet: React.FC = () => {
 
 		// Get unique classes and count meals
 		schoolMeals.forEach((meal) => {
-			if (meal.childIsTeacher) return; // Skip teachers for class breakdown
-			let className = meal.childClass || 'Staff Room'; // Use "Staff Room" for null class names
+			let className = meal.childClass ?? 'Staff Room';
+			if (meal.childIsTeacher) className = 'Staff Room';
 
 			// Get and normalize the year value
 			const year = meal.childYear ? String(meal.childYear).trim() : '';

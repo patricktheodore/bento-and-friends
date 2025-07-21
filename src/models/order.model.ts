@@ -104,3 +104,11 @@ export interface MealRecord {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface UserOrderSummaryRecord {
+    orderId: string;
+	mealIds: string[];
+	totalPaid: number;
+	itemCount: number;
+	orderedOn: string;
+}
