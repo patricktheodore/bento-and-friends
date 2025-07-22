@@ -1,15 +1,23 @@
 export const isValidDateCheck = (date: Date, validDates: string[]): boolean => {
     if (validDates.length === 0) {
-        return false; // No valid dates defined for the school
+        return false;
     }
 
     const today = new Date();
     const inputDate = new Date(date);
-    const inputDateString = inputDate.toISOString(); // Format as YYYY-MM-DD
+    
+    // Compare just the date parts (YYYY-MM-DD) in local timezone
+    const inputDateString = inputDate.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
+    
     const isValid = validDates.some(validDate => {
-        const validDateString = new Date(validDate).toISOString(); // Format as YYYY-MM-DD
+        const validDateObj = new Date(validDate);
+        const validDateString = validDateObj.toLocaleDateString('en-CA');
         return validDateString === inputDateString;
     });
-    const isInFuture = inputDate >= today || (inputDate.toDateString() === today.toDateString() && inputDate.getHours() < 7);
+    
+    // Check if date is in future OR if it's today and current time is before 7am
+    const isInFuture = inputDate.toDateString() > today.toDateString() || 
+                      (inputDate.toDateString() === today.toDateString() && today.getHours() < 7);
+    
     return isValid && isInFuture;
 }

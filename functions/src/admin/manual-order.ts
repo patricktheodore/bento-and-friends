@@ -1,236 +1,229 @@
-// export const saveAdminOrder = functions.https.onCall(async (
-//   data: AdminOrderData, context
-// ) => {
-//   const startTime = Date.now();
-//   const debugLog: DebugLogEntry[] = [];
+import { onCall } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
+import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
+import { defineSecret } from "firebase-functions/params";
+import { MealRecord, Order, UserOrderSummary } from "../stripe/webhook";
+import { isUserAdmin } from "./is-admin-validator";
 
-//   const logDebug = (stage: string, logData: unknown) => {
-//     const timestamp = Date.now() - startTime;
-//     debugLog.push({timestamp, stage, data: logData});
-//     console.log(`[${timestamp}ms] ${stage}:`, JSON.stringify(logData));
-//   };
+const resendSecret = defineSecret("RESEND_API_KEY");
 
-//   try {
-//     logDebug("StartSaveAdminOrder", {
-//       hasOrder: !!data.order,
-//       mealsCount: data?.order?.meals?.length,
-//       adminUid: context?.auth?.uid,
-//       targetUserId: data?.order?.userId,
-//     });
+interface ManualOrderData {
+  userId: string;
+  userEmail: string;
+  cartData: any;
+  createdBy: string;
+}
 
-//     // Verify admin status
-//     if (!context.auth) {
-//       throw new functions.https.HttpsError(
-//         "unauthenticated",
-//         "User must be authenticated to create admin orders."
-//       );
-//     }
+export const createManualOrder = onCall(
+  {
+    memory: "512MiB",
+    timeoutSeconds: 60,
+    region: "us-central1",
+    secrets: [resendSecret],
+    cors: true,
+  },
+  async (request) => {
+    // Check if user is authenticated
+    if (!request.auth) {
+      throw new Error("User must be authenticated to create manual orders.");
+    }
 
-//     const adminUid = context.auth.uid;
-//     const adminRef = admin.firestore().collection("users").doc(adminUid);
-//     const adminDoc = await adminRef.get();
+    const isAdmin = await isUserAdmin(request.auth.uid);
+    if (!isAdmin) {
+      throw new Error("User does not have permission to access this function.");
+    }
 
-//     if (!adminDoc.exists || !adminDoc.data()?.isAdmin) {
-//       throw new functions.https.HttpsError(
-//         "permission-denied",
-//         "Only admins can create orders for other users.",
-//       );
-//     }
+    const {
+      userId,
+      userEmail,
+      cartData,
+      createdBy
+    } = request.data as ManualOrderData;
 
-//     const {order} = data;
-//     const db = admin.firestore();
+    logger.info("Creating manual order", {
+      userId,
+      userEmail,
+      itemCount: cartData?.meals?.length,
+      createdBy,
+      adminUserId: request.auth.uid
+    });
 
-//     // Validate target user exists
-//     const userRef = db.collection("users").doc(order.userId);
-//     const userDoc = await userRef.get();
+    // Validate required fields
+    if (!userId || !userEmail || !cartData || !createdBy) {
+      throw new Error("Missing required fields: userId, userEmail, cartData, createdBy");
+    }
 
-//     if (!userDoc.exists) {
-//       throw new functions.https.HttpsError(
-//         "not-found",
-//         "Target user not found",
-//       );
-//     }
+    if (!cartData.meals || !Array.isArray(cartData.meals) || cartData.meals.length === 0) {
+      throw new Error("Valid cartData with meals array is required");
+    }
 
-//     // Start a new transaction
-//     const result = await db.runTransaction(async (transaction) => {
-//       logDebug("StartingTransaction", {targetUserId: order.userId});
+    if (!userEmail.includes("@")) {
+      throw new Error("Valid userEmail is required");
+    }
 
-//       // Get counter for order number
-//       const counterRef = db.collection("counters").doc("orderNumber");
-//       const counterDoc = await transaction.get(counterRef);
-//       const now = admin.firestore.Timestamp.now();
-//       const dateString = now.toDate().toISOString().split("T")[0];
+    const db = admin.firestore();
 
-//       // Get analytics refs
-//       const dailyAnalyticsRef = db.collection("dailyAnalytics").doc(dateString);
-//       const cumulativeAnalyticsRef = db.collection("cumulativeAnalytics")
-//         .doc("totals");
-//       const dailyAnalyticsDoc = await transaction
-//         .get(dailyAnalyticsRef);
-//       const cumulativeAnalyticsDoc = await transaction
-//         .get(cumulativeAnalyticsRef);
+    try {
+      const orderId = generateManualOrderId();
+      const now = new Date().toISOString();
 
-//       if (!counterDoc.exists) {
-//         throw new Error("Counter document missing");
-//       }
+      const mealIds: string[] = [];
+      const mealRecords: MealRecord[] = [];
 
-//       const currentValue = counterDoc.data()?.value || 0;
-//       const nextValue = currentValue + 1;
-//       const customOrderNumber = `BF${nextValue.toString().padStart(5, "0")}`;
+      // Process meals into meal records (same structure as webhook)
+      cartData.meals.forEach((meal: any, index: number) => {
+        const mealId = `${orderId}-${String(index + 1).padStart(3, "0")}`;
+        mealIds.push(mealId);
 
-//       const userData = userDoc.data();
-//       const orderHistory = userData?.orderHistory || [];
+        const mealRecord: MealRecord = {
+          mealId,
+          orderId,
+          userId,
 
-//       // Generate meal IDs
-//       const mealsWithIds = order.meals.map((meal: InputMeal) => {
-//         const mealId = db.collection("meals").doc().id;
-//         return {...meal, id: mealId};
-//       });
+          deliveryDate: meal.deliveryDate,
+          schoolId: meal.school.id,
+          schoolName: meal.school.name,
+          schoolAddress: meal.school.address,
 
-//       // Validate meals
-//       const mealValidations = mealsWithIds.map((
-//         meal: InputMeal, index: number
-//       ) => {
-//         const validation = {
-//           index,
-//           mealId: meal.id,
-//           hasChild: !!meal?.child?.id,
-//           hasSchool: !!meal?.school?.id,
-//           hasMain: !!meal?.main?.id,
-//         };
-//         logDebug("MealValidation", validation);
-//         return validation;
-//       });
+          childId: meal.child.id,
+          childName: meal.child.name,
+          childAllergens: meal.child.allergens || "",
+          childIsTeacher: meal.child.isTeacher || false,
+          childYear: meal.child.year || undefined,
+          childClass: meal.child.class || meal.child.className || undefined,
 
-//       const invalidMeals = mealValidations.filter((v) =>
-//         !v.hasChild || !v.hasSchool || !v.hasMain
-//       );
+          mainId: meal.main.id,
+          mainName: meal.main.display,
 
-//       if (invalidMeals.length > 0) {
-//         throw new Error(
-//           `Invalid meal data found: ${JSON.stringify(invalidMeals)}`
-//         );
-//       }
+          addOns: meal.addOns
+            ? meal.addOns.map((addon: any) => ({
+              id: addon.id,
+              display: addon.display,
+              price: parseFloat(addon.price) || 0,
+            }))
+            : [],
 
-//       // Create order document
-//       const orderRef = db.collection("orders").doc();
-//       const newOrder = {
-//         ...order,
-//         id: orderRef.id,
-//         customOrderNumber,
-//         createdAt: now,
-//         status: "admin_created",
-//         createdBy: adminUid,
-//         meals: mealsWithIds,
-//       };
+          fruitId: meal.fruit ? meal.fruit.id : null,
+          fruitName: meal.fruit ? meal.fruit.display : null,
 
-//       const newOrderHistoryEntry = {
-//         orderId: orderRef.id,
-//         customOrderNumber,
-//         createdAt: now.toDate().toISOString(),
-//         total: order.total,
-//         items: mealsWithIds.length,
-//       };
+          sideId: meal.side ? meal.side.id : null,
+          sideName: meal.side ? meal.side.display : null,
 
-//       // Perform all writes
-//       transaction.update(counterRef, {value: nextValue});
-//       transaction.set(orderRef, newOrder);
-//       transaction.update(userRef, {
-//         orderHistory: [...orderHistory, newOrderHistoryEntry],
-//       });
+          totalAmount: parseFloat(meal.total) || 0,
 
-//       // Create individual meal documents
-//       for (const meal of mealsWithIds) {
-//         const mealRef = db.collection("meals").doc(meal.id);
-//         const mealData = {
-//           id: meal.id,
-//           orderId: orderRef.id,
-//           customOrderNumber,
-//           deliveryDate: Timestamp.fromDate(new Date(meal.orderDate)),
-//           status: "scheduled",
-//           userId: order.userId,
-//           userEmail: order.userEmail,
-//           child: {
-//             id: meal.child.id,
-//             name: meal.child.name,
-//             className: meal.child.className,
-//             year: meal.child.year,
-//           },
-//           school: {
-//             id: meal.school.id,
-//             name: meal.school.name,
-//           },
-//           allergens: meal.child.allergens ?? "",
-//           main: {
-//             id: meal.main.id,
-//             display: meal.main.display,
-//           },
-//           addOns: meal.addOns?.map((addOn) => ({
-//             id: addOn.id,
-//             display: addOn.display,
-//           })) ?? [],
-//           fruit: meal.fruit ?? null,
-//           probiotic: meal.probiotic ?? null,
-//         };
+          orderedOn: now,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-//         transaction.set(mealRef, mealData);
-//       }
+        mealRecords.push(mealRecord);
+      });
 
-//       // Update analytics
-//       const dailyData = dailyAnalyticsDoc.exists ? dailyAnalyticsDoc.data() : {
-//         date: dateString,
-//         orderCount: 0,
-//         mealCount: 0,
-//         revenue: 0,
-//       };
+      // Create the order record (same structure as webhook but with manual payment info)
+      const completedOrder: Order = {
+        orderId,
+        userId,
+        userEmail,
+        mealIds,
 
-//       const cumulativeData = cumulativeAnalyticsDoc.exists ?
-//         cumulativeAnalyticsDoc.data() :
-//         {
-//           orderCount: 0,
-//           mealCount: 0,
-//           revenue: 0,
-//         };
+        pricing: {
+          subtotal: cartData.total,
+          finalTotal: cartData.total, // No discounts for manual orders by default
+        },
 
-//       if (dailyData) {
-//         dailyData.orderCount += 1;
-//         dailyData.mealCount += order.meals.length;
-//         dailyData.revenue += order.total;
-//       }
+        payment: {
+          method: "manual",
+          paidAt: now,
+          amount: cartData.total,
+        },
 
-//       if (cumulativeData) {
-//         cumulativeData.orderCount += 1;
-//         cumulativeData.mealCount += order.meals.length;
-//         cumulativeData.revenue += order.total;
-//       }
+        // Order metadata
+        itemCount: mealRecords.length,
+        totalAmount: cartData.total,
+        status: "paid",
+        createdAt: now,
+        updatedAt: now,
+      };
 
-//       transaction.set(dailyAnalyticsRef, dailyData, {merge: true});
-//       transaction.set(cumulativeAnalyticsRef, cumulativeData, {merge: true});
+      // Create user order summary (same structure as webhook)
+      const userOrder: UserOrderSummary = {
+        orderId,
+        mealIds: mealIds,
+        totalPaid: cartData.total,
+        itemCount: cartData.meals.length,
+        orderedOn: now,
+      };
 
-//       logDebug("TransactionComplete", {
-//         customOrderNumber,
-//         totalMealsProcessed: mealsWithIds.length,
-//       });
+      logger.info("Built manual order data successfully", {
+        orderId,
+        mealCount: completedOrder.mealIds.length,
+        mealRecordCount: mealRecords.length,
+        createdBy,
+        adminUserId: request.auth.uid,
+      });
 
-//       return {orderId: orderRef.id, customOrderNumber};
-//     });
+      // Save everything in a transaction (same pattern as webhook)
+      await db.runTransaction(async (transaction) => {
+        logger.info("Starting manual order transaction", { orderId });
 
-//     logDebug("AdminOrderSaveComplete", {
-//       success: true,
-//       orderId: result.orderId,
-//       customOrderNumber: result.customOrderNumber,
-//     });
+        // Create order record
+        transaction.set(db.collection("orders-test2").doc(orderId), completedOrder);
 
-//     return result;
-//   } catch (error) {
-//     logDebug("AdminOrderSaveError", {
-//       error: (error as Error).message,
-//       stack: (error as Error).stack,
-//       debugLog,
-//     });
-//     throw new functions.https.HttpsError(
-//       "internal",
-//       "Unable to save admin order: " + (error as Error).message
-//     );
-//   }
-// });
+        // Update user's orders array
+        transaction.set(
+          db.collection("users-test2").doc(userId),
+          {
+            orders: FieldValue.arrayUnion(userOrder),
+          },
+          { merge: true }
+        );
+
+        // Create meal records
+        mealRecords.forEach((meal: MealRecord) => {
+          transaction.set(db.collection("meals-test2").doc(meal.mealId), meal);
+        });
+      });
+
+      logger.info("Manual order created successfully", {
+        orderId,
+        userId,
+        mealCount: mealRecords.length,
+        totalAmount: cartData.total,
+        createdBy,
+        adminUserId: request.auth.uid,
+      });
+
+      return {
+        success: true,
+        orderId,
+        totalAmount: cartData.total,
+        itemCount: mealRecords.length,
+        message: "Manual order created successfully",
+      };
+
+    } catch (error) {
+      logger.error("Error creating manual order", {
+        userId,
+        adminUserId: request.auth.uid,
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      throw new Error(`Failed to create manual order: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+);
+
+function generateManualOrderId(): string {
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 10).replace(/-/g, "");
+
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let randomSuffix = "";
+  for (let i = 0; i < 9; i++) {
+    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return `ORD-${timestamp}-${randomSuffix}`;
+}

@@ -10,7 +10,7 @@ const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const webhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const resendSecret = defineSecret("RESEND_API_KEY");
 
-interface Order {
+export interface Order {
 	orderId: string;
 	userId: string;
 	userEmail: string;
@@ -22,7 +22,8 @@ interface Order {
 		appliedCoupon?: { code: string; discountAmount: number };
 	};
 	payment: {
-		stripeSessionId: string;
+        method?: "manual" | "stripe";
+		stripeSessionId?: string;
 		paidAt?: string;
 		amount: number;
 	};
@@ -35,7 +36,7 @@ interface Order {
 	updatedAt: string;
 }
 
-interface UserOrderSummary {
+export interface UserOrderSummary {
 	orderId: string;
 	mealIds: string[];
 	totalPaid: number;
@@ -259,6 +260,7 @@ async function handlePaymentSuccess(session: Stripe.Checkout.Session, resendApiK
     },
 
     payment: {
+      method: "stripe",
       stripeSessionId: session.id,
       paidAt: new Date().toISOString(),
       amount: (session.amount_total || 0) / 100,

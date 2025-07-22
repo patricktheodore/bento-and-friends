@@ -275,6 +275,10 @@ const UsersComponent: React.FC = () => {
 		return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 	};
 
+    const startAnAdminOrder = () => {
+        console.log('start')
+    }
+
 	// Mobile Card Component
 	const MobileUserCard = ({ user }: { user: UserType }) => {
 		const isExpanded = expandedUserId === user.id;
@@ -483,7 +487,7 @@ const UsersComponent: React.FC = () => {
 	);
 
 	return (
-		<div className="w-full space-y-6 p-4 sm:p-6">
+		<div className="w-full space-y-4">
 			{/* Header */}
 			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 				<div>
@@ -740,8 +744,12 @@ const UsersComponent: React.FC = () => {
 																	{/* Orders */}
 																	<Card>
 																		<CardHeader className="pb-3">
-																			<CardTitle className="text-lg flex items-center gap-2">
+																			<CardTitle className="text-lg flex justify-between items-center gap-2">
 																				Order History ({expandedUserDetails.orders?.length || 0})
+
+                                                                                <Button variant="outline" size="sm" onClick={startAnAdminOrder}>
+                                                                                    Manual Order
+                                                                                </Button>
 																			</CardTitle>
 																		</CardHeader>
 																		<CardContent>

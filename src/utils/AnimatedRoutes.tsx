@@ -6,6 +6,7 @@ import { AdminRoute } from './RouteGuard';
 import AnimatedLoadingScreen from '../utils/AnimatedLoadingScreen';
 import CateringPage from '@/pages/Catering';
 import PaymentSuccessPage from '@/pages/PaymentSuccess';
+import ManualOrdersPage from '@/pages/ManualOrder';
 
 // Lazy load components
 const HomePage = lazy(() => import('../pages/Home'));
@@ -198,6 +199,19 @@ const AnimatedRoutes: React.FC = () => {
 							<PageTransition>
 								<Suspense fallback={<AnimatedLoadingScreen />}>
 									<RunSheet />
+								</Suspense>
+							</PageTransition>
+						</AdminRoute>
+					}
+				/>
+
+				<Route
+					path="/manual-order"
+					element={
+						<AdminRoute>
+							<PageTransition>
+								<Suspense fallback={<AnimatedLoadingScreen />}>
+									<ManualOrdersPage />
 								</Suspense>
 							</PageTransition>
 						</AdminRoute>

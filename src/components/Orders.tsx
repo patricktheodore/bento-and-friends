@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Loader2, Search, Utensils, Edit, Filter, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Utensils, Edit, Filter, X, Mail, Hash } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -15,12 +15,15 @@ import OrderDialog from './OrderDialog';
 import { useAppContext } from '@/context/AppContext';
 import { Main } from '@/models/item.model';
 import { Child, User } from '@/models/user.model';
+import { Link } from 'react-router-dom';
 
 const PAGE_SIZE = 25;
 
 interface SearchState {
-	term: string;
-	debouncedTerm: string;
+	orderIdTerm: string;
+	debouncedOrderIdTerm: string;
+	emailTerm: string;
+	debouncedEmailTerm: string;
 	isSearching: boolean;
 }
 
@@ -34,8 +37,10 @@ const OrdersComponent: React.FC = () => {
 	
 	// Search state
 	const [searchState, setSearchState] = useState<SearchState>({
-		term: '',
-		debouncedTerm: '',
+		orderIdTerm: '',
+		debouncedOrderIdTerm: '',
+		emailTerm: '',
+		debouncedEmailTerm: '',
 		isSearching: false
 	});
 	
@@ -58,7 +63,8 @@ const OrdersComponent: React.FC = () => {
 			const options = {
 				pageSize: PAGE_SIZE,
 				lastVisible: isLoadMore ? lastVisible : null,
-				searchTerm: searchState.debouncedTerm,
+				searchByOrderId: searchState.debouncedOrderIdTerm,
+				searchByEmail: searchState.debouncedEmailTerm,
 			};
 
 			const response: PaginatedOrdersResponse = await fetchOrders(options);
@@ -71,41 +77,68 @@ const OrdersComponent: React.FC = () => {
 
 			setLastVisible(response.lastVisible);
 			setHasMore(response.hasMore);
-			setIsSearchResult(!!searchState.debouncedTerm);
+			setIsSearchResult(!!(searchState.debouncedOrderIdTerm || searchState.debouncedEmailTerm));
 		} catch (error) {
 			console.error('Error fetching orders: ', error);
 			toast.error('Failed to fetch orders');
 		} finally {
 			setLoading(false);
 		}
-	}, [lastVisible, searchState.debouncedTerm]);
+	}, [lastVisible, searchState.debouncedOrderIdTerm, searchState.debouncedEmailTerm]);
 
-	// Debounced search function
-	const debouncedSearch = useCallback(
+	// Debounced search functions
+	const debouncedOrderIdSearch = useCallback(
 		debounce((searchTerm: string) => {
 			setSearchState(prev => ({ 
 				...prev, 
-				debouncedTerm: searchTerm,
+				debouncedOrderIdTerm: searchTerm,
 				isSearching: false 
 			}));
 		}, 500),
 		[]
 	);
 
-	// Handle search input change
-	const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+	const debouncedEmailSearch = useCallback(
+		debounce((searchTerm: string) => {
+			setSearchState(prev => ({ 
+				...prev, 
+				debouncedEmailTerm: searchTerm,
+				isSearching: false 
+			}));
+		}, 500),
+		[]
+	);
+
+	// Handle search input changes
+	const handleOrderIdChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
 		const value = event.target.value;
 		setSearchState(prev => ({ 
 			...prev, 
-			term: value,
-			isSearching: value.trim() !== prev.debouncedTerm.trim()
+			orderIdTerm: value,
+			isSearching: value.trim() !== prev.debouncedOrderIdTerm.trim()
 		}));
-		debouncedSearch(value);
-	}, [debouncedSearch]);
+		debouncedOrderIdSearch(value);
+	}, [debouncedOrderIdSearch]);
+
+	const handleEmailChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+		const value = event.target.value;
+		setSearchState(prev => ({ 
+			...prev, 
+			emailTerm: value,
+			isSearching: value.trim() !== prev.debouncedEmailTerm.trim()
+		}));
+		debouncedEmailSearch(value);
+	}, [debouncedEmailSearch]);
 
 	// Clear search and filters
 	const clearFilters = useCallback(() => {
-		setSearchState({ term: '', debouncedTerm: '', isSearching: false });
+		setSearchState({ 
+			orderIdTerm: '', 
+			debouncedOrderIdTerm: '', 
+			emailTerm: '', 
+			debouncedEmailTerm: '', 
+			isSearching: false 
+		});
 		setLastVisible(null);
 		setOrders([]);
 		setIsSearchResult(false);
@@ -114,13 +147,13 @@ const OrdersComponent: React.FC = () => {
 	// Effect for search term changes
 	useEffect(() => {
 		// Skip the initial undefined state
-		if (searchState.debouncedTerm === undefined) return;
+		if (searchState.debouncedOrderIdTerm === undefined && searchState.debouncedEmailTerm === undefined) return;
 		
 		setLastVisible(null);
 		setOrders([]);
 		loadOrders(false);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [searchState.debouncedTerm]);
+	}, [searchState.debouncedOrderIdTerm, searchState.debouncedEmailTerm]);
 
 	// Initial load only
 	useEffect(() => {
@@ -318,82 +351,104 @@ const OrdersComponent: React.FC = () => {
         return Array.from(new Set(schoolNames)).join(', ');
     };
 
-	const RenderNoOrders = () => (
-		<Card className="mt-8">
-			<CardHeader>
-				<CardTitle className="text-2xl font-bold text-center">No Orders Found</CardTitle>
-			</CardHeader>
-			<CardContent className="text-center">
-				<Utensils className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
-				<p className="text-lg mb-4">
-					{searchState.debouncedTerm 
-						? searchState.debouncedTerm.length < 2 
-							? 'Please enter at least 2 characters to search'
-							: `No orders found matching "${searchState.debouncedTerm}"`
-						: 'No orders available.'
-					}
-				</p>
-				{searchState.debouncedTerm && (
-					<Button variant="outline" onClick={clearFilters} className="inline-flex items-center gap-2">
-						<X className="h-4 w-4" />
-						Clear Search
-					</Button>
-				)}
-			</CardContent>
-		</Card>
-	);
+	const RenderNoOrders = () => {
+		const hasSearch = searchState.debouncedOrderIdTerm || searchState.debouncedEmailTerm;
+		
+		return (
+			<Card className="mt-8">
+				<CardHeader>
+					<CardTitle className="text-2xl font-bold text-center">No Orders Found</CardTitle>
+				</CardHeader>
+				<CardContent className="text-center">
+					<Utensils className="mx-auto h-12 w-12 text-brand-taupe mb-4" />
+					<p className="text-lg mb-4">
+						{hasSearch 
+							? `No orders found matching your search criteria`
+							: 'No orders available.'
+						}
+					</p>
+					{hasSearch && (
+						<Button variant="outline" onClick={clearFilters} className="inline-flex items-center gap-2">
+							<X className="h-4 w-4" />
+							Clear Search
+						</Button>
+					)}
+				</CardContent>
+			</Card>
+		);
+	};
 
 	return (
 		<div className="w-full space-y-4">
 			
 			<div className="flex justify-between items-center">
 				<h2 className="text-2xl font-bold">Orders</h2>
-				<div className="relative max-w-sm w-full">
-					<Input
-						type="text"
-						placeholder="Search by order ID"
-						value={searchState.term}
-						onChange={handleSearchChange}
-						className="pl-10 pr-10"
-					/>
-					<Search className="absolute left-3 top-2 h-5 w-5 text-brand-taupe" />
-					{searchState.isSearching && (
-						<Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-brand-taupe animate-spin" />
-					)}
-				</div>
+                <div className='flex items-center gap-2'>
+                    <Button variant={'outline'} size="sm">
+                        <Link to="/manual-order">
+                            Create Manual Order
+                        </Link>
+                    </Button>
+                    
+                    {/* Search Inputs */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative max-w-48">
+                            <Input
+                                type="text"
+                                placeholder="Search by full Order ID"
+                                value={searchState.orderIdTerm}
+                                onChange={handleOrderIdChange}
+                                className="pl-10 pr-3"
+                            />
+                            <Hash className="absolute left-3 top-2.5 h-4 w-4 text-brand-taupe" />
+                        </div>
+                        
+                        <div className="relative max-w-48">
+                            <Input
+                                type="text"
+                                placeholder="Search by Email"
+                                value={searchState.emailTerm}
+                                onChange={handleEmailChange}
+                                className="pl-10 pr-3"
+                            />
+                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-brand-taupe" />
+                        </div>
+                        
+                        {searchState.isSearching && (
+                            <Loader2 className="h-5 w-5 text-brand-taupe animate-spin" />
+                        )}
+                    </div>
+                </div>
 			</div>
 
 			{/* Active Filters & Search Status */}
-			{searchState.debouncedTerm && (
+			{(searchState.debouncedOrderIdTerm || searchState.debouncedEmailTerm) && (
 				<div className="flex flex-wrap items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
 					<div className="flex items-center gap-2">
 						<Filter className="h-4 w-4 text-blue-600" />
-						<span className="text-sm font-medium text-blue-900">Active Search:</span>
+						<span className="text-sm font-medium text-blue-900">Active Filters:</span>
 					</div>
-					{searchState.debouncedTerm.length >= 2 ? (
-						<>
-							<Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
-								Search: "{searchState.debouncedTerm}"
-							</Badge>
-							<div className="flex items-center gap-2 ml-auto">
-								<span className="text-sm text-blue-700">
-									{orders.length} order{orders.length !== 1 ? 's' : ''} found
-								</span>
-								<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2">
-									<X className="h-3 w-3" />
-								</Button>
-							</div>
-						</>
-					) : (
-						<>
-							<span className="text-sm text-orange-700">
-								Please enter at least 2 characters to search
-							</span>
-							<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 ml-auto">
-								<X className="h-3 w-3" />
-							</Button>
-						</>
+					
+					{searchState.debouncedOrderIdTerm && (
+						<Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
+							Order ID: "{searchState.debouncedOrderIdTerm}"
+						</Badge>
 					)}
+					
+					{searchState.debouncedEmailTerm && (
+						<Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+							Email: "{searchState.debouncedEmailTerm}"
+						</Badge>
+					)}
+					
+					<div className="flex items-center gap-2 ml-auto">
+						<span className="text-sm text-blue-700">
+							{orders.length} order{orders.length !== 1 ? 's' : ''} found
+						</span>
+						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2">
+							<X className="h-3 w-3" />
+						</Button>
+					</div>
 				</div>
 			)}
 
