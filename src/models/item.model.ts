@@ -43,6 +43,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 	public addOns: string[]; // Array of AddOn IDs
 	public price: number;
 	public isPromo: boolean;
+    public disableSidesSelection?: boolean;
 	public validDates?: string[];
 
 	constructor(
@@ -58,6 +59,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		price?: number,
 		id?: string,
 		isPromo?: boolean,
+        disableSidesSelection?: boolean,
 		validDates?: string[]
 	) {
 		this.id = id || generateId();
@@ -72,6 +74,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		this.addOns = addOns || [];
 		this.price = price || 0;
 		this.isPromo = isPromo ?? false;
+		this.disableSidesSelection = disableSidesSelection ?? false;
 		this.validDates = validDates || [];
 	}
 

@@ -151,17 +151,17 @@ const RunSheet: React.FC = () => {
 		}
 	};
 
-    const startOfDay = (date: Date) => {
+	const startOfDay = (date: Date) => {
 		const start = new Date(date);
 		start.setHours(0, 0, 0, 0);
 		return start;
 	};
 
-    const endOfDay = (date: Date) => {
-        const end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        return end;
-    };
+	const endOfDay = (date: Date) => {
+		const end = new Date(date);
+		end.setHours(23, 59, 59, 999);
+		return end;
+	};
 
 	const handleQuickSelect = (option: string) => {
 		const today = new Date();
@@ -492,7 +492,6 @@ const RunSheet: React.FC = () => {
 
 		// Helper function to add timestamp to current page
 		const addTimestampToPage = () => {
-
 			// Set timestamp styling
 			pdf.setFont('helvetica', 'normal');
 			pdf.setFontSize(7);
@@ -668,7 +667,7 @@ const RunSheet: React.FC = () => {
 
 	const handlePrintMainDishSummary = () => {
 		const pdf = new jsPDF({
-			orientation: 'portrait',
+			orientation: 'landscape',
 			unit: 'mm',
 			format: 'a4',
 		}) as jsPDFWithPlugin;
@@ -698,54 +697,20 @@ const RunSheet: React.FC = () => {
 			// Sort schools alphabetically before processing
 			const sortedSchools = Object.entries(schools).sort((a, b) => a[0].localeCompare(b[0]));
 
-			// Process schools - we can fit 2 schools side by side in portrait
-			for (let i = 0; i < sortedSchools.length; i += 2) {
-				const leftSchool = sortedSchools[i];
-				const rightSchool = sortedSchools[i + 1];
-
-				const leftX = 10;
-				const rightX = 110; // Position for right school
-				const schoolWidth = 90; // Width allocated for each school
-
-				// Store the starting Y position for both schools
-				const startingY = yOffset;
-
-				// Process left school
-				const [leftSchoolName, leftSchoolMeals] = leftSchool;
-				const leftFinalY = processSchoolMainDishTable(
-					pdf,
-					leftSchoolName,
-					leftSchoolMeals,
-					leftX,
-					startingY,
-					schoolWidth
-				);
-
-				// Process right school if it exists, starting at the same Y position
-				let rightFinalY = startingY;
-				if (rightSchool) {
-					const [rightSchoolName, rightSchoolMeals] = rightSchool;
-					rightFinalY = processSchoolMainDishTable(
-						pdf,
-						rightSchoolName,
-						rightSchoolMeals,
-						rightX,
-						startingY,
-						schoolWidth
-					);
-				}
-
-				// Set yOffset to the maximum of both table endings
-				yOffset = Math.max(leftFinalY, rightFinalY) + 15;
-
-				// Check if we need a new page
-				if (yOffset > pdf.internal.pageSize.height - 60) {
+			// Process schools - one school per page
+			sortedSchools.forEach(([schoolName, schoolMeals], schoolIndex) => {
+				// Add new page for each school (except the first one on each date)
+				if (schoolIndex > 0) {
 					pdf.addPage();
 					yOffset = 10;
 				}
-			}
 
-			yOffset += 10;
+				const schoolX = 10;
+				const schoolWidth = pdf.internal.pageSize.width - 20; // Use full width minus margins
+
+				// Process school main dish table
+				yOffset = processSchoolMainDishTable(pdf, schoolName, schoolMeals, schoolX, yOffset, schoolWidth);
+			});
 		});
 
 		pdf.save('main-dish-summary.pdf');
@@ -859,7 +824,7 @@ const RunSheet: React.FC = () => {
 
 	const handlePrintClassBreakdown = () => {
 		const pdf = new jsPDF({
-			orientation: 'portrait',
+			orientation: 'landscape',
 			unit: 'mm',
 			format: 'a4',
 		}) as jsPDFWithPlugin;
@@ -889,54 +854,20 @@ const RunSheet: React.FC = () => {
 			// Get school entries as array and sort alphabetically by school name
 			const schoolEntries = Object.entries(schools).sort((a, b) => a[0].localeCompare(b[0]));
 
-			// Process schools - we can fit 2 schools side by side in portrait
-			for (let i = 0; i < schoolEntries.length; i += 2) {
-				const leftSchool = schoolEntries[i];
-				const rightSchool = schoolEntries[i + 1];
-
-				const leftX = 10;
-				const rightX = 110; // Position for right school
-				const schoolWidth = 90; // Width allocated for each school
-
-				// Store the starting Y position for both schools
-				const startingY = yOffset;
-
-				// Process left school
-				const [leftSchoolName, leftSchoolMeals] = leftSchool;
-				const leftFinalY = processSchoolTable(
-					pdf,
-					leftSchoolName,
-					leftSchoolMeals,
-					leftX,
-					startingY,
-					schoolWidth
-				);
-
-				// Process right school if it exists, starting at the same Y position
-				let rightFinalY = startingY;
-				if (rightSchool) {
-					const [rightSchoolName, rightSchoolMeals] = rightSchool;
-					rightFinalY = processSchoolTable(
-						pdf,
-						rightSchoolName,
-						rightSchoolMeals,
-						rightX,
-						startingY,
-						schoolWidth
-					);
-				}
-
-				// Set yOffset to the maximum of both table endings
-				yOffset = Math.max(leftFinalY, rightFinalY) + 15;
-
-				// Check if we need a new page
-				if (yOffset > pdf.internal.pageSize.height - 60) {
+			// Process schools - one school per page
+			schoolEntries.forEach(([schoolName, schoolMeals], schoolIndex) => {
+				// Add new page for each school (except the first one on each date)
+				if (schoolIndex > 0) {
 					pdf.addPage();
 					yOffset = 10;
 				}
-			}
 
-			yOffset += 10;
+				const schoolX = 10;
+				const schoolWidth = pdf.internal.pageSize.width - 20; // Use full width minus margins
+
+				// Process school table
+				yOffset = processSchoolTable(pdf, schoolName, schoolMeals, schoolX, yOffset, schoolWidth);
+			});
 		});
 
 		pdf.save('class-breakdown.pdf');

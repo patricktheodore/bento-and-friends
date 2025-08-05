@@ -22,6 +22,7 @@ export const getMains = async (): Promise<{ success: boolean; data?: Main[]; err
 				data.price,
 				doc.id,
 				data.isPromo,
+                data.disableSidesSelection ?? false,
                 data.validDates || []
 			);
 		});

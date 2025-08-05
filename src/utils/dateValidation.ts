@@ -4,20 +4,25 @@ export const isValidDateCheck = (date: Date, validDates: string[]): boolean => {
     }
 
     const today = new Date();
-    const inputDate = new Date(date);
     
-    // Compare just the date parts (YYYY-MM-DD) in local timezone
-    const inputDateString = inputDate.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
+    // Normalize input date to start of day in local timezone
+    const inputDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     
-    const isValid = validDates.some(validDate => {
-        const validDateObj = new Date(validDate);
-        const validDateString = validDateObj.toLocaleDateString('en-CA');
-        return validDateString === inputDateString;
+    // Create normalized valid dates for comparison
+    const normalizedValidDates = validDates.map(validDate => {
+        const d = new Date(validDate);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     });
     
+    // Check if input date matches any valid date
+    const isValid = normalizedValidDates.some(validDate => 
+        inputDate.getTime() === validDate.getTime()
+    );
+    
     // Check if date is in future OR if it's today and current time is before 7am
-    const isInFuture = inputDate.toDateString() > today.toDateString() || 
-                      (inputDate.toDateString() === today.toDateString() && today.getHours() < 7);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isInFuture = inputDate.getTime() > todayStart.getTime() || 
+                      (inputDate.getTime() === todayStart.getTime() && today.getHours() < 7);
     
     return isValid && isInFuture;
 }

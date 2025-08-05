@@ -39,6 +39,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         isFeatured: false,
         isVegetarian: false,
         isPromo: false,
+        disableSidesSelection: false,
         validDates: [] as string[],
     });
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -84,6 +85,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: item.isFeatured ?? false,
                 isVegetarian: item.isVegetarian ?? false,
                 isPromo: item.isPromo ?? false,
+                disableSidesSelection: item.disableSidesSelection ?? false,
                 validDates: item.validDates || [],
             });
             setSelectedDates(validDatesAsDateObjects);
@@ -101,6 +103,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: false,
                 isVegetarian: false,
                 isPromo: false,
+                disableSidesSelection: false,
                 validDates: [],
             });
             setSelectedDates([]);
@@ -168,6 +171,13 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         }
     };
 
+    const handleDisableSidesSelectionToggle = (checked: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            disableSidesSelection: checked
+        }));
+    };
+
     const handleDateSelect = (dates: Date[] | undefined) => {
         if (!dates) return;
         
@@ -221,6 +231,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 formData.price,
                 item?.id,
                 formData.isPromo,
+                formData.disableSidesSelection,
                 formData.isPromo ? formData.validDates : undefined // Only pass validDates if isPromo
             );
 
@@ -439,6 +450,15 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                                 id="isPromo"
                                 checked={formData.isPromo}
                                 onCheckedChange={handlePromoToggle}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="disableSidesSelection">Disable Sides Selection</Label>
+                            <Switch
+                                id="disableSidesSelection"
+                                checked={formData.disableSidesSelection}
+                                onCheckedChange={handleDisableSidesSelectionToggle}
                             />
                         </div>
                     </div>

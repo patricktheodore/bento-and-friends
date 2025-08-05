@@ -113,10 +113,16 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 			setCurrentMain(initialMain);
 			setSelectedAddOns([]);
 			// Set default side and fruit if available
-			const activeSides = sides.filter(side => side.isActive);
-			const activeFruits = fruits.filter(fruit => fruit.isActive);
-			setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
-			setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
+            if (!initialMain?.disableSidesSelection) {
+                const activeSides = sides.filter(side => side.isActive);
+                const activeFruits = fruits.filter(fruit => fruit.isActive);
+                setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
+                setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
+            } else {
+                setSelectedSide(undefined);
+                setSelectedFruit(undefined);
+            }
+
             setSelectedChildren(children.length === 1 ? [children[0]] : []);
 			setSelectedDates([]);
 			setIsMainOnly(false);
@@ -184,40 +190,70 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         }
 	};
 
-    const updateMain = (main: Main) => {
-    const wasPromo = currentMain?.isPromo;
-    const isPromo = main.isPromo;
-    
-    if ((wasPromo || isPromo) && selectedDates.length > 0) {
-        setSelectedDates([]);
-        
-        if (wasPromo && !isPromo) {
-            toast('Dates cleared - switching from promotional to regular menu item', {
-                style: {
-                    background: '#3b82f6',
-                    color: '#ffffff',
-                },
-            });
-        } else if (!wasPromo && isPromo) {
-            toast('Dates cleared - promotional items have specific available dates', {
-                style: {
-                    background: '#3b82f6',
-                    color: '#ffffff',
-                },
-            });
-        } else if (wasPromo && isPromo) {
-            toast('Dates cleared - different promotional item selected', {
-                style: {
-                    background: '#3b82f6',
-                    color: '#ffffff',
-                },
-            });
-        }
-    }
+    const shouldHideSides = isMainOnly || currentMain?.disableSidesSelection;
 
-    setCurrentMain(main);
-    setCalendarKey(`calendar-${main.id}`);
-}
+    const updateMain = (main: Main) => {
+        const wasPromo = currentMain?.isPromo;
+        const isPromo = main.isPromo;
+        
+        if ((wasPromo || isPromo) && selectedDates.length > 0) {
+            setSelectedDates([]);
+            
+            if (wasPromo && !isPromo) {
+                toast('Dates cleared - switching from promotional to regular menu item', {
+                    style: {
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                    },
+                });
+            } else if (!wasPromo && isPromo) {
+                toast('Dates cleared - promotional items have specific available dates', {
+                    style: {
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                    },
+                });
+            } else if (wasPromo && isPromo) {
+                toast('Dates cleared - different promotional item selected', {
+                    style: {
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                    },
+                });
+            }
+        }
+
+        if (currentMain && currentMain.id !== main.id) {
+            const shouldToast = selectedAddOns.length > 0;
+
+            setSelectedAddOns([]);
+            setIsMainOnly(false);
+            
+            // If the new main has disableSidesSelection, clear sides/fruits
+            if (main.disableSidesSelection) {
+                setSelectedSide(undefined);
+                setSelectedFruit(undefined);
+            } else {
+                // Reset to default sides/fruits if switching to a main that allows them
+                const activeSides = sides.filter(side => side.isActive);
+                const activeFruits = fruits.filter(fruit => fruit.isActive);
+                setSelectedSide(activeSides.length > 0 ? activeSides[0] : undefined);
+                setSelectedFruit(activeFruits.length > 0 ? activeFruits[0] : undefined);
+            }
+            
+            if (shouldToast) {
+                toast('Add-ons cleared when switching main dishes', {
+                    style: {
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                    },
+                });
+            }
+        }
+
+        setCurrentMain(main);
+        setCalendarKey(`calendar-${main.id}`);
+    }
 
 	const isInvalidDate = (date: Date):boolean => {
         let validDates = [];
@@ -257,19 +293,19 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         }
 		
 		// Validate sides and fruits if not main only
-		if (!isMainOnly) {
-			const activeSides = sides.filter(side => side.isActive);
-			const activeFruits = fruits.filter(fruit => fruit.isActive);
-			
-			if (activeSides.length > 0 && !selectedSide) {
-				toast.error('Please select a side');
-				return;
-			}
-			if (activeFruits.length > 0 && !selectedFruit) {
-				toast.error('Please select a fruit');
-				return;
-			}
-		}
+		if (!shouldHideSides) {
+            const activeSides = sides.filter(side => side.isActive);
+            const activeFruits = fruits.filter(fruit => fruit.isActive);
+            
+            if (activeSides.length > 0 && !selectedSide) {
+                toast.error('Please select a side');
+                return;
+            }
+            if (activeFruits.length > 0 && !selectedFruit) {
+                toast.error('Please select a fruit');
+                return;
+            }
+        }
 
 		try {
 			if (isEditMode && editingMeal) {
@@ -278,8 +314,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 					...editingMeal,
 					main: currentMain,
 					addOns: selectedAddOns,
-					side: isMainOnly ? undefined : selectedSide,
-					fruit: isMainOnly ? undefined : selectedFruit,
+					side: shouldHideSides ? undefined : selectedSide,
+                    fruit: shouldHideSides ? undefined : selectedFruit,
 					child: selectedChildren[0],
 					deliveryDate: selectedDates[0].toISOString(),
 					// For customer edits, keep original total to prevent price manipulation
@@ -295,8 +331,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 						id: uuidv4(),
 						main: currentMain,
 						addOns: selectedAddOns,
-						side: isMainOnly ? undefined : selectedSide,
-						fruit: isMainOnly ? undefined : selectedFruit,
+						side: shouldHideSides ? undefined : selectedSide,
+                        fruit: shouldHideSides ? undefined : selectedFruit,
 						child,
 						deliveryDate: date.toISOString(),
 						total: calculateTotal(currentMain, selectedAddOns),
@@ -431,7 +467,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 						)}
 
 						{/* Sides and Fruits */}
-						{!isMainOnly && (
+						{!shouldHideSides && (
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								{sides.length > 0 && (
 									<div className="bg-gray-50 rounded-lg p-4 space-y-3">

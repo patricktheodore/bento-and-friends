@@ -233,6 +233,19 @@ const CheckoutPage: React.FC = () => {
 		fetchClientSecret,
 	};
 
+    const getMealDetailsForCheckout = (meal: Meal) => {
+        const addOns = meal.addOns.map(addon => addon.display).join(', ');
+        
+        if (meal.main.disableSidesSelection) {
+            return addOns || 'No add-ons';
+        }
+        
+        const side = meal.side ? meal.side.display : 'No side';
+        const fruit = meal.fruit ? meal.fruit.display : 'No fruit';
+        
+        return `${addOns} - ${side} - ${fruit}`;
+    };
+
 	if (!cart || cart.meals.length === 0) {
 		return (
 			<div className="container mx-auto p-4 py-8">
@@ -387,12 +400,10 @@ const CheckoutPage: React.FC = () => {
 											</AlertDescription>
 										</Alert>
 									)}
-									<p className="text-sm text-gray-600 mt-1">
-										<strong>Details: </strong>
-										{meal.addOns.map((addon) => addon.display).join(', ')} -{' '}
-										{meal.side ? meal.side.display : ' No side '} -{' '}
-										{meal.fruit ? meal.fruit.display : ' No fruit '}
-									</p>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        <strong>Details: </strong>
+                                        {getMealDetailsForCheckout(meal)}
+                                    </p>
 									<p className="text-sm text-gray-600">
 										<strong>For:</strong> {meal.child.name}
 									</p>

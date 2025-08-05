@@ -163,6 +163,23 @@ const Cart: React.FC = () => {
         toast.success('Cart cleared');
     };
 
+    const getMealDetails = (meal: Meal) => {
+        const details = [];
+        
+        // Add add-ons
+        if (meal.addOns.length > 0) {
+            details.push(...meal.addOns.map(addon => addon.display));
+        }
+        
+        // Only show sides/fruits if they weren't disabled
+        if (!meal.main.disableSidesSelection) {
+            details.push(meal.side ? meal.side.display : 'No side');
+            details.push(meal.fruit ? meal.fruit.display : 'No fruit');
+        }
+        
+        return details.join(' - ');
+    };
+
 	return (
 		<Sheet
 			open={state.isCartOpen}
@@ -226,11 +243,7 @@ const Cart: React.FC = () => {
 									</Alert>
 								)}
 								<p className="text-sm text-gray-500">
-									{[
-										...(meal.addOns.length > 0 ? meal.addOns.map((addon) => addon.display) : []),
-										meal.side ? meal.side.display : 'No side',
-										meal.fruit ? meal.fruit.display : 'No fruit'
-									].join(' - ')}
+									{getMealDetails(meal)}
 								</p>
 								<p className="text-sm">
 									{meal.child.name} - {formatDate(meal.deliveryDate)}
