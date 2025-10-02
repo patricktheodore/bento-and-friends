@@ -20,6 +20,7 @@ const OrderPage: React.FC = () => {
     const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
     const [showOrderDialog, setShowOrderDialog] = useState(false);
     const [adminModeEnabled, setAdminModeEnabled] = useState(false);
+    const [userIsTeacher, setUserIsTeacher] = useState(false);
 
     useEffect(() => {
         setShowOrderDialog(isModalOpen && !!selectedSchool);
@@ -35,6 +36,10 @@ const OrderPage: React.FC = () => {
 
         console.log('User schools:', schools);
         console.log('Selected school:', defaultSchool);
+
+        // Determine if user is a teacher at any school
+        const isTeacher = state.user?.children?.some(child => child.isTeacher) || false;
+        setUserIsTeacher(isTeacher);
         
     }, [state.user, state.schools, adminModeEnabled]); // Added adminModeEnabled as dependency
 
@@ -110,12 +115,18 @@ const OrderPage: React.FC = () => {
         if (!selectedSchool?.menuItems) return [];
         
         return state.mains.filter(main => 
-            selectedSchool.menuItems.includes(main.id) && main.isActive
+            selectedSchool.menuItems.includes(main.id) && main.isActive && (!main.isTeachersOnly || userIsTeacher)
         );
     };
 
     const schoolMenuItems = getSchoolMenuItems();
     const sortedMains = schoolMenuItems.sort((a, b) => {
+        // if user is teacher, place all items where isTeachersOnly = true at the top
+        if (userIsTeacher) {
+            if (a.isTeachersOnly && !b.isTeachersOnly) return -1;
+            if (!a.isTeachersOnly && b.isTeachersOnly) return 1;
+        }
+
         // Promo items first, then featured items, then alphabetical
         if (a.isPromo && !b.isPromo) return -1;
         if (!a.isPromo && b.isPromo) return 1;
@@ -389,9 +400,14 @@ const OrderPage: React.FC = () => {
                                         )}
                                     </p>
                                 </div>
-                                {sortedMains.some(item => item.isFeatured) && (
+                                {userIsTeacher && sortedMains.some(item => item.isTeachersOnly) && (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                        Teacher only items available
+                                    </Badge>
+                                )}
+                                {sortedMains.some(item => item.isPromo) && (
                                     <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                        Featured items available
+                                        Promotional items available
                                     </Badge>
                                 )}
                             </div>

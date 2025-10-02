@@ -17,7 +17,8 @@ const badgeVariants = cva(
         outline: "text-foreground",
         success: "border-transparent bg-green-100 text-brand-dark-green",
         alert: "border-transparent bg-yellow-100 text-yellow-800",
-        promo: "border-transparent bg-purple-100 text-purple-800",
+        promo: "border-transparent bg-yellow-100 text-yellow-800",
+        teachersOnly: "border-transparent bg-purple-100 text-purple-800",
       },
     },
     defaultVariants: {

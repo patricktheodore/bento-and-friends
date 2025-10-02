@@ -75,6 +75,14 @@ const MenuItemCard: React.FC<MenuItemProps> = ({ item, onOrderNow, disabled = fa
 							alt={item.display}
 							className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
 						/>
+						{item.isTeachersOnly && (
+							<div className="absolute top-3 left-3">
+								<Badge variant={"teachersOnly"} className="border-0 px-3 py-1 flex items-center gap-1.5 shadow-lg">
+									<Sparkles className="h-3.5 w-3.5" />
+									Teachers Only
+								</Badge>
+							</div>
+						)}
 						{item.isPromo && (
 							<div className="absolute top-3 left-3">
 								<Badge variant={"promo"} className="border-0 px-3 py-1 flex items-center gap-1.5 shadow-lg">

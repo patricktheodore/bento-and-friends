@@ -16,7 +16,7 @@ const MenuPage: React.FC = () => {
     // Get menu items for selected school or all items for guests
     const getFilteredMainItems = (): Main[] => {        
         return state.mains.filter(main => 
-            main.isActive && main.isFeatured
+            main.isActive && main.isFeatured 
         );
     };
 

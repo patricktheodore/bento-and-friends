@@ -8,3 +8,12 @@ firebase emulators:start --only functions
 
 <!-- run dev server -->
 npm run dev
+
+<!-- to build -->
+npm run build
+
+<!-- to deploy functions -->
+firebase deploy --only functions
+
+<!-- to deploy hosting -->
+firebase deploy --only hosting --project default

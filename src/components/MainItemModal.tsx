@@ -39,6 +39,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         isFeatured: false,
         isVegetarian: false,
         isPromo: false,
+        isTeachersOnly: false,
         disableSidesSelection: false,
         validDates: [] as string[],
     });
@@ -85,6 +86,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: item.isFeatured ?? false,
                 isVegetarian: item.isVegetarian ?? false,
                 isPromo: item.isPromo ?? false,
+                isTeachersOnly: item.isTeachersOnly ?? false,
                 disableSidesSelection: item.disableSidesSelection ?? false,
                 validDates: item.validDates || [],
             });
@@ -103,6 +105,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: false,
                 isVegetarian: false,
                 isPromo: false,
+                isTeachersOnly: false,
                 disableSidesSelection: false,
                 validDates: [],
             });
@@ -231,6 +234,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 formData.price,
                 item?.id,
                 formData.isPromo,
+                formData.isTeachersOnly,
                 formData.disableSidesSelection,
                 formData.isPromo ? formData.validDates : undefined // Only pass validDates if isPromo
             );
@@ -432,6 +436,15 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                                 id="isFeatured"
                                 checked={formData.isFeatured}
                                 onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
+                            />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="isTeachersOnly">Teachers Only</Label>
+                            <Switch
+                                id="isTeachersOnly"
+                                checked={formData.isTeachersOnly}
+                                onCheckedChange={(checked) => setFormData({ ...formData, isTeachersOnly: checked })}
                             />
                         </div>
 
