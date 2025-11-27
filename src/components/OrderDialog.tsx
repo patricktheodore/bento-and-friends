@@ -51,7 +51,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     const [calendarKey, setCalendarKey] = useState<string>(`calendar-${selectedMain?.id || 'none'}`);
 	// Use the school from editingMeal if in edit mode and selectedSchool is not provided
 	const effectiveSchool = selectedSchool || editingMeal?.school;
-	
+	 
     // Derived values
     const isEditMode = !!editingMeal;
     const overrideWithAdminState = !!adminState;
@@ -291,6 +291,33 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
             toast.error('School information is missing');
             return;
         }
+
+        // validate maxOnePerChild constraint
+        if (currentMain.maxOnePerChild && selectedDates.length > 1) {
+            toast.error('This main dish is limited to one per child. Please select only one date.');
+            return;
+        }
+
+        // we need the check the cart and ensure there are no duplicates. so same main for same child on the same date
+        if (currentMain.maxOnePerChild) {
+            const cartMeals = state.cart?.meals || [];
+
+            if (cartMeals.length === 0) return;
+            
+            const duplicateMeal = cartMeals.filter(meal => 
+                meal.main.id === currentMain.id &&
+                selectedChildren.some(child => child.id === meal.child.id) &&
+                selectedDates.some(date => meal.deliveryDate === date.toISOString())
+            );
+
+            if (duplicateMeal.length > 0) {
+                toast.error('You have already added this main dish for one of the selected children on one of the selected dates in your cart. Please adjust your selection to comply with the one per child limit.');
+                return;
+            }
+        }
+
+        
+
 		
 		// Validate sides and fruits if not main only
 		if (!shouldHideSides) {
