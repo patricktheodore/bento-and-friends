@@ -298,6 +298,8 @@ const ItemController: React.FC = () => {
 					}
 				}
 				return item instanceof Main && item.isPromo ? 'None' : 'N/A';
+            case 'maxOnePerChild':
+                return item instanceof Main ? (item.maxOnePerChild ? 'Yes' : 'No') : 'N/A';
 			default:
 				return 'N/A';
 		}

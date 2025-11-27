@@ -39,6 +39,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         isFeatured: false,
         isVegetarian: false,
         isPromo: false,
+        maxOnePerChild: false,
         isTeachersOnly: false,
         disableSidesSelection: false,
         validDates: [] as string[],
@@ -86,6 +87,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: item.isFeatured ?? false,
                 isVegetarian: item.isVegetarian ?? false,
                 isPromo: item.isPromo ?? false,
+                maxOnePerChild: item.maxOnePerChild ?? false,
                 isTeachersOnly: item.isTeachersOnly ?? false,
                 disableSidesSelection: item.disableSidesSelection ?? false,
                 validDates: item.validDates || [],
@@ -105,6 +107,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 isFeatured: false,
                 isVegetarian: false,
                 isPromo: false,
+                maxOnePerChild: false,
                 isTeachersOnly: false,
                 disableSidesSelection: false,
                 validDates: [],
@@ -174,6 +177,13 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
         }
     };
 
+    const handleMaxOnePerChildToggle = (checked: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            maxOnePerChild: checked
+        }));
+    };
+
     const handleDisableSidesSelectionToggle = (checked: boolean) => {
         setFormData(prev => ({
             ...prev,
@@ -234,6 +244,7 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                 formData.price,
                 item?.id,
                 formData.isPromo,
+                formData.maxOnePerChild,
                 formData.isTeachersOnly,
                 formData.disableSidesSelection,
                 formData.isPromo ? formData.validDates : undefined // Only pass validDates if isPromo
@@ -463,6 +474,15 @@ const MainItemModal: React.FC<MainItemModalProps> = ({
                                 id="isPromo"
                                 checked={formData.isPromo}
                                 onCheckedChange={handlePromoToggle}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="maxOnePerChild">Max One Per Child</Label>
+                            <Switch
+                                id="maxOnePerChild"
+                                checked={formData.maxOnePerChild}
+                                onCheckedChange={handleMaxOnePerChildToggle}
                             />
                         </div>
 

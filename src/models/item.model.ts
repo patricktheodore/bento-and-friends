@@ -43,6 +43,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 	public addOns: string[]; // Array of AddOn IDs
 	public price: number;
 	public isPromo: boolean;
+    public maxOnePerChild?: boolean;
     public isTeachersOnly?: boolean;
     public disableSidesSelection?: boolean;
 	public validDates?: string[];
@@ -60,6 +61,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		price?: number,
 		id?: string,
 		isPromo?: boolean,
+        maxOnePerChild?: boolean,
         isTeachersOnly?: boolean,
         disableSidesSelection?: boolean,
 		validDates?: string[]
@@ -76,6 +78,7 @@ export class Main implements PricedItem, ImagedItem, DescribedItem {
 		this.addOns = addOns || [];
 		this.price = price || 0;
 		this.isPromo = isPromo ?? false;
+        this.maxOnePerChild = maxOnePerChild ?? false;
         this.isTeachersOnly = isTeachersOnly ?? false;
 		this.disableSidesSelection = disableSidesSelection ?? false;
 		this.validDates = validDates || [];

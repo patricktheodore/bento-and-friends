@@ -434,6 +434,13 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
 									))}
 								</SelectContent>
 							</Select>
+                            {currentMain?.maxOnePerChild && (
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="default" className='w-full'>
+                                        Note: This main dish is limited to one per child.
+                                    </Badge>
+                                </div>
+                            )}
 						</div>
 
 						{/* Add-ons Section */}
@@ -556,6 +563,15 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                             
 							<div className="flex justify-center">
 								{isEditMode ? (
+									<Calendar
+                                        key={calendarKey}
+										mode="single"
+										selected={selectedDates[0]}
+										onSelect={(date) => handleDateSelect(date)}
+										disabled={isInvalidDate}
+										className="rounded-md border bg-white"
+									/>
+								) : currentMain?.maxOnePerChild ? (
 									<Calendar
                                         key={calendarKey}
 										mode="single"
