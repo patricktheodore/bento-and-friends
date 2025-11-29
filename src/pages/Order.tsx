@@ -193,24 +193,24 @@ const OrderPage: React.FC = () => {
             const childrenCount = state.user?.children?.filter(child => child.schoolId === school.id).length || 0;
             
             return (
-                <Card className="mb-6">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
+                <Card className="mb-4 sm:mb-6">
+                    <CardContent className="pt-4 sm:pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 rounded-lg">
+                                <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
                                     <GraduationCap className="h-5 w-5 text-blue-600" />
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">{school.name}</h3>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Users className="h-4 w-4" />
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-base sm:text-lg truncate">{school.name}</h3>
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                                        <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                                         <span>
                                             {childrenCount} {childrenCount === 1 ? 'child' : 'children'} enrolled
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800 w-fit">
                                 Active
                             </Badge>
                         </div>
@@ -221,13 +221,13 @@ const OrderPage: React.FC = () => {
 
         // Show select dropdown for multiple schools or when in admin mode
         return (
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5" />
-                        Select School
+            <Card className="mb-4 sm:mb-6">
+                <CardHeader className="pb-3 sm:pb-4">
+                    <CardTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+                        <GraduationCap className="h-5 w-5 flex-shrink-0" />
+                        <span>Select School</span>
                         {adminModeEnabled && (
-                            <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200">
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
                                 <Shield className="h-3 w-3 mr-1" />
                                 Admin View
                             </Badge>
@@ -250,13 +250,13 @@ const OrderPage: React.FC = () => {
                                 
                                 return (
                                     <SelectItem key={school.id} value={school.id}>
-                                        <div className="flex items-center justify-between w-full">
-                                            <div className="flex items-center gap-2">
-                                                <GraduationCap className="h-4 w-4" />
-                                                <span>{school.name}</span>
+                                        <div className="flex items-center justify-between w-full gap-2">
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                                                <span className="truncate">{school.name}</span>
                                             </div>
                                             {!adminModeEnabled && (
-                                                <span className="text-xs text-gray-500 ml-2">
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
                                                     {childrenCount} {childrenCount === 1 ? 'child' : 'children'}
                                                 </span>
                                             )}
@@ -274,38 +274,39 @@ const OrderPage: React.FC = () => {
     // Show message if no children and not in admin mode
     if ((!state.user?.children || state.user.children.length === 0) && !adminModeEnabled) {
         return (
-            <div className="w-full space-y-6 p-4 sm:p-6">
-                <div className='flex items-center justify-between'>
+            <div className="w-full space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0'>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                        <p className="text-gray-600 mt-1">Browse and order meals</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Order</h1>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">Browse and order meals</p>
                     </div>
                     {state.user && state.user.isAdmin && (
                         <Button 
                             onClick={() => toggleAdminMode()} 
-                            className="bg-blue-600 text-white hover:bg-blue-700"
+                            className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
                         >
                             <Shield className="mr-2 h-4 w-4" />
-                            Enable Admin Mode
+                            <span className="hidden sm:inline">Enable Admin Mode</span>
+                            <span className="sm:hidden">Admin Mode</span>
                         </Button>
                     )}
                 </div>
 
-                <Card className="mt-8">
+                <Card className="mt-6 sm:mt-8">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-center">Setup Required</CardTitle>
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-center">Setup Required</CardTitle>
                     </CardHeader>
-                    <CardContent className="text-center">
-                        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <Users className="h-8 w-8 text-gray-400" />
+                    <CardContent className="text-center px-4 sm:px-6">
+                        <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <Users className="h-7 w-7 sm:h-8 sm:w-8 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Add Children to Your Account</h3>
-                        <p className="text-gray-500 mb-6">
+                        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">Add Children to Your Account</h3>
+                        <p className="text-sm sm:text-base text-gray-500 mb-6">
                             You need to add children to your account before you can place orders.
                         </p>
                         <Button 
                             onClick={() => window.location.href = '/account'} 
-                            className="bg-blue-600 text-white hover:bg-blue-700"
+                            className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             Go to Account Settings
@@ -319,47 +320,49 @@ const OrderPage: React.FC = () => {
     // Show loading state if schools haven't loaded yet
     if (state.isLoading || userSchools.length === 0) {
         return (
-            <div className="w-full space-y-6 p-4 sm:p-6">
-                <div className='flex items-center justify-between'>
+            <div className="w-full space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0'>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                        <p className="text-gray-600 mt-1">Browse and order meals for your children</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Order</h1>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">Browse and order meals for your children</p>
                     </div>
                     {state.user && state.user.isAdmin && (
                         <Button 
                             onClick={() => toggleAdminMode()} 
-                            className="bg-blue-600 text-white hover:bg-blue-700"
+                            className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
                         >
                             <Shield className="mr-2 h-4 w-4" />
-                            {adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}
+                            <span className="hidden sm:inline">{adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}</span>
+                            <span className="sm:hidden">{adminModeEnabled ? 'Disable' : 'Enable'} Admin</span>
                         </Button>
                     )}
                 </div>
 
                 <div className="flex flex-col items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin mb-4 text-blue-600" />
-                    <p className="text-lg text-gray-600">Loading schools and menu items...</p>
+                    <p className="text-base sm:text-lg text-gray-600 text-center px-4">Loading schools and menu items...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-full space-y-6 p-4 sm:p-6">
-            <div className='flex items-center justify-between'>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Order</h1>
-                    <p className="text-gray-600 mt-1">
+        <div className="w-full space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+            <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0'>
+                <div className="min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Order</h1>
+                    <p className="text-sm sm:text-base text-gray-600 mt-1">
                         {adminModeEnabled ? 'Browse menu items (Admin View)' : 'Browse and order meals for your children'}
                     </p>
                 </div>
                 {state.user && state.user.isAdmin && (
                     <Button 
                         onClick={() => toggleAdminMode()} 
-                        className={`${adminModeEnabled ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+                        className={`${adminModeEnabled ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'} text-white w-full sm:w-auto flex-shrink-0`}
                     >
                         <Shield className="mr-2 h-4 w-4" />
-                        {adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}
+                        <span className="hidden sm:inline">{adminModeEnabled ? 'Disable Admin Mode' : 'Enable Admin Mode'}</span>
+                        <span className="sm:hidden">{adminModeEnabled ? 'Disable' : 'Enable'} Admin</span>
                     </Button>
                 )}
             </div>
@@ -367,14 +370,14 @@ const OrderPage: React.FC = () => {
             {/* Admin Mode Warning */}
             {adminModeEnabled && (
                 <Card className="border-orange-200 bg-orange-50">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-100 rounded-lg">
+                    <CardContent className="pt-4 sm:pt-6">
+                        <div className="flex items-start sm:items-center gap-3">
+                            <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                                 <Shield className="h-5 w-5 text-orange-600" />
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-orange-800">Admin Mode Active</h3>
-                                <p className="text-sm text-orange-700">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-orange-800 text-sm sm:text-base">Admin Mode Active</h3>
+                                <p className="text-xs sm:text-sm text-orange-700 mt-1">
                                     You are viewing all school menus. Ordering is disabled in this mode.
                                 </p>
                             </div>
@@ -390,29 +393,31 @@ const OrderPage: React.FC = () => {
                 <>
                     {sortedMains.length > 0 ? (
                         <div>
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-gray-900">Available Menu Items</h2>
-                                    <p className="text-gray-600 mt-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Available Menu Items</h2>
+                                    <p className="text-sm sm:text-base text-gray-600 mt-1">
                                         {sortedMains.length} item{sortedMains.length !== 1 ? 's' : ''} available at {selectedSchool.name}
                                         {adminModeEnabled && (
-                                            <span className="ml-2 text-orange-600 font-medium">(Admin View)</span>
+                                            <span className="block sm:inline sm:ml-2 text-orange-600 font-medium mt-1 sm:mt-0">(Admin View)</span>
                                         )}
                                     </p>
                                 </div>
-                                {userIsTeacher && sortedMains.some(item => item.isTeachersOnly) && (
-                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                                        Teacher only items available
-                                    </Badge>
-                                )}
-                                {sortedMains.some(item => item.isPromo) && (
-                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                        Promotional items available
-                                    </Badge>
-                                )}
+                                <div className="flex flex-wrap gap-2">
+                                    {userIsTeacher && sortedMains.some(item => item.isTeachersOnly) && (
+                                        <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs whitespace-nowrap">
+                                            Teacher only items available
+                                        </Badge>
+                                    )}
+                                    {sortedMains.some(item => item.isPromo) && (
+                                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs whitespace-nowrap">
+                                            Promotional items available
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                 {sortedMains.map((item) => (
                                     <MenuItemCard
                                         key={item.id}
@@ -425,15 +430,15 @@ const OrderPage: React.FC = () => {
                         </div>
                     ) : (
                         <Card>
-                            <CardContent className="text-center py-12">
-                                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                    <ShoppingCart className="h-8 w-8 text-gray-400" />
+                            <CardContent className="text-center py-8 sm:py-12 px-4 sm:px-6">
+                                <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                    <ShoppingCart className="h-7 w-7 sm:h-8 sm:w-8 text-gray-400" />
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Menu Items Available</h3>
-                                <p className="text-gray-500 mb-6">
+                                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No Menu Items Available</h3>
+                                <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
                                     No menu items are currently available for {selectedSchool.name}. Please check back later or contact the school.
                                 </p>
-                                <div className="text-sm text-gray-400">
+                                <div className="text-xs sm:text-sm text-gray-400">
                                     Menu items may be temporarily unavailable or under maintenance.
                                 </div>
                             </CardContent>
@@ -442,12 +447,12 @@ const OrderPage: React.FC = () => {
                 </>
             ) : (
                 <Card>
-                    <CardContent className="text-center py-12">
-                        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <GraduationCap className="h-8 w-8 text-gray-400" />
+                    <CardContent className="text-center py-8 sm:py-12 px-4 sm:px-6">
+                        <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <GraduationCap className="h-7 w-7 sm:h-8 sm:w-8 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a School</h3>
-                        <p className="text-gray-500">
+                        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">Select a School</h3>
+                        <p className="text-sm sm:text-base text-gray-500">
                             Please select a school above to view available menu items for ordering.
                         </p>
                     </CardContent>

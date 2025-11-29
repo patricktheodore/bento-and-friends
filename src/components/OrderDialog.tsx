@@ -302,18 +302,20 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         if (currentMain.maxOnePerChild) {
             const cartMeals = state.cart?.meals || [];
 
-            if (cartMeals.length === 0) return;
-            
-            const duplicateMeal = cartMeals.filter(meal => 
-                meal.main.id === currentMain.id &&
-                selectedChildren.some(child => child.id === meal.child.id) &&
-                selectedDates.some(date => meal.deliveryDate === date.toISOString())
-            );
+            if (cartMeals.length > 0) {
 
-            if (duplicateMeal.length > 0) {
-                toast.error('You have already added this main dish for one of the selected children on one of the selected dates in your cart. Please adjust your selection to comply with the one per child limit.');
-                return;
-            }
+                const duplicateMeal = cartMeals.filter(meal => 
+                    meal.main.id === currentMain.id &&
+                    selectedChildren.some(child => child.id === meal.child.id) &&
+                    selectedDates.some(date => meal.deliveryDate === date.toISOString())
+                );
+    
+                if (duplicateMeal.length > 0) {
+                    toast.error('You have already added this main dish for one of the selected children on one of the selected dates in your cart. Please adjust your selection to comply with the one per child limit.');
+                    return;
+                }
+            };
+            
         }
 
         
