@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
 import { getCurrentUser } from '../services/auth';
-import { getSchools, addSchool, updateSchool, updateSchoolValidDates, updateSchoolMenuItems, getSchoolEnrollmentData, SchoolEnrollmentData, SchoolChildrenData } from '../services/school-operations';
+import { getSchools, addSchool, updateSchool, updateSchoolValidDates, updateSchoolMenuItems, updateSchoolClasses, getSchoolEnrollmentData, SchoolEnrollmentData, SchoolChildrenData } from '../services/school-operations';
 import { useAppContext } from '../context/AppContext';
 import toast from 'react-hot-toast';
 
@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Users, GraduationCap, UserCheck, Mail, Loader2, Plus, Power } from 'lucide-react';
+import { Users, GraduationCap, UserCheck, Mail, Loader2, Plus, Power, Trash } from 'lucide-react';
 import { Main } from '@/models/item.model';
 import { School } from '@/models/school.model';
 
@@ -44,6 +44,9 @@ const Schools: React.FC = () => {
 	const [savingActiveStates, setSavingActiveStates] = useState<Record<string, boolean>>({});
 	const [editingSchoolNames, setEditingSchoolNames] = useState<Record<string, string>>({});
 	const [savingNameStates, setSavingNameStates] = useState<Record<string, boolean>>({});
+    const [schoolClasses, setSchoolClasses] = useState<Record<string, string[]>>({});
+    const [savingClassStates, setSavingClassStates] = useState<Record<string, boolean>>({});
+    const [newClassInput, setNewClassInput] = useState<Record<string, string>>({});
 
 	// Add School Dialog State
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -94,48 +97,51 @@ const Schools: React.FC = () => {
 	};
 
 	const fetchSchoolsAndCheckAdmin = async () => {
-		try {
-			const user = await getCurrentUser();
-			if (!user) {
-				toast.error('User not authenticated');
-				return;
-			}
+        try {
+            const user = await getCurrentUser();
+            if (!user) {
+                toast.error('User not authenticated');
+                return;
+            }
 
-			const adminStatus = user.isAdmin;
-			setIsAdmin(adminStatus);
+            const adminStatus = user.isAdmin;
+            setIsAdmin(adminStatus);
 
-			// Fetch schools
-			const response = await getSchools();
-			if (response.success && response.data) {
-				dispatch({ type: 'SET_SCHOOLS', payload: response.data });
+            // Fetch schools
+            const response = await getSchools();
+            if (response.success && response.data) {
+                dispatch({ type: 'SET_SCHOOLS', payload: response.data });
 
-				// Initialize selected dates for each school
-				const initialDates: Record<string, Date[]> = {};
-				const initialMenuItems: Record<string, string[]> = {};
-				const initialNames: Record<string, string> = {};
+                // Initialize selected dates for each school
+                const initialDates: Record<string, Date[]> = {};
+                const initialMenuItems: Record<string, string[]> = {};
+                const initialNames: Record<string, string> = {};
+                const initialClasses: Record<string, string[]> = {};
 
-				response.data.forEach((school) => {
-					initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
-					initialMenuItems[school.id] = school.menuItems || [];
-					initialNames[school.id] = school.name;
-				});
+                response.data.forEach((school) => {
+                    initialDates[school.id] = school.validDates.map((date) => new Date(date)) || [];
+                    initialMenuItems[school.id] = school.menuItems || [];
+                    initialNames[school.id] = school.name;
+                    initialClasses[school.id] = school.classes || [];
+                });
 
-				setSchoolSelectedDates(initialDates);
-				setSchoolMenuItems(initialMenuItems);
-				setEditingSchoolNames(initialNames);
-			} else {
-				toast.error(response.error || 'Failed to fetch schools');
-			}
+                setSchoolSelectedDates(initialDates);
+                setSchoolMenuItems(initialMenuItems);
+                setEditingSchoolNames(initialNames);
+                setSchoolClasses(initialClasses);
+            } else {
+                toast.error(response.error || 'Failed to fetch schools');
+            }
 
-			const activeMenuItems = state.mains.filter((item) => item.isActive);
-			setAvailableMenuItems(activeMenuItems);
+            const activeMenuItems = state.mains.filter((item) => item.isActive);
+            setAvailableMenuItems(activeMenuItems);
 
-			// Fetch enrollment data
-			await fetchEnrollmentData();
-		} catch (error) {
-			toast.error((error as Error).message);
-		}
-	};
+            // Fetch enrollment data
+            await fetchEnrollmentData();
+        } catch (error) {
+            toast.error((error as Error).message);
+        }
+    };
 
 	useEffect(() => {
 		fetchSchoolsAndCheckAdmin();
@@ -163,29 +169,33 @@ const Schools: React.FC = () => {
 			const response = await addSchool(newSchoolData);
 
 			if (response.success && response.data) {
-				// Add the new school to the state
-				dispatch({ type: 'SET_SCHOOLS', payload: [...state.schools, response.data] });
-				
-				// Initialize the new school's data
-				setSchoolSelectedDates(prev => ({
-					...prev,
-					[response.data!.id]: []
-				}));
-				setSchoolMenuItems(prev => ({
-					...prev,
-					[response.data!.id]: []
-				}));
-				setEditingSchoolNames(prev => ({
-					...prev,
-					[response.data!.id]: response.data!.name
-				}));
+                // Add the new school to the state
+                dispatch({ type: 'SET_SCHOOLS', payload: [...state.schools, response.data] });
+                
+                // Initialize the new school's data
+                setSchoolSelectedDates(prev => ({
+                    ...prev,
+                    [response.data!.id]: []
+                }));
+                setSchoolMenuItems(prev => ({
+                    ...prev,
+                    [response.data!.id]: []
+                }));
+                setEditingSchoolNames(prev => ({
+                    ...prev,
+                    [response.data!.id]: response.data!.name
+                }));
+                setSchoolClasses(prev => ({
+                    ...prev,
+                    [response.data!.id]: []
+                }));
 
-				// Reset form and close dialog
-				setAddSchoolForm({ name: '', address: '' });
-				setIsAddDialogOpen(false);
+                // Reset form and close dialog
+                setAddSchoolForm({ name: '', address: '' });
+                setIsAddDialogOpen(false);
 
-				toast.success(`School "${response.data.name}" added successfully`);
-			} else {
+                toast.success(`School "${response.data.name}" added successfully`);
+            } else {
 				toast.error(response.error || 'Failed to add school');
 			}
 		} catch (error) {
@@ -352,6 +362,64 @@ const Schools: React.FC = () => {
 			setSavingNameStates((prev) => ({ ...prev, [schoolId]: false }));
 		}
 	};
+
+    const handleAddClass = (schoolId: string) => {
+        const newClass = newClassInput[schoolId]?.trim();
+        
+        if (!newClass) {
+            toast.error('Class name cannot be empty');
+            return;
+        }
+        
+        // Check for duplicates
+        if ((schoolClasses[schoolId] || []).includes(newClass)) {
+            toast.error('This class already exists');
+            return;
+        }
+        
+        setSchoolClasses(prev => ({
+            ...prev,
+            [schoolId]: [...(prev[schoolId] || []), newClass]
+        }));
+        
+        // Clear input
+        setNewClassInput(prev => ({
+            ...prev,
+            [schoolId]: ''
+        }));
+    };
+
+    const handleRemoveClass = (schoolId: string, classToRemove: string) => {
+        setSchoolClasses(prev => ({
+            ...prev,
+            [schoolId]: (prev[schoolId] || []).filter(c => c !== classToRemove)
+        }));
+    };
+
+    const handleSaveSchoolClasses = async (schoolId: string) => {
+        setSavingClassStates(prev => ({ ...prev, [schoolId]: true }));
+        
+        try {
+            const selectedClasses = schoolClasses[schoolId] || [];
+            const response = await updateSchoolClasses(schoolId, selectedClasses);
+            
+            if (response.success) {
+                const updatedSchools = state.schools.map((school) =>
+                    school.id === schoolId ? { ...school, classes: selectedClasses } : school
+                );
+                dispatch({ type: 'SET_SCHOOLS', payload: updatedSchools });
+                
+                toast.success(`Classes updated for ${state.schools.find((s) => s.id === schoolId)?.name}`);
+            } else {
+                toast.error(response.error || 'Failed to update school classes');
+            }
+        } catch (error) {
+            console.error('Error saving school classes:', error);
+            toast.error('Failed to update school classes. Please try again.');
+        } finally {
+            setSavingClassStates(prev => ({ ...prev, [schoolId]: false }));
+        }
+    };
 
 	const removeDuplicateDates = (dates: Date[]): Date[] => {
         return Array.from(new Set(dates.map((d) => d.toISOString()))).map((d) => new Date(d));
@@ -740,6 +808,99 @@ const Schools: React.FC = () => {
 																		)}
 																	</CardContent>
 																</Card>
+
+                                                                {/* Class Management */}
+                                                                <Card>
+                                                                    <CardHeader className="pb-3">
+                                                                        <CardTitle className="text-lg flex items-center gap-2">
+                                                                            Class Management
+                                                                        </CardTitle>
+                                                                        <p className="text-sm text-gray-600">
+                                                                            Add and manage classes for this school
+                                                                        </p>
+                                                                    </CardHeader>
+                                                                    <CardContent className="space-y-4">
+                                                                        <div className="flex gap-2">
+                                                                            <Input
+                                                                                placeholder="Enter class name (3A, 4B, etc.)"
+                                                                                value={newClassInput[school.id] || ''}
+                                                                                onChange={(e) => setNewClassInput(prev => ({
+                                                                                    ...prev,
+                                                                                    [school.id]: e.target.value
+                                                                                }))}
+                                                                                disabled={savingClassStates[school.id]}
+                                                                            />
+                                                                            <Button
+                                                                                onClick={() => handleAddClass(school.id)}
+                                                                                disabled={savingClassStates[school.id] || !newClassInput[school.id]?.trim()}
+                                                                                className="px-3"
+                                                                            >
+                                                                                <Plus className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+
+                                                                        {/* Classes List */}
+                                                                        {(schoolClasses[school.id] || []).length > 0 ? (
+                                                                            <div className="space-y-2">
+                                                                                <p className="text-sm font-medium text-gray-700">
+                                                                                    Current Classes ({(schoolClasses[school.id] || []).length})
+                                                                                </p>
+                                                                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                                                    {(schoolClasses[school.id] || []).map((className, index) => (
+                                                                                        <div
+                                                                                            key={index}
+                                                                                            className="flex items-center justify-between py-2 px-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                                                                                        >
+                                                                                            <span className="text-sm text-gray-900 font-medium">{className}</span>
+                                                                                            <Button
+                                                                                                variant="destructive"
+                                                                                                onClick={() => handleRemoveClass(school.id, className)}
+                                                                                                disabled={savingClassStates[school.id]}
+                                                                                                size="sm"
+                                                                                            >
+                                                                                                <Trash className="h-4 w-4 text-white" />
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed">
+                                                                                <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                                                                                    <GraduationCap className="h-5 w-5 text-gray-400" />
+                                                                                </div>
+                                                                                <p className="text-sm text-gray-500">No classes added yet</p>
+                                                                                <p className="text-xs text-gray-400 mt-1">Add a class using the input above</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Save Button */}
+                                                                        <Button
+                                                                            onClick={() => handleSaveSchoolClasses(school.id)}
+                                                                            disabled={savingClassStates[school.id]}
+                                                                            className="w-full"
+                                                                        >
+                                                                            {savingClassStates[school.id] ? (
+                                                                                <>
+                                                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                                    Saving...
+                                                                                </>
+                                                                            ) : (
+                                                                                'Save Classes'
+                                                                            )}
+                                                                        </Button>
+
+                                                                        {/* Unsaved Changes Warning */}
+                                                                        {JSON.stringify(schoolClasses[school.id] || []) !== 
+                                                                        JSON.stringify(school.classes || []) && (
+                                                                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                                                <p className="text-sm text-yellow-800">
+                                                                                    <strong>Unsaved changes:</strong> Click "Save Classes" to persist your changes
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </CardContent>
+                                                                </Card>
 
 																{/* Date Management Section */}
 																<Card>

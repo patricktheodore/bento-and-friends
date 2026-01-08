@@ -234,9 +234,9 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 						<Label htmlFor="isTeacher">Is this member a teacher?</Label>
 					</div>
 
-					{!isTeacher && (
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
+                    {!isTeacher && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
 								<Label htmlFor="year">Year*</Label>
 								<Input
 									id="year"
@@ -247,19 +247,57 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 									required
 								/>
 							</div>
-							<div className="space-y-2">
-								<Label htmlFor="className">Class*</Label>
-								<Input
-									id="className"
-									name="className"
-									value={childData.className}
-									onChange={handleInputChange}
-									placeholder="Enter class"
-									required
-								/>
-							</div>
-						</div>
-					)}
+                            <div className="space-y-2">
+                                <Label htmlFor="className">Class*</Label>
+                                {(() => {
+                                    const selectedSchool = schools.find(s => s.id === childData.schoolId);
+                                    const availableClasses = selectedSchool?.classes || [];
+                                    
+                                    if (!childData.schoolId) {
+                                        return (
+                                            <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-md border border-dashed">
+                                                Please select a school first
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    if (availableClasses.length === 0) {
+                                        return (
+                                            <div className="space-y-2">
+                                                <div className="text-sm text-amber-600 p-3 bg-amber-50 rounded-md border border-amber-200">
+                                                    No classes configured for this school. Please contact support.
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    return (
+                                        <>
+                                            <Select
+                                                value={childData.className || ''}
+                                                onValueChange={(value) => setChildData(prev => ({ ...prev, className: value }))}
+                                                disabled={isLoading}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Class" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {availableClasses.map((className) => (
+                                                        <SelectItem key={className} value={className}>
+                                                            {className}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-xs text-gray-500">
+                                                {availableClasses.length} class{availableClasses.length !== 1 ? 'es' : ''} available at {selectedSchool?.name}
+                                            </p>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
 
 					<div className="space-y-2">
 						<Label htmlFor="allergens">Allergens / Dietaries</Label>
@@ -320,23 +358,23 @@ const ChildManagementDialog: React.FC<ChildManagementDialogProps> = ({
 							Cancel
 						</Button>
 						<Button
-							type="submit"
-							disabled={
-								isLoading ||
-								!childData.name ||
-								!childData.schoolId ||
-								(!isTeacher && (!childData.year || !childData.className))
-							}
-						>
-							{isLoading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									{editingChild ? 'Updating...' : 'Adding...'}
-								</>
-							) : (
-								<>{editingChild ? 'Update' : 'Add'}</>
-							)}
-						</Button>
+                            type="submit"
+                            disabled={
+                                isLoading ||
+                                !childData.name ||
+                                !childData.schoolId ||
+                                (!isTeacher && (!childData.year || !childData.className))
+                            }
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    {editingChild ? 'Updating...' : 'Adding...'}
+                                </>
+                            ) : (
+                                <>{editingChild ? 'Update' : 'Add'}</>
+                            )}
+                        </Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>

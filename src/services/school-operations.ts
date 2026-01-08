@@ -196,3 +196,16 @@ export const updateSchoolMenuItems = async (
 		return { success: false, error: handleApiError(error) };
 	}
 };
+
+export const updateSchoolClasses = async (
+	schoolId: string,
+	classes: string[]
+): Promise<ApiResponse<string[]>> => {
+	try {
+		const schoolRef = doc(db, 'schools-test', schoolId);
+		await updateDoc(schoolRef, { classes });
+		return { success: true, data: classes };
+	} catch (error) {
+		return { success: false, error: handleApiError(error) };
+	}
+};

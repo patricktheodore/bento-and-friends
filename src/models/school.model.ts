@@ -5,4 +5,5 @@ export interface School {
     isActive: boolean;
     menuItems: string[];
     validDates: string[];
+    classes?: string[];
 }
