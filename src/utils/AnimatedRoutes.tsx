@@ -45,6 +45,45 @@ const AnimatedRoutes: React.FC = () => {
 							</PageTransition>
 						}
 					/>
+                    <Route
+                        path="/admin"
+                        element={
+                            <AdminRoute>
+                                <PageTransition>
+                                    <Suspense fallback={<AnimatedLoadingScreen />}>
+                                        <AdminDashboardPage />
+                                    </Suspense>
+                                </PageTransition>
+                            </AdminRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/run-sheet"
+                        element={
+                            <AdminRoute>
+                                <PageTransition>
+                                    <Suspense fallback={<AnimatedLoadingScreen />}>
+                                        <RunSheet />
+                                    </Suspense>
+                                </PageTransition>
+                            </AdminRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/manual-order"
+                        element={
+                            <AdminRoute>
+                                <PageTransition>
+                                    <Suspense fallback={<AnimatedLoadingScreen />}>
+                                        <ManualOrdersPage />
+                                    </Suspense>
+                                </PageTransition>
+                            </AdminRoute>
+                        }
+                    />
+
 					<Route
 						path="*"
 						element={

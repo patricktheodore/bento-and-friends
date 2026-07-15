@@ -15,6 +15,7 @@ import {
   UtensilsCrossed, 
   GraduationCap, 
   Ticket,
+  Building2,
   Settings,
 } from 'lucide-react';
 import Schools from '../components/Schools';
@@ -23,6 +24,7 @@ import CouponController from '@/components/CouponController';
 import OrdersComponent from '@/components/Orders';
 import AdminOverview from '@/components/AdminOverview';
 import UsersComponent from '@/components/Users';
+import SchoolBreakdown from '@/components/SchoolBreakdown';
 
 const tabs = [
   { name: 'Dashboard', component: AdminOverview, icon: BarChart3 },
@@ -31,6 +33,7 @@ const tabs = [
   { name: 'Menu Items', component: ItemController, icon: UtensilsCrossed },
   { name: 'Schools', component: Schools, icon: GraduationCap },
   { name: 'Coupons', component: CouponController, icon: Ticket },
+  { name: 'School Breakdown', component: SchoolBreakdown, icon: Building2 },
 ];
 
 const AdminDashboardPage: React.FC = () => {

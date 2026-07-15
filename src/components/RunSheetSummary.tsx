@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Utensils, Apple, Coffee, ChefHat } from 'lucide-react';
+import { Utensils, Apple, Coffee, ChefHat, AlertTriangle } from 'lucide-react';
 import { MealWithId } from '@/services/run-sheet-operations';
 
 interface RunSheetSummaryProps {
@@ -10,42 +10,48 @@ interface RunSheetSummaryProps {
 
 interface Variation {
 	count: number;
-	description: string;
+	allergens: string;
+	addOns: string;
 }
 
 const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
-	const { mainDishSummary, sidesSummary, fruitSummary, totalMeals, totalSides, totalFruits } = useMemo(() => {
+	const { mainDishSummary, sidesSummary, fruitSummary, allergenSummary, totalMeals, totalSides, totalFruits, mealsWithAllergens } = useMemo(() => {
 		// Main dish summary
 		const mainDishes: { [key: string]: Variation[] } = {};
 
 		// Sides and fruit summaries
 		const sides: { [key: string]: number } = {};
 		const fruits: { [key: string]: number } = {};
+		
+		// Allergen summary
+		const allergens: { [key: string]: number } = {};
+		let allergenCount = 0;
 
 		meals.forEach((meal) => {
 			// Process main dishes
 			const mainDish = meal.mainName;
+			const allergenText = meal.childAllergens && meal.childAllergens.trim() !== '' 
+				? meal.childAllergens.trim() 
+				: '';
 			const addOns = meal.addOns?.map((addOn) => addOn.display).join(', ') || '';
-
-			// Create a variation description based on add-ons
-			let variationDesc = '';
-			if (addOns) {
-				variationDesc = `Add-ons: ${addOns}`;
-			} else {
-				variationDesc = 'Standard';
-			}
 
 			// Add to main dish summary
 			if (!mainDishes[mainDish]) {
 				mainDishes[mainDish] = [];
 			}
 
-			// Find existing variation or create new one
-			const existingVariation = mainDishes[mainDish].find((v) => v.description === variationDesc);
+			// Find existing variation or create new one based on both allergens and add-ons
+			const existingVariation = mainDishes[mainDish].find(
+				(v) => v.allergens === allergenText && v.addOns === addOns
+			);
 			if (existingVariation) {
 				existingVariation.count++;
 			} else {
-				mainDishes[mainDish].push({ count: 1, description: variationDesc });
+				mainDishes[mainDish].push({ 
+					count: 1, 
+					allergens: allergenText,
+					addOns: addOns
+				});
 			}
 
 			// Process sides
@@ -59,6 +65,16 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 				const fruit = meal.fruitName;
 				fruits[fruit] = (fruits[fruit] || 0) + 1;
 			}
+
+			// Process allergens
+			if (meal.childAllergens && meal.childAllergens.trim() !== '') {
+				allergenCount++;
+				// Split allergens by comma and trim each one
+				const allergenList = meal.childAllergens.split(',').map(a => a.trim()).filter(a => a);
+				allergenList.forEach(allergen => {
+					allergens[allergen] = (allergens[allergen] || 0) + 1;
+				});
+			}
 		});
 
 		// Calculate totals for sides and fruits
@@ -69,9 +85,11 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 			mainDishSummary: mainDishes,
 			sidesSummary: sides,
 			fruitSummary: fruits,
+			allergenSummary: allergens,
 			totalMeals: meals.length,
 			totalSides: totalSidesCount,
 			totalFruits: totalFruitsCount,
+			mealsWithAllergens: allergenCount,
 		};
 	}, [meals]);
 
@@ -151,9 +169,29 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 											{variations.map((variation, idx) => (
 												<div
 													key={idx}
-													className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-													<span className="text-gray-700">{variation.description}</span>
-													<span className="font-medium text-gray-900">{variation.count}</span>
+													className="bg-gray-50 p-2 rounded">
+													<div className="flex justify-between items-start gap-2">
+														<div className="flex-1 space-y-1">
+                                                            {variation.addOns && (
+                                                                <div className="text-sm text-gray-700 font-medium">
+                                                                    Add-ons: {variation.addOns}
+                                                                </div>
+                                                            )}
+															{variation.allergens && (
+																<div className="flex items-center gap-2">
+																	<span className="text-sm text-red-600 font-medium">
+																		Allergens: {variation.allergens}
+																	</span>
+																</div>
+															)}
+															{!variation.allergens && !variation.addOns && (
+																<span className="text-sm text-gray-500 font-medium">Standard</span>
+															)}
+														</div>
+														<span className="font-medium text-gray-900 flex-shrink-0">
+															{variation.count}
+														</span>
+													</div>
 												</div>
 											))}
 										</div>
@@ -167,8 +205,8 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 				</CardContent>
 			</Card>
 
-			{/* Sides and Fruits Summary Section */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			{/* Sides, Fruits, and Allergens Summary Section */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Sides Summary */}
 				<Card className="shadow-sm">
 					<CardHeader className="pb-3">
@@ -238,6 +276,41 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 						)}
 					</CardContent>
 				</Card>
+
+				{/* Allergens Summary */}
+				<Card className="shadow-sm">
+					<CardHeader className="pb-3">
+						<CardTitle className="flex items-center gap-2">
+							<div className="p-2 bg-red-100 rounded-lg">
+								<AlertTriangle className="h-4 w-4 text-red-600" />
+							</div>
+							Allergens Summary
+						</CardTitle>
+						<p className="text-sm text-gray-600 mt-1">
+							{mealsWithAllergens} meals with allergens • {Object.keys(allergenSummary).length} different allergens
+						</p>
+					</CardHeader>
+					<CardContent>
+						{Object.keys(allergenSummary).length > 0 ? (
+							<div className="space-y-2">
+								{sortByCount(Object.entries(allergenSummary)).map(([allergen, count]) => (
+									<div
+										key={allergen}
+										className="flex justify-between items-center p-2 bg-red-50 rounded border border-red-100">
+										<span className="text-gray-700 font-medium">{allergen}</span>
+										<Badge
+											variant="outline"
+											className="bg-red-100 text-red-700 border-red-200">
+											{count}
+										</Badge>
+									</div>
+								))}
+							</div>
+						) : (
+							<div className="text-center py-4 text-gray-500">No allergens found</div>
+						)}
+					</CardContent>
+				</Card>
 			</div>
 
 			{/* Additional Stats Card */}
@@ -251,7 +324,7 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+					<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 						<div className="text-center">
 							<div className="text-2xl font-bold text-gray-900">{totalMeals}</div>
 							<div className="text-sm text-gray-600">Total Meals</div>
@@ -269,6 +342,10 @@ const RunSheetSummary: React.FC<RunSheetSummaryProps> = ({ meals }) => {
 						<div className="text-center">
 							<div className="text-2xl font-bold text-green-600">{Object.keys(fruitSummary).length}</div>
 							<div className="text-sm text-gray-600">Fruit Types</div>
+						</div>
+						<div className="text-center">
+							<div className="text-2xl font-bold text-red-600">{mealsWithAllergens}</div>
+							<div className="text-sm text-gray-600">Meals w/ Allergens</div>
 						</div>
 					</div>
 				</CardContent>
