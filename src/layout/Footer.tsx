@@ -55,7 +55,7 @@ const Footer: React.FC = () => {
 		},
 		{
 			title: 'Our Menu',
-			links: [{ to: '/menu', label: 'Full Menu' }],
+			links: [{ to: '/schools', label: 'Full Menu' }],
 		},
 		{
 			title: 'Customer Service',

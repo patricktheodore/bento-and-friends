@@ -1,3 +1,11 @@
+// Convert a school name into a URL-friendly slug (e.g. "St. Mary's" -> "st-marys")
+export const schoolSlug = (name: string): string =>
+    name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
 export const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });

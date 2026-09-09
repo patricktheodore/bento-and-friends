@@ -82,7 +82,7 @@ const NutritionComponent: React.FC = () => {
 						size="lg" 
 						className="bg-white text-blue-900 hover:bg-gray-100 px-8 py-3 rounded-full"
 					>
-						<Link to="/menu">
+						<Link to="/schools">
 							Explore Our Menu →
 						</Link>
 					</Button>

@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from '../layout/PageTransition';
-import { AdminRoute } from './RouteGuard';
+import { AdminRoute, AuthRoute } from './RouteGuard';
 import AnimatedLoadingScreen from '../utils/AnimatedLoadingScreen';
 import CateringPage from '@/pages/Catering';
 import PaymentSuccessPage from '@/pages/PaymentSuccess';
@@ -13,11 +13,11 @@ const HomePage = lazy(() => import('../pages/Home'));
 const AccountPage = lazy(() => import('../pages/Account'));
 const UserloginPage = lazy(() => import('../pages/SignInRegister'));
 const SignOut = lazy(() => import('../pages/SignOut'));
-const MenuPage = lazy(() => import('../pages/Menu'));
 const OrderPage = lazy(() => import('../pages/Order'));
 const ContactPage = lazy(() => import('../pages/Contact'));
 const AdminDashboardPage = lazy(() => import('../pages/AdminDashboard'));
 const SchoolsPage = lazy(() => import('../pages/Schools'));
+const SchoolMenuPage = lazy(() => import('../pages/SchoolMenu'));
 const CheckoutPage = lazy(() => import('@/pages/Checkout'));
 const RunSheet = lazy(() => import('@/pages/RunSheet'));
 const MaintenancePage = lazy(() => import('../pages/Maintenance'));
@@ -114,23 +114,15 @@ const AnimatedRoutes: React.FC = () => {
 					}
 				/>
 				<Route
-					path="/menu"
-					element={
-						<PageTransition>
-							<Suspense fallback={<AnimatedLoadingScreen />}>
-								<MenuPage />
-							</Suspense>
-						</PageTransition>
-					}
-				/>
-				<Route
 					path="/order"
 					element={
-						<PageTransition>
-							<Suspense fallback={<AnimatedLoadingScreen />}>
-								<OrderPage />
-							</Suspense>
-						</PageTransition>
+						<AuthRoute>
+							<PageTransition>
+								<Suspense fallback={<AnimatedLoadingScreen />}>
+									<OrderPage />
+								</Suspense>
+							</PageTransition>
+						</AuthRoute>
 					}
 				/>
 				<Route
@@ -254,6 +246,19 @@ const AnimatedRoutes: React.FC = () => {
 								</Suspense>
 							</PageTransition>
 						</AdminRoute>
+					}
+				/>
+
+				{/* Public per-school menu, e.g. /st-marys. Keep last: the dynamic
+				    segment is ranked below the static routes above by react-router. */}
+				<Route
+					path="/:schoolSlug"
+					element={
+						<PageTransition>
+							<Suspense fallback={<AnimatedLoadingScreen />}>
+								<SchoolMenuPage />
+							</Suspense>
+						</PageTransition>
 					}
 				/>
 			</Routes>

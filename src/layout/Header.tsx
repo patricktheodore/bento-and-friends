@@ -5,16 +5,26 @@ import CartIcon from '@/components/CartIcon';
 import Cart from '@/components/Cart';
 import logo from "@/assets/bento-logo.png";
 import { UpdateDetailsDialog } from '@/components/UpdateDetailsDialog';
+import { schoolSlug } from '@/utils/utils';
 
 const Header: React.FC = () => {
     const { state } = useAppContext();
     const [isOpen, setIsOpen] = useState(false);
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
-    
+
+    // Resolve the Campus Perth link from the loaded schools so it stays correct
+    // even if the school name changes; fall back to the expected slug otherwise.
+    const campusPerthSchool = state.schools.find(
+        (s) => schoolSlug(s.name) === 'campus-perth' || s.name.toLowerCase().includes('campus perth')
+    );
+    const campusPerthTo = campusPerthSchool ? `/${schoolSlug(campusPerthSchool.name)}` : '/campus-perth';
+
     const menuItems = [
-        { to: '/menu', label: 'Menu' },
+        { to: '/schools', label: 'Menu' },
         { to: '/order', label: 'Order' },
+        { to: '/schools', label: 'Schools' },
+        { to: campusPerthTo, label: 'Campus Perth' },
         ...(state.user 
             ? (state.user.isAdmin
                 ? [
